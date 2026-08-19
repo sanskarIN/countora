@@ -20,6 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check repository Markdown links
+        run: python tool/check_markdown_links.py
+
+      - name: Scan committed text for secret patterns
+        run: python tool/check_secrets.py
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
