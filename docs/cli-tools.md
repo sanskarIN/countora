@@ -6,7 +6,7 @@ Run commands from the repository root unless a section says otherwise.
 
 ## Toolchain prerequisites
 
-Use a current stable Flutter SDK compatible with `pubspec.yaml`. Commands that import Countora/Flutter package code require dependency resolution first:
+Use a current stable Flutter SDK compatible with `pubspec.yaml` (currently Flutter `>=3.38.1`, Dart `>=3.10.0 <4.0.0`). Commands that import Countora/Flutter package code require dependency resolution first:
 
 ```bash
 flutter pub get
@@ -58,7 +58,17 @@ Run:
 dart run tool/check_version_sync.dart
 ```
 
-Use this before release tagging and after any version/build-number change.
+The pure implementation lives in `tool/src/version_audit.dart` and is regression-tested by `test/version_audit_test.dart`.
+
+The audit verifies:
+
+- `pubspec.yaml` contains `MAJOR.MINOR.PATCH+BUILD`;
+- `AppMetadata.version` and `AppMetadata.buildNumber` match it;
+- `CHANGELOG.md` contains an exact heading for that semantic version;
+- when GitHub Actions is running a tag, `GITHUB_REF_NAME` must equal `vMAJOR.MINOR.PATCH`;
+- a tagged release is rejected while its changelog heading is still labeled `Unreleased`.
+
+Use this before release tagging and after any version/build-number change. The tag-only checks activate automatically in the tagged GitHub workflow environment.
 
 ## `tool/check_secrets.dart`
 
@@ -91,7 +101,7 @@ The audit checks:
 - non-empty message values;
 - `strings.<key>` and `context.l10n.<key>` references against `lib/l10n/app_en.arb`.
 
-This complements—not replaces—`flutter gen-l10n`, `flutter analyze`, and Flutter tests.
+This complements—not replaces—`flutter gen-l10n`, `flutter analyze`, and Flutter tests. It is wired into normal CI, the repository audit workflow, and the tagged release quality gate.
 
 ## `tool/check_markdown_links.dart`
 
@@ -167,6 +177,12 @@ Implements pure generated-Android template transforms and postcondition validati
 
 Regression coverage: `test/platform_patches_test.dart`.
 
+### `version_audit.dart`
+
+Implements version/build/changelog/tag consistency checks without file-system or GitHub side effects. This keeps release-tag policy directly unit-testable.
+
+Regression coverage: `test/version_audit_test.dart`.
+
 ## Recommended contributor sequence
 
 After cloning:
@@ -174,6 +190,7 @@ After cloning:
 ```bash
 dart run tool/bootstrap_platforms.dart
 flutter pub get
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
@@ -198,7 +215,7 @@ flutter test integration_test -d linux -r github
 
 ## Release sequence
 
-The complete release process is intentionally stricter than this tool catalog. Follow [`release.md`](release.md), observe actual GitHub Actions results, and perform required native/device checks before publishing platform-specific claims.
+The complete release process is intentionally stricter than this tool catalog. Follow [`release.md`](release.md), finalize the matching changelog heading before tagging, observe actual GitHub Actions results, and perform required native/device checks before publishing platform-specific claims.
 
 ## Failure-handling rule
 
