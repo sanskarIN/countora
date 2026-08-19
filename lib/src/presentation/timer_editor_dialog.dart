@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../data/state_codec.dart';
 import '../domain/models.dart';
 
 class TimerDraft {
@@ -30,6 +32,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _groupController = TextEditingController();
+  final _stepLabelController = TextEditingController();
   final _hoursController = TextEditingController(text: '0');
   final _minutesController = TextEditingController(text: '5');
   final _secondsController = TextEditingController(text: '0');
@@ -39,6 +42,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
   void dispose() {
     _nameController.dispose();
     _groupController.dispose();
+    _stepLabelController.dispose();
     _hoursController.dispose();
     _minutesController.dispose();
     _secondsController.dispose();
@@ -54,38 +58,111 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
   }
 
   void _addInterval() {
-    final seconds = _durationSeconds;
-    if (seconds <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose a duration above zero.')),
+    if (!_validateDuration(showMessage: true)) return;
+    if (_steps.length >= CountoraStateCodec.maxIntervalsPerTimer) {
+      _showMessage(
+        'A sequence can contain at most '
+        '${CountoraStateCodec.maxIntervalsPerTimer} intervals.',
       );
       return;
     }
+
+    final explicitLabel = _stepLabelController.text.trim();
     setState(() {
       _steps.add(
         IntervalStep(
-          label: 'Interval ${_steps.length + 1}',
-          durationSeconds: seconds,
+          label: explicitLabel.isEmpty
+              ? 'Interval ${_steps.length + 1}'
+              : explicitLabel,
+          durationSeconds: _durationSeconds,
         ),
       );
+      _stepLabelController.clear();
     });
+  }
+
+  void _moveInterval(int from, int delta) {
+    final to = from + delta;
+    if (to < 0 || to >= _steps.length) return;
+    setState(() {
+      final item = _steps.removeAt(from);
+      _steps.insert(to, item);
+    });
+  }
+
+  Future<void> _renameInterval(int index) async {
+    final controller = TextEditingController(text: _steps[index].label);
+    final formKey = GlobalKey<FormState>();
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename interval'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            maxLength: CountoraStateCodec.maxNameLength,
+            decoration: const InputDecoration(labelText: 'Label'),
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Label is required.'
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave == true && mounted) {
+      setState(() {
+        final current = _steps[index];
+        _steps[index] = IntervalStep(
+          label: controller.text.trim(),
+          durationSeconds: current.durationSeconds,
+        );
+      });
+    }
+    controller.dispose();
+  }
+
+  bool _validateDuration({required bool showMessage}) {
+    final seconds = _durationSeconds;
+    final valid = seconds > 0 &&
+        seconds <= CountoraStateCodec.maxIntervalSeconds;
+    if (!valid && showMessage) {
+      _showMessage('Choose a duration between 1 second and 365 days.');
+    }
+    return valid;
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     var steps = <IntervalStep>[..._steps];
     if (steps.isEmpty) {
-      final seconds = _durationSeconds;
-      if (seconds <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Choose a duration above zero.')),
-        );
-        return;
-      }
+      if (!_validateDuration(showMessage: true)) return;
       steps = <IntervalStep>[
         IntervalStep(
           label: _nameController.text.trim(),
-          durationSeconds: seconds,
+          durationSeconds: _durationSeconds,
         ),
       ];
     }
@@ -94,7 +171,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
       TimerDraft(
         name: _nameController.text.trim(),
         group: _groupController.text.trim(),
-        steps: steps,
+        steps: List<IntervalStep>.unmodifiable(steps),
       ),
     );
   }
@@ -104,7 +181,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
     return AlertDialog(
       title: Text(widget.forPreset ? 'New preset' : 'New countdown'),
       content: SizedBox(
-        width: 520,
+        width: 560,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -115,7 +192,8 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                 TextFormField(
                   controller: _nameController,
                   autofocus: true,
-                  maxLength: 80,
+                  maxLength: CountoraStateCodec.maxNameLength,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Name',
                     hintText: 'Tea, Deep work, Exam…',
@@ -128,52 +206,118 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _groupController,
-                  maxLength: 40,
+                  maxLength: CountoraStateCodec.maxGroupLength,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Group (optional)',
                     hintText: 'Study, Kitchen, Work…',
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text('Duration'),
+                Text(
+                  'Duration',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _numberField(_hoursController, 'Hours')),
+                    Expanded(
+                      child: _numberField(
+                        _hoursController,
+                        'Hours',
+                        max: 8760,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _numberField(_minutesController, 'Minutes')),
+                    Expanded(
+                      child: _numberField(
+                        _minutesController,
+                        'Minutes',
+                        max: 59,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _numberField(_secondsController, 'Seconds')),
+                    Expanded(
+                      child: _numberField(
+                        _secondsController,
+                        'Seconds',
+                        max: 59,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
+                TextFormField(
+                  controller: _stepLabelController,
+                  maxLength: CountoraStateCodec.maxNameLength,
+                  decoration: const InputDecoration(
+                    labelText: 'Interval label (optional)',
+                    hintText: 'Focus, Rest, Simmer…',
+                  ),
+                ),
                 OutlinedButton.icon(
-                  onPressed: _addInterval,
+                  onPressed:
+                      _steps.length >= CountoraStateCodec.maxIntervalsPerTimer
+                          ? null
+                          : _addInterval,
                   icon: const Icon(Icons.playlist_add),
-                  label: const Text('Add as interval step'),
+                  label: Text(
+                    'Add interval (${_steps.length}/'
+                    '${CountoraStateCodec.maxIntervalsPerTimer})',
+                  ),
                 ),
                 if (_steps.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Interval sequence',
-                    style: Theme.of(context).textTheme.titleSmall,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Interval sequence',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      Text('${_steps.length} steps'),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   ..._steps.asMap().entries.map(
-                        (entry) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(
-                            child: Text('${entry.key + 1}'),
-                          ),
-                          title: Text(entry.value.label),
-                          subtitle: Text('${entry.value.durationSeconds}s'),
-                          trailing: IconButton(
-                            tooltip: 'Remove interval',
-                            onPressed: () {
-                              setState(() => _steps.removeAt(entry.key));
-                            },
-                            icon: const Icon(Icons.close),
+                        (entry) => Card.outlined(
+                          child: ListTile(
+                            dense: true,
+                            leading: CircleAvatar(
+                              child: Text('${entry.key + 1}'),
+                            ),
+                            title: Text(entry.value.label),
+                            subtitle: Text(
+                              _humanDuration(entry.value.durationSeconds),
+                            ),
+                            onTap: () => _renameInterval(entry.key),
+                            trailing: Wrap(
+                              spacing: 0,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Move interval up',
+                                  onPressed: entry.key == 0
+                                      ? null
+                                      : () => _moveInterval(entry.key, -1),
+                                  icon: const Icon(Icons.arrow_upward),
+                                ),
+                                IconButton(
+                                  tooltip: 'Move interval down',
+                                  onPressed: entry.key == _steps.length - 1
+                                      ? null
+                                      : () => _moveInterval(entry.key, 1),
+                                  icon: const Icon(Icons.arrow_downward),
+                                ),
+                                IconButton(
+                                  tooltip: 'Remove interval',
+                                  onPressed: () {
+                                    setState(() => _steps.removeAt(entry.key));
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -196,16 +340,34 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
     );
   }
 
-  Widget _numberField(TextEditingController controller, String label) {
+  Widget _numberField(
+    TextEditingController controller,
+    String label, {
+    required int max,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
+      inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(labelText: label),
       validator: (value) {
         final parsed = int.tryParse(value?.trim() ?? '');
-        if (parsed == null || parsed < 0) return '0+';
+        if (parsed == null || parsed < 0 || parsed > max) {
+          return '0–$max';
+        }
         return null;
       },
     );
+  }
+
+  String _humanDuration(int seconds) {
+    final duration = Duration(seconds: seconds);
+    final parts = <String>[];
+    if (duration.inHours > 0) parts.add('${duration.inHours}h');
+    final minutes = duration.inMinutes.remainder(60);
+    if (minutes > 0) parts.add('${minutes}m');
+    final remainder = duration.inSeconds.remainder(60);
+    if (remainder > 0 || parts.isEmpty) parts.add('${remainder}s');
+    return parts.join(' ');
   }
 }
