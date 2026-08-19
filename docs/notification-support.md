@@ -37,6 +37,27 @@ When future scheduling is unavailable:
 
 This prevents the UI from promising a background capability that the service intentionally does not call.
 
+## Permission behavior
+
+The controller requests notification permissions at most once per controller session before scheduling is first needed. The production notification adapter contains platform permission/plugin failures so a permission problem does not crash a timer operation.
+
+On iOS and macOS, `countoraNotificationInitializationSettings()` explicitly disables initialization-time alert, badge, and sound permission requests. Permission is requested later through `requestPermissions()` only when Countora reaches the scheduling path. This keeps startup from prompting merely because the notification plugin was initialized.
+
+On Android, Countora requests normal notification permission and exact-alarm permission through the platform adapter when scheduling is first needed. If exact scheduling is unavailable, the scheduling path attempts the inexact allow-while-idle fallback.
+
+A user or operating system can still deny delivery. Countora cannot override OS policy, battery restrictions, focus/do-not-disturb policy, vendor background restrictions, signing limitations, or browser/platform capability limits.
+
+## Android cue-profile channels
+
+Android notification channel configuration is persistent once the operating system creates a channel. To avoid reusing one channel ID while asking for contradictory sound/vibration behavior, Countora maps cue profiles to four stable channel IDs:
+
+- sound + vibration
+- sound only
+- vibration only
+- silent (also used by quiet mode)
+
+`countoraAndroidNotificationDetails()` owns this mapping. This makes Countora's selected cue profile explicit when a notification is scheduled. Users remain in control of channel-level behavior through Android system settings, so device-level overrides can still differ from in-app defaults.
+
 ## Persistence ordering
 
 Notification schedule changes depend on successfully persisted timer/settings state. See [`ADR 0005`](adr/0005-persist-before-platform-side-effects.md).
@@ -50,6 +71,12 @@ Examples:
 - backup import persists the staged/reconciled imported state before replacing old schedules.
 
 If local persistence fails, Countora surfaces the save/import failure and intentionally leaves dependent notification schedules untouched.
+
+## Deadline-boundary behavior
+
+Pause operations reconcile a running timer whose deadline has already arrived instead of freezing it as a paused zero-second countdown. Positive fractional seconds are rounded up when converting a running deadline into persisted paused whole seconds, avoiding an early one-second truncation at the pause boundary.
+
+Bulk pause first reconciles already-expired timers, persists those lifecycle changes, synchronizes their schedules, and then pauses timers that are still running.
 
 ## Android generated-runner requirements
 
@@ -66,29 +93,24 @@ The generated Android application needs:
 
 The transforms are idempotent and fail explicitly if expected Flutter template anchors disappear. `test/platform_patches_test.dart` protects those assumptions.
 
-## Permission behavior
-
-The controller requests notification permissions at most once per controller session before scheduling is first needed. The production notification adapter contains platform permission/plugin failures so a permission problem does not crash a timer operation.
-
-A user or operating system can still deny delivery. Countora cannot override OS policy, battery restrictions, focus/do-not-disturb policy, vendor background restrictions, signing limitations, or browser/platform capability limits.
-
 ## Manual release verification
 
 Before making a platform-specific public delivery claim, test a release candidate on that platform and record:
 
-1. permission prompt behavior;
+1. permission prompt behavior, including absence of an Apple startup prompt before notification use;
 2. timer completion while Countora is foregrounded;
 3. timer completion while Countora is backgrounded/suspended where supported;
 4. sound on/off;
 5. vibration on/off where applicable;
 6. quiet mode;
-7. pause/resume schedule replacement;
-8. add-time/restart schedule replacement;
-9. multi-step interval scheduling;
-10. app-resume reconciliation after one or more elapsed intervals;
-11. notification-disable cancellation behavior;
-12. Android exact-alarm denial fallback where applicable;
-13. reboot/app-update rescheduling behavior where applicable.
+7. Android cue-profile/channel behavior and OS-level overrides;
+8. pause/resume schedule replacement;
+9. add-time/restart schedule replacement;
+10. multi-step interval scheduling;
+11. app-resume reconciliation after one or more elapsed intervals;
+12. notification-disable cancellation behavior;
+13. Android exact-alarm denial fallback where applicable;
+14. reboot/app-update rescheduling behavior where applicable.
 
 Source implementation is not equivalent to verified device behavior. Keep unverified platform claims qualified until the corresponding real workflow/device checks have been observed.
 
@@ -97,10 +119,13 @@ Source implementation is not equivalent to verified device behavior. Keep unveri
 Relevant tests include:
 
 - `test/platform_capabilities_test.dart`
+- `test/notification_initialization_test.dart`
+- `test/notification_channel_profile_test.dart`
 - `test/timer_controller_test.dart`
 - `test/timer_controller_workflows_test.dart`
 - `test/timer_controller_resilience_test.dart`
+- `test/timer_pause_boundary_test.dart`
 - `test/settings_page_test.dart`
 - `test/platform_patches_test.dart`
 
-The tests protect capability decisions, ordering rules, settings presentation, and failure containment. They do not replace real operating-system notification verification.
+The tests protect capability decisions, permission-init policy, channel-profile mapping, persistence ordering, deadline-boundary behavior, settings presentation, and failure containment. They do not replace real operating-system notification verification.
