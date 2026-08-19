@@ -53,3 +53,35 @@ jobs:
 
       - name: Build web
         run: flutter build web --release
+
+  integration-linux:
+    name: Integration journey (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Run primary integration journey
+        run: xvfb-run -a flutter test integration_test -d linux -r github
