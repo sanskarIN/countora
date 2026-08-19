@@ -14,11 +14,8 @@ bool supportsScheduledNotifications({
   if (web) return false;
 
   final target = platform ?? defaultTargetPlatform;
-  return switch (target) {
-    TargetPlatform.android ||
-    TargetPlatform.iOS ||
-    TargetPlatform.macOS ||
-    TargetPlatform.windows => true,
-    TargetPlatform.linux || TargetPlatform.fuchsia => false,
-  };
+  return target == TargetPlatform.android ||
+      target == TargetPlatform.iOS ||
+      target == TargetPlatform.macOS ||
+      target == TargetPlatform.windows;
 }
