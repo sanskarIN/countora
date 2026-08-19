@@ -4,6 +4,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../core/app_logger.dart';
 import '../domain/models.dart';
+import 'state_codec.dart';
 
 abstract interface class NotificationService {
   Future<void> initialize();
@@ -172,7 +173,9 @@ class LocalNotificationService implements NotificationService {
   @override
   Future<void> cancelTimer(String timerId) async {
     if (!_ready) return;
-    for (var index = 0; index < 32; index += 1) {
+    for (var index = 0;
+        index < CountoraStateCodec.maxIntervalsPerTimer;
+        index += 1) {
       try {
         await _plugin.cancel(id: _notificationId(timerId, index));
       } on Exception catch (error) {
