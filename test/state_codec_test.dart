@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:countora/src/data/state_codec.dart';
 import 'package:countora/src/domain/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,6 +41,15 @@ void main() {
       expect(decoded.timers.single.name, 'Tea');
       expect(decoded.timers.single.remainingWhenPausedSeconds, 120);
       expect(decoded.presets.single.useCount, 2);
+    });
+
+    test('encoded state includes the current schema version', () {
+      final encoded = jsonDecode(codec.encode(const CountoraState())) as Map;
+
+      expect(
+        encoded['schemaVersion'],
+        CountoraStateCodec.currentSchemaVersion,
+      );
     });
 
     test('migrates legacy unversioned state to the current schema', () {
@@ -118,8 +129,8 @@ void main() {
     });
 
     test('bounds oversized names, groups and use counts', () {
-      final longName = 'n' * 120;
-      final longGroup = 'g' * 80;
+      final longName = List<String>.filled(120, 'n', growable: false).join();
+      final longGroup = List<String>.filled(80, 'g', growable: false).join();
       final decoded = codec.decode('''
 {
   "schemaVersion": 1,
