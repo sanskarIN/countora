@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, and fake notification adapters instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -21,6 +21,8 @@ Countora treats timing, persistence, backup parsing, and destructive data workfl
 - invalid interval recovery
 - configured name/group/use-count bounds
 
+`test/state_codec_fuzz_test.dart` adds deterministic malformed-input/fuzz-style regression coverage around the backup trust boundary.
+
 `test/local_store_test.dart` covers:
 
 - SharedPreferences save/restore
@@ -32,11 +34,19 @@ Countora treats timing, persistence, backup parsing, and destructive data workfl
 
 `test/stable_clock_test.dart` verifies the monotonic clock anchor behavior without using real elapsed time.
 
-`test/timer_controller_test.dart` and `test/timer_controller_workflows_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, and history reuse.
+`test/timer_controller_test.dart`, `test/timer_controller_workflows_test.dart`, and `test/timer_controller_resilience_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, history reuse, and recoverable infrastructure failures.
+
+### Platform-boundary tests
+
+`test/external_link_launcher_test.dart` verifies that successful, declined, and throwing URL-launch operations are converted into a safe boolean result instead of allowing platform failures to escape into the widget tree.
 
 ### Widget tests
 
 `test/home_page_test.dart` covers primary timer presentation, accessible semantics, filtered empty states, resume controls, and history replay.
+
+`test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, and clipboard-backup failure feedback.
+
+`test/keyboard_shortcuts_test.dart` covers the primary desktop keyboard shortcuts.
 
 `test/localization_test.dart` verifies English localization generation/delegate behavior.
 
@@ -50,7 +60,7 @@ Countora treats timing, persistence, backup parsing, and destructive data workfl
 4. save it as a preset
 5. start another timer from that preset
 
-This source belongs in the repository even when a current CI runner is not configured with a device/window target capable of executing it reliably.
+CI now has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, generates Countora's platform runners, and executes the integration suite against the Linux desktop target in a virtual display.
 
 ## Standard local quality suite
 
@@ -88,14 +98,22 @@ dart run tool/check_markdown_links.dart
 Run the integration journey on a configured Flutter target:
 
 ```bash
-flutter test integration_test/app_journey_test.dart
+flutter test integration_test -d linux -r github
 ```
 
-Depending on the host, a device selector or desktop target may be required.
+On a headless Linux host, provide a display such as Xvfb. The repository CI uses:
+
+```bash
+xvfb-run -a flutter test integration_test -d linux -r github
+```
+
+A different explicit device selector can be used when validating another supported target.
 
 ## CI expectations
 
-`.github/workflows/ci.yml` performs:
+`.github/workflows/ci.yml` contains two complementary jobs.
+
+The main Flutter quality job performs:
 
 1. checkout
 2. Flutter setup
@@ -108,11 +126,19 @@ Depending on the host, a device selector or desktop target may be required.
 9. local Markdown-link verification
 10. Web release build
 
-Any failure blocks the CI job. A release must not be described as verified until a real workflow execution has been observed as successful.
+The Linux integration job performs:
+
+1. checkout and Flutter setup
+2. installation of GTK/Linux build dependencies and Xvfb
+3. deterministic platform-runner generation
+4. dependency resolution and localization generation
+5. the full `integration_test` directory against `-d linux`
+
+Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful.
 
 ## Native-platform verification
 
-Pure Dart/widget tests cannot fully prove OS notification behavior. Before a stable release, manually verify on supported platforms where applicable:
+Automated Dart/widget/Linux integration tests cannot fully prove OS notification behavior on every platform. Before a stable release, manually verify on supported platforms where applicable:
 
 - notification permission prompts
 - completion notification delivery while app is backgrounded
