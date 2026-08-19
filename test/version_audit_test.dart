@@ -53,6 +53,17 @@ void main() {
     expect(result.errors.single, contains('[0.2.0]'));
   });
 
+  test('requires an exact changelog version heading', () {
+    final result = auditVersionMetadata(
+      pubspec: _pubspec,
+      metadata: _metadata,
+      changelog: '## [0x2x0] - 2026-08-19\n',
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.errors.single, contains('[0.2.0]'));
+  });
+
   test('accepts a release tag that matches the package version', () {
     final result = auditVersionMetadata(
       pubspec: _pubspec,
@@ -74,5 +85,17 @@ void main() {
 
     expect(result.isValid, isFalse);
     expect(result.errors.single, contains('Release tag mismatch'));
+  });
+
+  test('rejects tags while the changelog entry is still unreleased', () {
+    final result = auditVersionMetadata(
+      pubspec: _pubspec,
+      metadata: _metadata,
+      changelog: '## [0.2.0] - Unreleased release candidate\n',
+      releaseTag: 'v0.2.0',
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.errors.single, contains('finalized dated CHANGELOG'));
   });
 }
