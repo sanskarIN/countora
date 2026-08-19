@@ -4,12 +4,21 @@ import 'package:flutter/foundation.dart';
 /// future scheduled completion delivery on the target.
 ///
 /// Optional overrides keep capability decisions deterministic in tests without
-/// changing Flutter's global platform override.
+/// changing Flutter's global platform override. Unknown/unsupported native
+/// targets fail closed instead of being assumed notification-capable.
 bool supportsScheduledNotifications({
   bool? isWeb,
   TargetPlatform? platform,
 }) {
   final web = isWeb ?? kIsWeb;
+  if (web) return false;
+
   final target = platform ?? defaultTargetPlatform;
-  return !web && target != TargetPlatform.linux;
+  return switch (target) {
+    TargetPlatform.android ||
+    TargetPlatform.iOS ||
+    TargetPlatform.macOS ||
+    TargetPlatform.windows => true,
+    TargetPlatform.linux || TargetPlatform.fuchsia => false,
+  };
 }
