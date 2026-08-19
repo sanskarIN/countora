@@ -418,10 +418,10 @@ class TimerController extends ChangeNotifier {
     _clearError();
     try {
       final imported = _stateCodec.decode(raw);
-
-      for (final timer in _timers) {
-        await _notifications.cancelTimer(timer.id);
-      }
+      final previousState = _state;
+      final previousSearchQuery = _searchQuery;
+      final previousGroupFilter = _groupFilter;
+      final previousIdSequence = _nextIdSequence;
 
       _timers = imported.timers;
       _presets = imported.presets;
@@ -430,8 +430,32 @@ class TimerController extends ChangeNotifier {
       _searchQuery = '';
       _groupFilter = '';
       _nextIdSequence = _timers.length + _presets.length;
-      await _reconcileTimers();
-      await _persist();
+
+      await _reconcileTimers(
+        persistChanges: false,
+        syncNotifications: false,
+      );
+
+      if (!await _persist()) {
+        _timers = previousState.timers;
+        _presets = previousState.presets;
+        _history = previousState.history;
+        _settings = previousState.settings;
+        _searchQuery = previousSearchQuery;
+        _groupFilter = previousGroupFilter;
+        _nextIdSequence = previousIdSequence;
+        notifyListeners();
+        throw StateError('Countora could not persist the imported backup.');
+      }
+
+      for (final timer in previousState.timers) {
+        await _notifications.cancelTimer(timer.id);
+      }
+      for (final timer in _timers.where(
+        (item) => item.status == CountdownStatus.running,
+      )) {
+        await _schedule(timer);
+      }
     } on FormatException catch (error) {
       _lastError = error.message;
       notifyListeners();
@@ -446,7 +470,10 @@ class TimerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _reconcileTimers() async {
+  Future<bool> _reconcileTimers({
+    bool persistChanges = true,
+    bool syncNotifications = true,
+  }) async {
     final now = _nowUtc();
     var changed = false;
     final runningIds = _timers
@@ -459,13 +486,14 @@ class TimerController extends ChangeNotifier {
           await _consumeExpiredTimer(timerId, now, scheduleFinal: false) ||
           changed;
     }
-    if (changed) {
-      await _persist();
+
+    if (changed && persistChanges && !await _persist()) {
+      return false;
     }
-    for (final timer
-        in _timers.where((item) => item.status == CountdownStatus.running)) {
-      await _schedule(timer);
+    if (syncNotifications) {
+      await _syncNotificationsForTimerIds(runningIds);
     }
+    return true;
   }
 
   void _startTicker() {
@@ -498,10 +526,14 @@ class TimerController extends ChangeNotifier {
 
     var changed = false;
     for (final timerId in expiredIds) {
-      changed = await _consumeExpiredTimer(timerId, now) || changed;
+      changed =
+          await _consumeExpiredTimer(timerId, now, scheduleFinal: false) ||
+          changed;
     }
     if (changed) {
-      await _persist();
+      if (await _persist()) {
+        await _syncNotificationsForTimerIds(expiredIds);
+      }
     } else if (_timers.any(
       (timer) => timer.status == CountdownStatus.running,
     )) {
@@ -547,6 +579,8 @@ class TimerController extends ChangeNotifier {
     final latest = _findTimer(timer.id);
     if (latest == null) return;
 
+    CountdownTimer? runningResult;
+    var completedResult = false;
     final nextIndex = latest.currentStepIndex + 1;
     if (nextIndex < latest.steps.length) {
       final now = _nowUtc();
@@ -560,9 +594,7 @@ class TimerController extends ChangeNotifier {
         endsAtUtc: nextStartedAt.add(Duration(seconds: next.durationSeconds)),
       );
       _replaceTimer(advanced);
-      if (scheduleNotifications) {
-        await _schedule(advanced);
-      }
+      runningResult = advanced;
     } else {
       final completedAt = _nowUtc();
       final completed = latest.copyWith(
@@ -583,10 +615,28 @@ class TimerController extends ChangeNotifier {
         ),
         ..._history,
       ].take(CountoraStateCodec.maxHistoryEntries).toList();
-      await _notifications.cancelTimer(latest.id);
+      completedResult = true;
     }
 
-    if (persist) await _persist();
+    if (persist && !await _persist()) return;
+    if (!scheduleNotifications) return;
+
+    if (completedResult) {
+      await _notifications.cancelTimer(latest.id);
+    } else if (runningResult != null) {
+      await _schedule(runningResult);
+    }
+  }
+
+  Future<void> _syncNotificationsForTimerIds(Iterable<String> timerIds) async {
+    for (final timerId in timerIds) {
+      final timer = _findTimer(timerId);
+      if (timer == null || timer.status == CountdownStatus.completed) {
+        await _notifications.cancelTimer(timerId);
+      } else if (timer.status == CountdownStatus.running) {
+        await _schedule(timer);
+      }
+    }
   }
 
   Future<void> _persistAndSchedule(CountdownTimer timer) async {
