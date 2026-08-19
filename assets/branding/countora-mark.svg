@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Countora brand mark</title>
+  <desc id="desc">A rounded timer dial with three progress segments and a centered countdown hand.</desc>
+  <defs>
+    <linearGradient id="dial" x1="180" y1="160" x2="840" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7777EA"/>
+      <stop offset="1" stop-color="#4545B8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="250" y1="260" x2="780" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C7C7FF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="232" fill="#11131A"/>
+  <circle cx="512" cy="532" r="322" fill="url(#dial)"/>
+  <circle cx="512" cy="532" r="238" fill="#171925"/>
+
+  <path d="M512 210a322 322 0 0 1 245 113" fill="none" stroke="#A8A8FF" stroke-width="38" stroke-linecap="round"/>
+  <path d="M804 399a322 322 0 0 1-35 328" fill="none" stroke="#8585F4" stroke-width="38" stroke-linecap="round"/>
+  <path d="M685 800a322 322 0 0 1-360-42" fill="none" stroke="#6666DA" stroke-width="38" stroke-linecap="round"/>
+
+  <rect x="426" y="122" width="172" height="72" rx="36" fill="url(#accent)"/>
+  <rect x="486" y="174" width="52" height="76" rx="26" fill="#7777EA"/>
+
+  <path d="M512 366v166l118 74" fill="none" stroke="url(#accent)" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="512" cy="532" r="34" fill="#FFFFFF"/>
+
+  <circle cx="512" cy="308" r="13" fill="#FFFFFF" opacity=".9"/>
+  <circle cx="736" cy="532" r="13" fill="#FFFFFF" opacity=".72"/>
+  <circle cx="512" cy="756" r="13" fill="#FFFFFF" opacity=".58"/>
+  <circle cx="288" cy="532" r="13" fill="#FFFFFF" opacity=".72"/>
+</svg>
