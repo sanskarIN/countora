@@ -7,6 +7,7 @@ Countora is designed so timing status does not depend on sound, vibration, color
 ### Semantics and assistive technology
 
 - Timer cards expose the timer identity, remaining time, and status through semantics.
+- Activating a timer card is announced as **Open focus mode**; the full-screen close control separately announces **Exit focus mode**.
 - Progress indicators expose semantic labels/values rather than relying only on a visual bar.
 - Full-screen focus mode exposes a live countdown semantic region.
 - Icon-only controls include tooltips that also improve discoverability.
@@ -21,7 +22,9 @@ Sound and vibration are optional. Countdown state remains visible through:
 - running/paused/completed status controls
 - interval-step labels and ordering
 - focus-mode visual countdown
-- system visual notifications when quiet mode suppresses sound/vibration
+- system visual notifications where the target supports scheduled notifications and quiet mode suppresses sound/vibration
+
+Web and Linux currently rely on the in-app timer state/cues for future completion because Countora's notification adapter does not schedule future background notifications on those targets.
 
 The Settings Accessibility section explicitly describes these non-audio cues.
 
@@ -55,7 +58,9 @@ Theme colors are derived from a Material 3 color scheme. Contrast must still be 
 
 ## Testing
 
-Automated regression coverage includes timer semantic labels and key Settings/keyboard journeys. Automated tests are not a substitute for a manual accessibility pass.
+Automated regression coverage includes timer semantic labels, the focus-mode entry hint, progress semantics, and key Settings/keyboard journeys. Localization tests also protect the distinct open/exit focus-mode copy.
+
+Automated tests are not a substitute for a manual accessibility pass.
 
 Before a stable release, manually verify:
 
@@ -68,15 +73,17 @@ Before a stable release, manually verify:
 - reduced-motion behavior
 - quiet mode with all audio/haptics disabled
 - focus visibility and modal focus trapping
+- focus-mode card/action announcements with a real screen reader
 
 ## Contributor checklist
 
 For every new interactive feature:
 
 1. Give icon-only controls a tooltip/semantic purpose.
-2. Ensure it is keyboard reachable on desktop/web.
-3. Do not rely only on color/sound/vibration.
-4. Confirm scaled text does not remove the action.
-5. Respect reduced motion.
-6. Keep destructive actions explicit and reversible where practical.
-7. Add regression semantics/widget coverage when the behavior is important.
+2. Ensure action hints describe what activation will do next, not the inverse action available after navigation.
+3. Ensure it is keyboard reachable on desktop/web.
+4. Do not rely only on color/sound/vibration.
+5. Confirm scaled text does not remove the action.
+6. Respect reduced motion.
+7. Keep destructive actions explicit and reversible where practical.
+8. Add regression semantics/widget coverage when the behavior is important.
