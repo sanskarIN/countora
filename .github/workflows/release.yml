@@ -23,6 +23,15 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify required repository files
+        run: dart run tool/check_required_files.dart
+
+      - name: Verify version metadata
+        run: dart run tool/check_version_sync.dart
+
+      - name: Scan tracked source for obvious secrets
+        run: dart run tool/check_secrets.dart
+
       - name: Generate platform runners
         run: dart run tool/bootstrap_platforms.dart
 
