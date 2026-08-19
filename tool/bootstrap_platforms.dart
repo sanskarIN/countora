@@ -8,6 +8,8 @@ Future<void> main() async {
     <String>[
       'create',
       '.',
+      '--empty',
+      '--no-pub',
       '--project-name=countora',
       '--org=dev.sanskar',
       '--platforms=android,ios,web,windows,macos,linux',
