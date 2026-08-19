@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_links.dart';
 import '../domain/models.dart';
 import 'about_page.dart';
 import 'timer_controller.dart';
@@ -53,6 +55,8 @@ class SettingsPage extends StatelessWidget {
               settings.copyWith(compactCards: value),
             ),
           ),
+          const Divider(height: 32),
+          _sectionTitle(context, 'Accessibility'),
           SwitchListTile(
             title: const Text('Reduced motion'),
             subtitle: const Text('Prefer minimal movement and transitions.'),
@@ -126,6 +130,14 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _confirmClearHistory(context),
           ),
           const Divider(height: 32),
+          _sectionTitle(context, 'Updates & about'),
+          ListTile(
+            leading: const Icon(Icons.system_update_alt),
+            title: const Text('Check for updates'),
+            subtitle: const Text('Open Countora releases on GitHub.'),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () => _openReleases(context),
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('About Countora'),
@@ -148,6 +160,15 @@ class SettingsPage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(text, style: Theme.of(context).textTheme.titleMedium),
     );
+  }
+
+  Future<void> _openReleases(BuildContext context) async {
+    final launched = await launchUrl(Uri.parse(AppLinks.releases));
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Countora releases.')),
+      );
+    }
   }
 
   Future<void> _importBackup(BuildContext context) async {
