@@ -22,6 +22,7 @@ Current development version: **0.2.0+2**.
 
 - Multiple simultaneous countdown timers
 - Pause, resume, restart, delete, duplicate, and add-time controls
+- Deadline-safe pause handling that reconciles expired timers instead of freezing them at zero
 - Bulk pause-all, resume-all, and remove-completed actions
 - Reusable presets with usage-frequency tracking
 - Named timer groups plus search and filtering
@@ -39,6 +40,8 @@ Current development version: **0.2.0+2**.
 - Background local completion notifications on supported scheduling targets
 - Safe Web/Linux fallback to in-app timer completion when future notification scheduling is unavailable
 - Android exact-alarm fallback to inexact scheduling when exact permission is unavailable
+- Android cue-profile channels for sound+vibration, sound-only, vibration-only, and silent/quiet delivery
+- Deferred iOS/macOS notification permission prompts until scheduling is actually needed
 - Corruption-safe local persistence recovery
 - Bounded, schema-aware JSON backup validation and migration
 - Resilient external-link and clipboard-export failure handling
@@ -96,7 +99,8 @@ Native runner folders are generated from the installed Flutter SDK so stale fram
 
 Prerequisites:
 
-- a current stable Flutter SDK compatible with Dart `>=3.10.0 <4.0.0`
+- Flutter stable `>=3.38.1`
+- Dart `>=3.10.0 <4.0.0` (provided by a compatible Flutter SDK)
 - platform toolchains for the host you intend to build
 
 ```bash
@@ -104,6 +108,7 @@ git clone https://github.com/sanskarIN/countora.git
 cd countora
 dart run tool/bootstrap_platforms.dart
 flutter pub get
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 flutter run
 ```
@@ -120,6 +125,7 @@ Repository integrity checks:
 dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
 dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
 dart run tool/check_markdown_links.dart
 ```
 
@@ -171,7 +177,7 @@ flutter build macos --release
 flutter build ios --release --no-codesign
 ```
 
-The tagged GitHub release workflow performs the supported host-specific builds and publishes artifacts after the main quality job succeeds. It also publishes SHA-256 digest files for Android/Web, Linux, Windows, macOS, and unsigned iOS release artifacts. See [`docs/release.md`](docs/release.md) for integrity-verification examples and the distinction between checksums and platform code signing.
+The tagged GitHub release workflow performs the supported host-specific builds and publishes artifacts only after the main quality job succeeds. It also publishes SHA-256 digest files for Android/Web, Linux, Windows, macOS, and unsigned iOS release artifacts. A tag must match the package semantic version and the corresponding changelog entry must already be finalized from its unreleased candidate label. See [`docs/release.md`](docs/release.md) for integrity-verification examples and the distinction between checksums and platform code signing.
 
 ## Project structure
 
@@ -189,9 +195,11 @@ integration_test/           # end-to-end Flutter user journeys
 test/                       # domain, controller, persistence, UI, localization, tool tests
 tool/
   bootstrap_platforms.dart  # deterministic Flutter runner generation
-  src/platform_patches.dart # pure validated Android runner transforms
-  ...                       # repository checks
-docs/                       # architecture, setup, testing, release, ADRs
+  check_*.dart              # deterministic repository/source audits
+  inspect_backup.dart       # privacy-safe backup structure inspection
+  benchmark_state_codec.dart# deterministic codec benchmark harness
+  src/                      # pure audit/patch/inspection helpers
+docs/                       # architecture, setup, testing, release, ADRs and references
 .github/                    # CI, release, security, templates, Dependabot/funding
 ```
 
@@ -225,17 +233,20 @@ Current safety bounds include:
 
 Unknown future schema versions are rejected instead of silently interpreted. A valid import is previewed before it replaces current local data. Clipboard export failures are reported without changing the current local state.
 
+See [`docs/backup-format.md`](docs/backup-format.md) for the schema/validation contract and privacy-safe inspection tool.
+
 ## Localization
 
 English ships first through `lib/l10n/app_en.arb`. User-facing application copy is externalized so additional locales can be added with ARB files without rewriting the main screens.
 
-After modifying ARB files, run:
+Before generating localization code, the repository can audit committed ARB keys/references without generated source:
 
 ```bash
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
-Generated localization Dart files are intentionally ignored from Git; CI regenerates them.
+Generated localization Dart files are intentionally ignored from Git; CI regenerates them. The deterministic localization audit is enforced in normal CI, repository audit, and tagged release quality gates.
 
 ## Security and privacy
 
@@ -248,7 +259,7 @@ Countora has no authentication or cloud service. Security work therefore focuses
 - Unsupported scheduled-notification targets are not sent future-scheduling calls.
 - Dependency Review blocks newly introduced moderate-or-higher vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
-- Tagged releases run deterministic required-file, version-sync, tracked-secret, and documentation-link audits.
+- Tagged releases run deterministic required-file, version/tag, tracked-secret, localization-source, and documentation-link audits.
 - Release artifacts include SHA-256 digests for post-download integrity checks.
 - Signing keys, `.env`, keystores, and generated credentials are ignored.
 
@@ -258,6 +269,7 @@ Read [`SECURITY.md`](SECURITY.md) and [`PRIVACY.md`](PRIVACY.md).
 
 The main CI workflow checks:
 
+- localization-source integrity
 - generated platform bootstrap
 - dependency resolution
 - localization generation
@@ -267,9 +279,9 @@ The main CI workflow checks:
 - local Markdown links
 - Web release build
 
-A separate Linux CI job runs the primary `integration_test` journey under Xvfb. Tagged releases additionally run repository-integrity checks and build Android APK/AAB, Web, Linux, Windows, macOS, and an unsigned iOS application artifact, with SHA-256 checksum files published alongside them. Signed store distribution remains an external release-credential step.
+A separate Linux CI job runs the primary `integration_test` journey under Xvfb. A separate repository-audit workflow checks required files, version metadata, obvious tracked-secret patterns, localization source, and local documentation links. Tagged releases additionally build Android APK/AAB, Web, Linux, Windows, macOS, and an unsigned iOS application artifact, with SHA-256 checksum files published alongside them after the release quality gate succeeds. Signed store distribution remains an external release-credential step.
 
-No release should be considered verified until the corresponding GitHub Actions run is observed as successful.
+No release should be considered verified until the corresponding GitHub Actions run and required native/device checks have actually been observed as successful.
 
 ## Contributing
 
@@ -285,6 +297,11 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/development.md`](docs/devel
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`docs/accessibility.md`](docs/accessibility.md)
 - [`docs/performance.md`](docs/performance.md)
+- [`docs/backup-format.md`](docs/backup-format.md)
+- [`docs/notification-support.md`](docs/notification-support.md)
+- [`docs/cli-tools.md`](docs/cli-tools.md)
+- [`docs/github.md`](docs/github.md)
+- [`docs/branding.md`](docs/branding.md)
 - [`ROADMAP.md`](ROADMAP.md)
 - [`CHANGELOG.md`](CHANGELOG.md)
 - [`what_changed.md`](what_changed.md)
