@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/app_logger.dart';
 import '../domain/models.dart';
 
 abstract interface class NotificationService {
@@ -20,6 +20,7 @@ abstract interface class NotificationService {
 class LocalNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+  static const _logger = AppLogger('notifications');
 
   bool _ready = false;
 
@@ -41,9 +42,9 @@ class LocalNotificationService implements NotificationService {
 
     try {
       _ready = await _plugin.initialize(settings: settings) ?? false;
-    } on Exception catch (error, stackTrace) {
-      debugPrint('Notification initialization failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      _logger.info('initialized', fields: <String, Object?>{'ready': _ready});
+    } on Exception catch (error) {
+      _logger.warning('initialize_failed', error: error);
       _ready = false;
     }
   }
@@ -67,9 +68,8 @@ class LocalNotificationService implements NotificationService {
           .resolvePlatformSpecificImplementation<
               MacOSFlutterLocalNotificationsPlugin>()
           ?.requestPermissions(alert: true, sound: true, badge: false);
-    } on Exception catch (error, stackTrace) {
-      debugPrint('Notification permission request failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+    } on Exception catch (error) {
+      _logger.warning('permission_request_failed', error: error);
     }
   }
 
@@ -119,23 +119,52 @@ class LocalNotificationService implements NotificationService {
         ),
       );
 
+      final id = _notificationId(timer.id, index);
+      final date = tz.TZDateTime.from(scheduledAt, tz.UTC);
       try {
         await _plugin.zonedSchedule(
-          id: _notificationId(timer.id, index),
+          id: id,
           title: timer.isSequence
               ? '${timer.name}: ${step.label}'
               : '${timer.name} finished',
           body: timer.isSequence
               ? 'Interval complete.'
               : 'Your countdown is complete.',
-          scheduledDate: tz.TZDateTime.from(scheduledAt, tz.UTC),
+          scheduledDate: date,
           notificationDetails: details,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           payload: timer.id,
         );
-      } on Exception catch (error, stackTrace) {
-        debugPrint('Scheduling notification failed: $error');
-        debugPrintStack(stackTrace: stackTrace);
+      } on Exception catch (error) {
+        // Exact alarms can be denied independently from normal notification
+        // permission on Android. Fall back to inexact scheduling rather than
+        // silently losing completion cues.
+        _logger.warning(
+          'exact_schedule_failed',
+          error: error,
+          fields: <String, Object?>{'stepIndex': index},
+        );
+        try {
+          await _plugin.zonedSchedule(
+            id: id,
+            title: timer.isSequence
+                ? '${timer.name}: ${step.label}'
+                : '${timer.name} finished',
+            body: timer.isSequence
+                ? 'Interval complete.'
+                : 'Your countdown is complete.',
+            scheduledDate: date,
+            notificationDetails: details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: timer.id,
+          );
+        } on Exception catch (fallbackError) {
+          _logger.error(
+            'fallback_schedule_failed',
+            error: fallbackError,
+            fields: <String, Object?>{'stepIndex': index},
+          );
+        }
       }
     }
   }
@@ -147,7 +176,11 @@ class LocalNotificationService implements NotificationService {
       try {
         await _plugin.cancel(id: _notificationId(timerId, index));
       } on Exception catch (error) {
-        debugPrint('Cancelling notification failed: $error');
+        _logger.warning(
+          'cancel_failed',
+          error: error,
+          fields: <String, Object?>{'stepIndex': index},
+        );
         break;
       }
     }
