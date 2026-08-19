@@ -32,6 +32,7 @@ void main() {
     'docs/adr/0002-monotonic-runtime-clock.md',
     'docs/adr/0003-versioned-bounded-json-state.md',
     'docs/adr/0004-generated-platform-runners.md',
+    'docs/adr/0005-persist-before-platform-side-effects.md',
     'tool/bootstrap_platforms.dart',
     'tool/src/platform_patches.dart',
     'tool/benchmark_state_codec.dart',
@@ -71,8 +72,8 @@ void main() {
       .whereType<File>()
       .where((file) => file.path.endsWith('.md'))
       .length;
-  if (adrCount < 4) {
-    stderr.writeln('Expected at least four documented architecture decisions.');
+  if (adrCount < 5) {
+    stderr.writeln('Expected at least five documented architecture decisions.');
     exitCode = 1;
     return;
   }
