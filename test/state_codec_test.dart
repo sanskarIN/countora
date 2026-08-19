@@ -61,6 +61,26 @@ void main() {
       expect(() => codec.decode('[1,2,3]'), throwsFormatException);
     });
 
+    test('rejects malformed field types as format errors', () {
+      expect(
+        () => codec.decode('''
+{
+  "schemaVersion": 1,
+  "timers": [
+    {
+      "id": "bad-types",
+      "name": "Bad",
+      "steps": [{"label":"Timer","durationSeconds":"sixty"}],
+      "status": "paused",
+      "remainingWhenPausedSeconds": 60
+    }
+  ]
+}
+'''),
+        throwsFormatException,
+      );
+    });
+
     test('sanitizes duplicate ids and malformed interval data', () {
       final decoded = codec.decode('''
 {
