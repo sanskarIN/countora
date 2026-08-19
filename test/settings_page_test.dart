@@ -1,6 +1,7 @@
 import 'package:countora/src/app.dart';
 import 'package:countora/src/domain/models.dart';
 import 'package:countora/src/presentation/timer_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +11,10 @@ import 'support/fakes.dart';
 void main() {
   late TimerController controller;
 
-  tearDown(() => controller.dispose());
+  tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
+    controller.dispose();
+  });
 
   testWidgets('settings exposes appearance, accessibility, updates, and privacy', (
     tester,
@@ -53,6 +57,43 @@ void main() {
     await tester.pump();
 
     expect(controller.settings.reducedMotion, isTrue);
+  });
+
+  testWidgets('unsupported platform disables scheduled notification controls', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    controller = await _buildController();
+
+    await tester.pumpWidget(CountoraApp(controller: controller));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    final completionTile = find.widgetWithText(
+      SwitchListTile,
+      'Completion notifications',
+    );
+    expect(completionTile, findsOneWidget);
+    expect(
+      find.text(
+        'Scheduled background completion notifications are not available on '
+        'this platform. In-app countdown state and visual completion cues still '
+        'work.',
+      ),
+      findsOneWidget,
+    );
+
+    final completionSwitch = tester.widget<SwitchListTile>(completionTile);
+    expect(completionSwitch.value, isFalse);
+    expect(completionSwitch.onChanged, isNull);
+
+    for (final label in <String>['Sound', 'Vibration', 'Quiet mode']) {
+      final tile = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, label),
+      );
+      expect(tile.onChanged, isNull);
+    }
   });
 
   testWidgets('backup export reports clipboard platform failures', (tester) async {
