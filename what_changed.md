@@ -1,322 +1,467 @@
 # Countora development handoff
 
 Updated: 2026-08-19
-Current milestone: Phases 2–4 implemented in source; Phase 5 documentation/release hardening in progress
+Current milestone: 0.2.0 source hardening and documentation complete; final executable/native release verification pending
 Target release: 0.2.0+2
 Repository: https://github.com/sanskarIN/countora
 Source model: public / open source / MIT
+Verification branch: `final-audit-2026-08-19`
 
-## Source prompt
+## Source prompt and project contract
 
-Implementation follows `12_countora_master_prompt.md`: build Countora as a production-quality, local-first, secure, accessible, documented Flutter countdown timer for Android, iOS-ready, Windows, macOS, Linux, and Web. The repository must preserve meaningful history, use small atomic commits, keep this handoff current, and avoid claiming successful verification that has not actually been observed.
+Implementation follows `12_countora_master_prompt.md`: Countora is a production-oriented, local-first, secure, accessible, documented Flutter countdown application for Android, iOS-ready source, Windows, macOS, Linux, and Web. The repository should preserve meaningful granular history, keep user data local unless explicitly exported, avoid secrets, document behavior and release limits, and never claim successful runtime/build verification that has not actually been observed.
 
-## Repository baseline inspected before this continuation
+This file is the detailed development handoff so chat messages can remain short.
 
-The repository already had a functional Flutter MVP with:
+## Current product implementation
 
-- multiple countdown timers
-- interval sequences
-- pause/resume/add-time/restart controls
-- reusable presets with usage counts
-- timer groups and search/filtering
-- completion history
+### Countdown engine
+
+Implemented:
+
+- multiple simultaneous countdown timers
+- absolute UTC deadlines for running timers
+- monotonic process-lifetime runtime clock anchored to UTC
+- pause, resume, restart, add-time, delete, duplicate
+- bulk pause-all, resume-all, remove-completed
+- deadline reconciliation on startup/resume/manual reconciliation
+- multi-step interval sequences
+- catch-up through elapsed interval steps without accumulating wake-up drift
+- timer groups, search, filtering, and status counts
 - full-screen focus mode
-- compact timer cards
-- SharedPreferences persistence
-- JSON import/export
-- light/dark/system themes
-- reduced-motion preference
-- sound/vibration/quiet-mode completion notifications
+- compact card mode
+- local completion history
+- run-again from history
+- save existing timer as preset
+- preset usage-frequency tracking
+
+### Deadline-boundary hardening completed in the final audit
+
+A running timer previously could be paused after its deadline had already arrived and become a paused `0s` timer until a later resume/reconcile action. The final audit changed pause semantics so lifecycle state wins over the pause command at that boundary:
+
+- `pause(timerId)` now checks the actual remaining `Duration` before converting to paused state;
+- an already-expired running timer is reconciled/advanced/completed first;
+- positive fractional seconds are rounded **up** when persisted as paused whole seconds instead of being truncated;
+- `pauseAllRunning()` reconciles already-expired timers first, persists/synchronizes those lifecycle changes, then pauses timers that are still active;
+- deterministic tests cover exact-deadline pause, positive fractional remaining time, and mixed expired/active bulk pause.
+
+Relevant final commits:
+
+- `4902dcc` — `fix: reconcile timer deadlines before pausing`
+- `23cfeb3` — `test: cover timer pause deadline boundaries`
+
+## Persistence, backup, and local-data safety
+
+Implemented:
+
+- `CountoraStateCodec` as the persistence/import trust boundary
+- explicit schema version ownership in the codec
+- migration of legacy unversioned state to schema 1
+- rejection of unsupported future schema versions
+- 2 MiB backup limit
+- bounded timer/preset/history entity counts
+- 32 interval-step maximum per timer/preset
+- bounded names, groups, durations, remaining time, and use counts
+- malformed-field type rejection through controlled `FormatException`
+- duplicate-ID filtering
+- malformed interval recovery
+- safe corrupted-local-state fallback
+- SharedPreferences save/load/clear adapter
+- import preview before destructive replacement
+- staged/reconciled import before platform schedule replacement
+- failed-import persistence rollback to previous in-memory state
+- full local-data reset
+- history-only clearing
+- JSON export
+- privacy-safe backup inspection CLI
+- deterministic malformed-input/fuzz-style state-codec tests
+- deterministic codec benchmark harness
+
+Persistence-dependent notification side effects follow durable-state-first ordering documented by ADR 0005.
+
+## Notification implementation
+
+### Capability policy
+
+Future scheduled completion is explicitly enabled in source only for:
+
+- Android
+- iOS
+- macOS
+- Windows
+
+It fails closed for:
+
+- Web
+- Linux
+- Fuchsia
+- unknown/unapproved future targets
+
+Unsupported scheduling targets keep local timer state, foreground countdowns, history, completion state, and resume reconciliation.
+
+### Android
+
+Implemented:
+
+- generated boot receiver configuration
+- `RECEIVE_BOOT_COMPLETED`
+- exact-alarm scheduling setup
+- core-library desugaring
+- multidex setup
+- validated/idempotent Android template patch helpers
+- explicit failure when expected Flutter template anchors drift
+- notification permission request
+- exact-alarm permission request
+- exact scheduling with inexact allow-while-idle fallback
+- schedule cancellation/replacement after durable state changes
+
+Final audit fix: Android notification channels are persistent configuration, so Countora no longer reuses one channel ID while asking it to behave as contradictory sound/vibration profiles. Four stable profiles now exist:
+
+- sound + vibration
+- sound only
+- vibration only
+- silent / quiet
+
+Relevant final commits:
+
+- `e2d8d4b` — `fix: use stable Android channels per cue profile`
+- `eae606f` — `test: cover Android notification cue channels`
+
+### iOS/macOS
+
+Final audit fix: Darwin notification initialization defaults can request permission during plugin initialization. Countora now creates explicit Darwin initialization settings with alert/badge/sound permission requests disabled at initialization. The controller's explicit notification-permission path remains responsible for requesting permission when future scheduling is first needed.
+
+Relevant final commits:
+
+- `b78f226` — `fix: defer Apple notification permission prompts`
+- `a90fd29` — `test: verify deferred Apple notification permissions`
+
+Native delivery behavior still requires real Apple/Android/Windows platform verification before stronger public claims are made.
+
+## User experience and management
+
+Implemented:
+
+- responsive phone/tablet/desktop/web layout
+- Material 3 theme
+- light/dark/system appearance
+- reduced motion
+- reusable design tokens
 - onboarding
-- Settings and About screens
-- responsive phone/desktop navigation
-- domain/controller tests
-- CI, release, dependency review, Dependabot, issue/PR templates, funding configuration
-- architecture/setup/testing/release/accessibility/performance documentation
+- Home/Timers, Presets, History, Settings, About surfaces
+- timer create/edit validation
+- interval labels
+- interval rename/remove/reorder
+- group creation/filtering
+- search
+- focus mode
+- timer/preset delete confirmation
+- bulk actions
+- backup preview/import/reset UI
+- Settings capability messaging
+- About metadata/support/privacy/license links
+- Buy Me a Coffee link
+- `Made by the Sanskar` credit
 
-Baseline checkpoint before this continuation:
+## Accessibility and keyboard support
 
-- `efe3cd4 chore: add funding configuration`
+Implemented:
 
-## Work completed in this continuation
+- timer/progress semantics
+- focus-mode live-region semantics
+- corrected focus-mode entry/exit semantic copy
+- visual progress cues independent of audio
+- reduced-motion setting
+- keyboard-accessible Flutter controls
+- desktop/web shortcuts:
+  - `Ctrl/Cmd + N`
+  - `Ctrl/Cmd + F`
+  - `Ctrl/Cmd + ,`
+- Settings/accessibility widget regression coverage
 
-### State integrity, backup validation, and migration safety
+A final manual screen-reader, keyboard-only, large-text, and real-device review remains a release-environment requirement.
 
-- Added `lib/src/data/state_codec.dart` as the persistence/import trust boundary.
-- Added explicit schema version handling and migration of legacy unversioned data to schema 1.
-- Added hard limits for backup size, timers, presets, history, interval count, names, groups, interval durations, and remaining durations.
-- Added duplicate-ID removal and malformed-domain-data sanitization.
-- Future-schema backups are rejected instead of guessed at.
-- Malformed field types now produce controlled `FormatException` failures.
-- SharedPreferences persistence routes through the codec.
-- Corrupted local persisted state falls back to a safe empty state instead of blocking startup.
-- Save/clear failures are surfaced instead of silently ignored.
-- Import validates first, then replaces state, and cancels stale notifications from replaced timers.
-- Settings now preview the number of timers/presets/history entries before destructive backup replacement.
-- Added explicit full local-data reset and history-only reset flows.
+## Localization
 
-### Timer lifecycle and reliability
+Implemented:
 
-- Added non-overlapping asynchronous ticker execution.
-- Added reconciliation APIs and app-resume reconciliation.
-- Added interval catch-up logic so elapsed interval sequences can advance after suspension without accumulating UI wake-up drift.
-- Added a monotonic runtime clock based on `Stopwatch`, anchored to UTC once at app startup, so live countdowns are less affected by wall-clock edits while the process remains alive.
-- Persisted deadlines remain UTC instants so process restarts can recover timers.
-- Notification permission requests are de-duplicated per controller session.
-- Disabling notifications cancels scheduled timer notifications.
-- Re-enabling notifications reschedules running timers.
-- Added exact-alarm scheduling fallback to Android inexact scheduling when exact alarms are unavailable.
-- Hardened generated Android notification manifest/Gradle setup for boot receivers, exact-alarm permission, desugaring, and multidex.
+- generated Flutter `gen_l10n` architecture
+- `l10n.yaml`
+- `lib/l10n/app_en.arb`
+- localized Home/navigation/timer/focus/editor/Settings/data/About/support copy
+- localization context helper
+- generated delegates/locales wired into the app
+- localization tests
+- deterministic committed-source/reference auditor at `tool/check_localization_source.dart`
+- pure audit logic in `tool/src/localization_audit.dart`
+- audit regression tests
 
-### Timer management and reuse
+Final audit found the localization-source checker existed but was not actually enforced by workflows. It is now part of:
 
-- Added timer duplication as a fresh paused countdown.
-- Added timer name/group editing without resetting countdown progress.
-- Added save-existing-timer-as-preset.
-- Added history replay as a fresh timer.
-- Added bulk pause-all and resume-all actions.
-- Added remove-completed action.
-- Added confirmed timer deletion and preset deletion.
-- Added richer full-screen focus controls: pause/resume/restart/add-time and interval progress.
-- Added local run/pause/done count chips.
-- Presets remain sorted by usage count and increment use counts when launched.
+- normal Flutter CI
+- repository audit workflow
+- tagged release quality gate
 
-### Interval creation UX
+Relevant branch commits:
 
-- Added bounded hour/minute/second validation.
-- Added custom interval-step labels.
-- Enforced the 32-step sequence limit in the UI and controller boundary.
-- Added interval-step rename, remove, move-up, and move-down controls.
-- Added clearer validation for invalid or overlong timer/group/step data.
+- `adb6227` — `ci: enforce localization source audit`
+- `d4f3788` — `ci: add localization audit to repository checks`
+- `3348bcb` — `ci: gate releases on localization audit`
 
-### Desktop/web and accessibility UX
+English is currently the shipped locale; additional locales can be added through ARB resources without rewriting the main UI.
 
-- Added Ctrl/Cmd+N for new timer/preset.
-- Added Ctrl/Cmd+F to return to timers and focus search.
-- Added Ctrl/Cmd+, to open Settings.
-- Added stronger timer semantics and progress semantics.
-- Focus mode exposes live-region countdown semantics and non-audio progress cues.
-- Added filtered-empty states with a one-click clear-filter action.
-- Added visible controller error banner with dismiss action.
-- Added reusable design tokens for spacing, radii, motion, touch targets, content width, and brand seed.
-- Applied design tokens to the Material 3 theme.
+## Release/version safety
 
-### Localization readiness
+Final audit added a pure release version audit in `tool/src/version_audit.dart` and refactored `tool/check_version_sync.dart` around it.
 
-- Added Flutter localization infrastructure using generated `gen_l10n` sources.
-- Added `flutter_localizations` and `intl` support.
-- Added `l10n.yaml`.
-- Added `lib/l10n/app_en.arb` as the English source of truth.
-- Added `BuildContext` localization helper.
-- Wired generated delegates and supported locales into `MaterialApp`.
-- Externalized the main Home, navigation, timer-card/focus, timer-editor, Settings/data-management, About/support, accessibility, and project copy.
-- English remains the only shipped language for 0.2.0; adding another locale now requires an additional ARB translation rather than UI rewrites.
+The audit now checks:
 
-### Security and diagnostics
+- `pubspec.yaml` uses `MAJOR.MINOR.PATCH+BUILD`;
+- `AppMetadata.version` matches the semantic version;
+- `AppMetadata.buildNumber` matches the build number;
+- `CHANGELOG.md` contains an exact semantic-version heading;
+- when GitHub Actions is running a tag, the tag must equal `vMAJOR.MINOR.PATCH`;
+- a tagged release is rejected while its matching changelog section is still marked `Unreleased`.
 
-- Added structured JSON logging with sensitive-key redaction.
-- Diagnostic code logs event names/error types rather than timer names, backup payloads, emails, secrets, tokens, or authorization data.
-- Added CodeQL workflow analysis for GitHub Actions. Dart source is not represented as CodeQL-supported source in this repository configuration, so CodeQL is intentionally scoped to supported workflow code rather than making a false Dart-analysis claim.
-- Dependency Review now fails pull requests at `moderate` or higher introduced vulnerability severity.
-- No secrets or generated credentials were added.
+This intentionally prevents tagging the current `0.2.0` release candidate until the release entry is finalized after actual verification.
 
-### Testing and regression coverage added
+Relevant commits:
 
-- `test/state_codec_test.dart`
-  - round trip
-  - legacy schema migration
-  - future-schema rejection
-  - non-object rejection
-  - malformed type rejection
-  - duplicate ID handling
-  - malformed interval recovery
-  - bounds for names/groups/use counts
-- `test/local_store_test.dart`
-  - persistence/restore
-  - corrupted JSON recovery
-  - invalid persisted field recovery
-  - clear operation
-- `test/stable_clock_test.dart`
-  - monotonic elapsed-time behavior
-  - UTC normalization
-- `test/timer_controller_workflows_test.dart`
-  - one permission request per session
-  - duplicate timer
-  - timer rename/group move
-  - bulk pause/resume
-  - import notification cancellation
-  - future-schema import preservation
-  - full-data reset
-  - history replay
-- `test/support/fakes.dart`
-  - reusable deterministic memory store and notification fakes
-- `test/home_page_test.dart`
-  - visible saved timer journey
-  - semantics exposure
-  - filtered empty state
-  - card resume
-  - history replay
-- `integration_test/app_journey_test.dart`
-  - create timer
-  - pause timer
-  - save as preset
-  - start again from preset
-- `test/localization_test.dart`
-  - English core strings
-  - supported locale configuration
+- `2e0ef85` — `build: add pure release version audit`
+- `e1314e1` — `test: cover release version and tag audit`
+- `5cdf39a` — `build: verify release tag matches package version`
+- `a9676bf` — `build: block tags with unreleased changelog entries`
+- `15ce009` — `build: match changelog release headings exactly`
+- `b202c2e` — `test: reject unreleased changelog tags`
 
-### CI and release automation hardening
+## Toolchain declaration
 
-- Added local Markdown-link checker at `tool/check_markdown_links.dart`.
-- CI now verifies formatting, analysis, tests, local documentation links, and a release web build.
-- Added CI concurrency cancellation for superseded runs.
-- Tagged release workflow now verifies formatting/analyze/tests/docs before release builds.
-- Release automation currently packages Android APK and Web ZIP; broader desktop artifact packaging remains a Phase 5 task.
-- Added GitHub Actions CodeQL scan and strengthened Dependency Review.
+`pubspec.yaml` now explicitly declares:
 
-### Release metadata
+- Flutter `>=3.38.1`
+- Dart `>=3.10.0 <4.0.0`
 
-- Updated package version to `0.2.0+2`.
-- Added `lib/src/core/app_metadata.dart`.
-- About displays the current version/build, MIT license, local-first data model, accessibility statement, GitHub links, support/business contacts, Buy Me a Coffee, and `Made by the Sanskar`.
+This makes the framework baseline visible to package tooling and contributors instead of relying only on prose.
+
+Relevant commit:
+
+- `06c64ca` — `build: declare minimum supported Flutter SDK`
+
+## Testing inventory
+
+Current automated source includes coverage for:
+
+- domain models
+- state codec round trips/migrations/bounds/malformed types
+- deterministic malformed-input/fuzz cases
+- local persistence/corruption recovery
+- monotonic clock
+- timer controller lifecycle/workflows
+- persistence/notification consistency failures
+- timer pause/deadline boundaries
+- notification initialization policy
+- Android notification cue-profile channels
+- platform notification capability policy
+- Android generated-runner patch helpers
+- external-link failure containment
+- backup inspection summaries
+- localization audit
+- release version audit
+- Home/timer widget journeys
+- Settings/destructive/clipboard/accessibility behavior
+- keyboard shortcuts
+- generated localization resources
+- primary integration journey
+
+`integration_test/app_journey_test.dart` covers a primary create → pause → save-as-preset → run-from-preset journey.
+
+## Repository tools
+
+Current deterministic tools include:
+
+- `tool/bootstrap_platforms.dart`
+- `tool/check_required_files.dart`
+- `tool/check_version_sync.dart`
+- `tool/check_secrets.dart`
+- `tool/check_localization_source.dart`
+- `tool/check_markdown_links.dart`
+- `tool/inspect_backup.dart`
+- `tool/benchmark_state_codec.dart`
+
+Pure helpers under `tool/src/` include:
+
+- `backup_inspection.dart`
+- `localization_audit.dart`
+- `platform_patches.dart`
+- `version_audit.dart`
+
+## CI, security, and release automation
+
+Implemented workflow/source hardening includes:
+
+- normal CI on main/pull requests
+- deterministic platform runner bootstrap
+- dependency resolution
+- localization source audit and generation
+- formatting verification including `integration_test/`
+- `flutter analyze`
+- `flutter test`
+- local Markdown-link audit
+- Web release build
+- dedicated Linux/Xvfb integration journey job
+- repository audit workflow
+- required-file audit
+- version/tag/changelog audit
+- tracked-source obvious-secret audit
+- localization-source audit
+- documentation-link audit
+- Dependency Review with moderate-or-higher threshold
+- Dependabot configuration
+- CodeQL scan for supported GitHub Actions workflow source
+- tagged release quality gate
+- Android APK/AAB build
+- Web ZIP build
+- Linux x64 package
+- Windows x64 ZIP
+- macOS application ZIP
+- unsigned iOS application ZIP for compilation verification
+- SHA-256 checksum files for tagged artifacts
+
+Signing, notarization, store credentials, and real platform/device notification verification remain intentionally outside source control.
+
+## Documentation status
+
+The documentation set has been deeply expanded and synchronized. Important references include:
+
+- `README.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+- `PRIVACY.md`
+- `SECURITY.md`
+- `SUPPORT.md`
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `docs/architecture.md`
+- `docs/setup.md`
+- `docs/development.md`
+- `docs/testing.md`
+- `docs/release.md`
+- `docs/troubleshooting.md`
+- `docs/accessibility.md`
+- `docs/performance.md`
+- `docs/backup-format.md`
+- `docs/notification-support.md`
+- `docs/cli-tools.md`
+- `docs/github.md`
+- `docs/branding.md`
+- `docs/adr/`
+
+Final documentation refresh commits on the verification branch:
+
+- `f01c641` — `docs: align setup with supported Flutter baseline`
+- `ca9bd37` — `docs: document notification permission and channel behavior`
+- `8c0524f` — `docs: document release version audit behavior`
+- `a2dc985` — `docs: expand final regression test inventory`
+- `9d0a715` — `docs: harden final release procedure`
+- `b082fa4` — `docs: refresh Countora project overview`
+- `571c204` — `docs: close implemented 0.2 hardening items`
+- `80fb53e` — `docs: record final 0.2 hardening fixes`
 
 ## Verification status
 
-### Verified by repository inspection
+### Verified by source/repository inspection
 
-- Changes are committed directly to `main` as small meaningful commits.
-- The authenticated GitHub connection is writing commits under the requested identity. A commit payload was explicitly checked and showed both author and committer as:
-  - `Sanskar <sanskarin@outlook.in>`
-- Repository remains public.
-- Source files and workflow files were inspected after writes.
-- No secrets were intentionally introduced.
+- The repository is public and the inspected default branch is `main`.
+- The current development metadata is `0.2.0+2`.
+- The final source changes are committed as granular commits rather than one giant rewrite.
+- The final timer-controller fix diff was inspected after write and was limited to the intended pause/reconciliation changes.
+- The notification plugin's source API was checked for the Darwin initialization permission fields used by Countora.
+- The repository source includes complete normal CI, repository-audit, security, integration, and multi-platform tagged-release workflows.
+- Documentation has been updated to distinguish implemented source from unverified native behavior.
+- No signing credentials, production secrets, private keys, or fabricated screenshots were added.
 
-### Not yet truthfully verified
+### Not yet claimed as successfully executed
 
-The execution environment available in this chat does not expose a working Flutter/Dart SDK, and the connected GitHub workflow-run lookup has not returned observable run results for these direct-push commits. Therefore the following are **not claimed as passing yet**:
+The direct execution environment used for this continuation does not expose a runnable local Flutter/Dart toolchain, so local commands are **not** being falsely reported as passing.
+
+Until an actual workflow or compatible release host result is observed, do not claim success for:
 
 - `dart format --output=none --set-exit-if-changed ...`
 - `flutter analyze`
 - `flutter test`
-- integration-test execution on a real/device-capable runner
+- Linux integration execution
 - `flutter build web --release`
-- `flutter build apk --release`
-- desktop production builds
-- native notification behavior on Android/iOS/macOS/Linux/Windows
+- Android APK/AAB release builds
+- Linux/Windows/macOS builds
+- unsigned iOS compilation
+- native notification delivery behavior
+- production signing/notarization
 
-The workflows are configured to perform the available CI checks when GitHub Actions executes them. Any observed CI/compiler failures must be fixed before tagging 0.2.0.
+A pull-request verification pass is being used to surface real GitHub Actions results for the final tree where available. Any concrete compiler/test/workflow failure that can be retrieved must be fixed before merging/tagging.
 
-## Known limitations / open issues
+## Deliberate release blockers / external verification work
 
-1. Platform runner directories are intentionally generated with `dart run tool/bootstrap_platforms.dart`; this chat environment cannot regenerate or compile them locally.
-2. Android/iOS/native notification permission and scheduling behavior still needs real-device/platform verification.
-3. Store signing, Apple signing/notarization, Windows signing, and production-distribution credentials are intentionally external to source control.
-4. Real application screenshots/demo captures require a runnable Flutter environment and have not been fabricated.
-5. The current release workflow packages Android and Web only; desktop artifact jobs remain to be added and validated.
-6. English is the only shipped locale. The code is localization-ready, but notification background text is still English-first.
-7. `pubspec.lock` should be generated/validated from the actual supported Flutter toolchain before a release if it is not already present after dependency resolution.
-8. CI/build status cannot be called green until an actual workflow result is observed.
+These are not missing source features; they require a compatible real environment or release credentials:
 
-## Next exact tasks
+1. observe the final CI/repository-audit/Linux-integration results;
+2. fix any concrete analyzer/test/build failures found by those runs;
+3. run the integration journey on a configured target outside CI as part of the release record;
+4. generate/review `pubspec.lock` using a real supported Flutter SDK and commit it if the application release policy requires locking dependencies;
+5. run the codec benchmark on representative hardware and record the environment/results;
+6. verify Android notification permission, exact/inexact fallback, cue channels, background completion, reboot/update behavior on a real emulator/device;
+7. verify Windows/macOS/iOS notification behavior before strengthening platform delivery claims;
+8. verify at least one desktop release artifact on its native runner;
+9. perform the final manual accessibility review;
+10. capture real release-candidate screenshots;
+11. validate production signing/notarization/store distribution paths;
+12. replace `## [0.2.0] - Unreleased release candidate` with the actual release date only after verification;
+13. create `v0.2.0` only after the release commit is verified.
 
-1. Static-audit recently localized files for generated-l10n/API/compiler risks and remove any remaining avoidable hard-coded visible strings.
-2. Include `integration_test` in formatting/release quality commands.
-3. Add additional state-codec fuzz/property-style malformed-input regression coverage.
-4. Add Settings/accessibility widget regression coverage.
-5. Expand release automation for Linux/Windows/macOS artifacts where GitHub-hosted runners and Flutter support allow reproducible builds.
-6. Synchronize `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `PRIVACY.md`, `SECURITY.md`, `SUPPORT.md`, and docs with 0.2.0 implementation.
-7. Add repository-settings guidance for branch protection, Discussions, labels, milestones, and required checks if missing.
-8. Review performance documentation against current timer/list limits and add lightweight benchmark coverage where useful.
-9. Re-check all required master-prompt files and GitHub community-health files for completeness.
-10. Observe CI/build results if available; fix every concrete analyzer/test/build/workflow issue that can be retrieved.
-11. Update this file again at the final checkpoint.
-
-## Commits from this continuation
-
-- `35e29b0` docs: add development handoff log
-- `8d66d25` feat: add schema-aware local state codec
-- `90bd711` test: cover state codec validation and migrations
-- `2cad011` refactor: route local persistence through state codec
-- `55a91b2` feat: harden timer controller lifecycle and data workflows
-- `0969ab7` test: cover controller data and bulk workflows
-- `e0e3523` feat: add monotonic runtime clock
-- `35af31b` test: verify monotonic clock behavior
-- `015ee8b` feat: use monotonic clock for active countdowns
-- `cd81963` feat: reconcile timers when app resumes
-- `8e8c365` feat: add redacting structured logger
-- `a671709` fix: add resilient notification scheduling fallback
-- `07d10b4` feat: expand timer card management and focus controls
-- `5e4910a` feat: add desktop shortcuts and timer bulk actions
-- `c4eb372` feat: add backup preview and full local data reset
-- `fd11bb3` fix: reject malformed backup field types safely
-- `160de21` test: cover malformed backup field types
-- `c8c3aae` test: cover local persistence recovery
-- `1d5a265` fix: harden generated Android notification configuration
-- `321e8dc` feat: add Countora design tokens
-- `93e8530` refactor: apply shared design tokens to themes
-- `208f600` feat: improve interval editor validation and ordering
-- `f8899f4` chore: centralize Countora release metadata
-- `157a07e` chore: prepare Countora 0.2.0
-- `e5baf64` feat: expand About with release and project metadata
-- `97dc1b2` ci: scan GitHub Actions workflows with CodeQL
-- `8952f54` ci: enforce moderate dependency vulnerability threshold
-- `653da9e` build: add local documentation link checker
-- `86b6ea3` ci: expand quality gates for Countora
-- `ddf6ffd` ci: harden tagged release verification
-- `41c1a4a` test: add reusable Countora test fakes
-- `b8e377b` test: cover primary timer UI journeys
-- `2da8e4d` test: add Flutter integration test support
-- `1b50caf` test: add primary Countora integration journey
-- `d9c9ad3` feat: add Flutter localization infrastructure
-- `7572967` build: configure Flutter localization generation
-- `7ae172b` feat: externalize English UI strings
-- `f70dbe4` feat: wire generated localization resources into app
-- `a053019` feat: add localization context helper
-- `799b3b5` refactor: localize home and timer navigation
-- `35730c7` feat: add shared localized labels for dynamic UI
-- `608c167` refactor: localize timer cards and focus mode
-- `017f2ef` refactor: localize countdown and interval editor
-- `64ba77d` refactor: localize settings and data management
-- `3b446fa` refactor: localize About and support links
-- `12b7c9b` chore: ignore generated localization source
-- `3d44a75` test: verify English localization resources
-
-## Release notes draft — 0.2.0
+## 0.2.0 release candidate summary
 
 ### Added
 
-- schema-aware validated backups and migration safety
-- timer duplicate/edit/save-as-preset workflows
-- bulk pause/resume/remove-completed actions
-- history replay
-- enhanced interval editor and ordering
-- richer full-screen focus mode
-- desktop keyboard shortcuts
+- validated versioned local backup/migration boundary
+- privacy-safe backup inspection CLI
+- deterministic codec benchmark
+- timer duplicate/edit/save-as-preset/history-replay workflows
+- bulk timer actions
+- richer interval editor and focus mode
+- desktop shortcuts
 - structured redacting diagnostics
 - monotonic runtime clock and resume reconciliation
-- English localization resource architecture
-- expanded controller/widget/integration/persistence tests
-- CodeQL Actions scanning and documentation-link checking
+- generated English localization architecture
+- deterministic localization audit
+- explicit platform notification capability policy
+- release version/tag/changelog audit
+- expanded controller/widget/tool/integration regression coverage
+- repository audit and multi-platform release automation
 
 ### Changed
 
-- persistence now validates and bounds untrusted local/imported JSON
-- notifications use permission de-duplication and exact-to-inexact fallback
-- Android generated runner configuration is more robust
-- design tokens now centralize visual constants
-- Settings import/reset UX is safer and clearer
-- CI and release workflows have stricter quality gates
+- persistence is validated/bounded before accepting imported/local JSON
+- platform notification side effects follow successful durable persistence
+- expired pause boundaries reconcile instead of freezing at zero
+- fractional seconds are rounded up when pausing
+- Apple notification permissions are deferred until scheduling is needed
+- Android cue profiles use separate stable channels
+- Android exact scheduling has inexact fallback
+- unknown notification targets fail closed
+- the package declares its minimum supported Flutter version
+- localization source checking is enforced by CI/repository/release workflows
+- release tags must match package version and a finalized changelog entry
 
-### Security and privacy
+### Security/privacy
 
-- backup input size/schema/type validation added
-- local corruption recovery added
-- sensitive structured-log keys are redacted
-- Dependency Review fails on newly introduced moderate-or-higher vulnerabilities
-- local-first/no-account data behavior remains unchanged
+- bounded untrusted JSON parsing
+- corruption-safe persistence recovery
+- sensitive structured-log key redaction
+- obvious tracked-secret audit
+- Dependency Review threshold
+- CodeQL workflow scan
+- artifact SHA-256 digests
+- local-first/no-account behavior preserved
 
-### Release blockers
+## Final checkpoint rule
 
-- do not tag 0.2.0 until actual Flutter analyze/test/build results have been observed and all failures, if any, are resolved
-- native completion notifications require platform/device verification
-- real screenshots and final store/release assets require a runnable release environment
+Source work for 0.2 is considered implemented and documented at this checkpoint. Do **not** mark 0.2.0 as a verified public release solely because source work is complete. The final release decision must be based on observed CI/build/native results, dependency resolution, manual platform/accessibility checks, and a finalized changelog/tag.

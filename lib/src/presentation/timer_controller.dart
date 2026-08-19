@@ -232,13 +232,24 @@ class TimerController extends ChangeNotifier {
     if (timer == null || timer.status != CountdownStatus.running) return;
 
     final now = _nowUtc();
-    final remaining = timer.remaining(now);
-    if (remaining <= Duration.zero) {
-      await _reconcileExpiredTimer(timerId, now);
-      return;
+    if (timer.remaining(now) <= Duration.zero) {
+      await _consumeExpiredTimer(timerId, now, scheduleFinal: false);
     }
 
-    final updated = timer.copyWith(
+    final current = _findTimer(timerId);
+    if (current == null) return;
+    if (current.status == CountdownStatus.completed) {
+      if (await _persist()) {
+        await _notifications.cancelTimer(timerId);
+      }
+      return;
+    }
+    if (current.status != CountdownStatus.running) return;
+
+    final remaining = current.remaining(now);
+    if (remaining <= Duration.zero) return;
+
+    final updated = current.copyWith(
       status: CountdownStatus.paused,
       remainingWhenPausedSeconds: _wholeSecondsCeiling(remaining),
       clearEndsAt: true,
@@ -526,18 +537,6 @@ class TimerController extends ChangeNotifier {
       await _syncNotificationsForTimerIds(runningIds);
     }
     return true;
-  }
-
-  Future<void> _reconcileExpiredTimer(String timerId, DateTime now) async {
-    final changed = await _consumeExpiredTimer(
-      timerId,
-      now,
-      scheduleFinal: false,
-    );
-    if (!changed) return;
-    if (await _persist()) {
-      await _syncNotificationsForTimerIds(<String>[timerId]);
-    }
   }
 
   int _wholeSecondsCeiling(Duration duration) {

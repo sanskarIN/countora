@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, notification synchronization, platform capability decisions, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, platform capability decisions, external-link handling, destructive data workflows, localization source integrity, and release metadata as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -48,13 +48,31 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 - failed backup-import persistence restoring the previous in-memory state
 - local-store clear failure preserving current in-memory state
 
-### Platform-boundary tests
+`test/timer_pause_boundary_test.dart` covers deadline-sensitive pause behavior:
+
+- pausing exactly at the deadline reconciles/completes instead of persisting a paused zero-second timer
+- a positive fractional remaining second is rounded up when converted into paused whole seconds
+- bulk pause reconciles expired timers before pausing timers that are still active
+
+### Notification and platform-boundary tests
 
 `test/external_link_launcher_test.dart` verifies that successful, declined, and throwing URL-launch operations are converted into a safe boolean result instead of allowing platform failures to escape into the widget tree.
 
 `test/platform_capabilities_test.dart` verifies Countora's explicit future-notification policy: Web and Linux are unsupported by the current scheduled-notification adapter while Android, iOS, macOS, and Windows use their native adapter paths.
 
+`test/notification_initialization_test.dart` verifies that iOS/macOS initialization does not request alert/badge/sound permission immediately and that the configured platform adapters remain present.
+
+`test/notification_channel_profile_test.dart` verifies Android's four stable sound/vibration cue-profile channels and that quiet mode maps to the silent profile.
+
 `test/platform_patches_test.dart` verifies generated Android runner transforms for required notification permissions/receivers, desugaring, multidex, idempotence, and explicit template-drift failure.
+
+### Repository/tool tests
+
+`test/localization_audit_test.dart` protects the pure localization source/reference checker used by `tool/check_localization_source.dart`.
+
+`test/backup_inspection_test.dart` protects privacy-safe backup structural summaries used by `tool/inspect_backup.dart`.
+
+`test/version_audit_test.dart` verifies exact package/AppMetadata/changelog synchronization, exact semantic-version heading matching, release-tag matching, and rejection of tags while the matching changelog entry is still marked unreleased.
 
 ### Widget tests
 
@@ -98,7 +116,17 @@ The harness verifies every encode/decode round trip and emits JSON with fixture 
 
 ## Standard local quality suite
 
-Generate localization first:
+Run deterministic repository/source audits:
+
+```bash
+dart run tool/check_required_files.dart
+dart run tool/check_version_sync.dart
+dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
+dart run tool/check_markdown_links.dart
+```
+
+Generate localization:
 
 ```bash
 flutter gen-l10n
@@ -123,12 +151,6 @@ Optional coverage:
 flutter test --coverage
 ```
 
-Check local Markdown references:
-
-```bash
-dart run tool/check_markdown_links.dart
-```
-
 Run the integration journey on a configured Flutter target:
 
 ```bash
@@ -151,14 +173,15 @@ The main Flutter quality job performs:
 
 1. checkout
 2. Flutter setup
-3. deterministic platform-runner generation
-4. dependency resolution
-5. localization generation
-6. formatting verification
-7. `flutter analyze`
-8. `flutter test`
-9. local Markdown-link verification
-10. Web release build
+3. localization-source audit
+4. deterministic platform-runner generation
+5. dependency resolution
+6. localization generation
+7. formatting verification
+8. `flutter analyze`
+9. `flutter test`
+10. local Markdown-link verification
+11. Web release build
 
 The Linux integration job performs:
 
@@ -168,17 +191,21 @@ The Linux integration job performs:
 4. dependency resolution and localization generation
 5. the full `integration_test` directory against `-d linux`
 
+`repository-audit.yml` separately verifies required files, version metadata, tracked-source obvious-secret patterns, localization source, and local documentation links on main/pull-request/tag events.
+
 Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful.
 
 ## Native-platform verification
 
 Automated Dart/widget/Linux integration tests cannot fully prove OS notification behavior on every platform. Before a stable release, manually verify on supported platforms where applicable:
 
-- notification permission prompts
+- notification permission prompts, including deferred Apple prompts
 - completion notification delivery while app is backgrounded
-- sound/vibration/quiet-mode behavior
+- Android sound/vibration/quiet channel profiles and user overrides
+- sound/vibration/quiet-mode behavior on other supported platforms
 - reboot/rescheduling behavior on Android
 - exact-alarm denied fallback behavior
+- pause/resume at and around countdown deadlines
 - pause/resume after suspension
 - app-resume reconciliation
 - keyboard shortcuts and focus traversal on desktop/web
