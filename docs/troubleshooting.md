@@ -51,7 +51,7 @@ flutter gen-l10n
 flutter analyze
 ```
 
-Do not manually patch generated runner files as the long-term fix. Encode required native changes in `tool/bootstrap_platforms.dart`.
+Do not manually patch generated runner files as the long-term fix. Encode required native changes in `tool/bootstrap_platforms.dart` and its pure helpers under `tool/src/`. The platform-patch regression tests should be updated with any intentional template adaptation.
 
 ## Android notification does not appear
 
@@ -64,6 +64,14 @@ Check:
 5. Battery/background restrictions applied by the device vendor.
 
 Countora attempts exact scheduling first and falls back to an inexact allow-while-idle mode if exact scheduling throws. This fallback improves delivery robustness but cannot override OS policy or vendor restrictions.
+
+## Web or Linux does not show a background completion notification
+
+Countora continues to run its timer model and in-app completion state on Web and Linux, but scheduled background completion notifications are currently disabled on those targets because the notification plugin/platform capability used by Countora does not provide future scheduled delivery there.
+
+This is intentional defensive behavior: Countora avoids calling an unsupported scheduled-notification API and therefore avoids turning a normal timer operation into an unsupported-platform exception. Keep Countora open when an in-app completion cue is required on those targets.
+
+Do not treat the Settings toggle as a promise that every platform can schedule background delivery. The UI describes completion notifications as available where supported.
 
 ## Notifications were disabled and old alerts still appear
 
@@ -79,7 +87,7 @@ The live process uses a monotonic runtime clock, while persisted recovery uses U
 
 ## Interval sequence skipped one or more steps after suspension
 
-This can be expected if their absolute deadlines elapsed while Countora was suspended. Reconciliation consumes every elapsed step (up to the 32-step bound) so the sequence does not restart elapsed intervals merely because the UI was asleep.
+This can be expected if their absolute deadlines elapsed while Countora was suspended. Reconciliation consumes every elapsed step (up to the configured interval-step bound) so the sequence does not restart elapsed intervals merely because the UI was asleep.
 
 ## Import fails
 
@@ -112,6 +120,16 @@ Check available device storage and platform storage permissions/health, then ret
 
 If the underlying local store cannot be cleared, Countora keeps in-memory data rather than pretending the reset succeeded and shows an error. Resolve the storage issue and retry.
 
+## Backup export cannot copy to the clipboard
+
+Countora reports the clipboard failure and leaves local timer data unchanged. Clipboard access can fail when the target platform, test environment, remote session, browser, or OS policy does not expose a writable clipboard.
+
+Resolve the platform clipboard issue and retry. Do not erase local data until a required backup has been successfully copied and stored somewhere you control.
+
+## A source/support link does not open
+
+Countora catches URL-launch failures and shows a failure message instead of allowing a platform-channel error to escape into the UI. Confirm the platform has a default handler for the URI type and that browser/OS policy permits external launches.
+
 ## Desktop shortcut does not fire
 
 Use the main application window and ensure a platform/system shortcut is not intercepting the key combination.
@@ -135,7 +153,7 @@ flutter gen-l10n
 flutter build web --release
 ```
 
-If a dependency has changed, review `pubspec.lock`/dependency resolution and CI before changing constraints.
+If a dependency has changed, review dependency resolution and CI before changing constraints. Do not invent or hand-edit a lockfile; generate it through Flutter/Dart package resolution.
 
 ## CI formatting fails
 
@@ -146,6 +164,16 @@ dart format lib test integration_test tool
 ```
 
 Commit only the formatting changes that belong to the same logical code change.
+
+## Linux integration CI fails to start a window
+
+The repository CI executes the integration suite through a virtual X display:
+
+```bash
+xvfb-run -a flutter test integration_test -d linux -r github
+```
+
+Confirm Linux desktop support is enabled, GTK build dependencies are installed, Xvfb is available, platform runners were generated, dependencies resolved, and localization generated before the test command.
 
 ## Markdown link check fails
 
