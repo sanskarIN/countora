@@ -77,6 +77,28 @@ void main() {
     expect(notifications.cancelled, contains(id));
   });
 
+  test('pause still applies after an interval rolls over', () async {
+    await controller.addTimer(
+      name: 'Sequence',
+      group: '',
+      steps: const <IntervalStep>[
+        IntervalStep(label: 'First', durationSeconds: 1),
+        IntervalStep(label: 'Second', durationSeconds: 30),
+      ],
+    );
+    final id = controller.timers.single.id;
+
+    now = now.add(const Duration(seconds: 1));
+    await controller.pause(id);
+
+    final timer = controller.timers.single;
+    expect(timer.currentStepIndex, 1);
+    expect(timer.status, CountdownStatus.paused);
+    expect(timer.remainingWhenPausedSeconds, 30);
+    expect(controller.history, isEmpty);
+    expect(notifications.cancelled, contains(id));
+  });
+
   test('pausing preserves a positive fractional second by rounding up', () async {
     await controller.addTimer(
       name: 'Fractional',
