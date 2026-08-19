@@ -19,10 +19,11 @@ Security-sensitive work must follow [`SECURITY.md`](SECURITY.md) instead of publ
 git config user.email "sanskarin@outlook.in"
 dart run tool/bootstrap_platforms.dart
 flutter pub get
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
-Use a compatible Flutter stable SDK. Generated platform runner directories are intentionally ignored; encode required native customizations in the bootstrap script rather than relying on manual generated-file edits.
+Use Flutter stable satisfying `pubspec.yaml` (currently Flutter `>=3.38.1` and Dart `>=3.10.0 <4.0.0`). Generated platform runner directories are intentionally ignored; encode required native customizations in the bootstrap script rather than relying on manual generated-file edits.
 
 See [`docs/setup.md`](docs/setup.md) and [`docs/development.md`](docs/development.md).
 
@@ -31,19 +32,23 @@ See [`docs/setup.md`](docs/setup.md) and [`docs/development.md`](docs/developmen
 Before a pull request:
 
 ```bash
+dart run tool/check_required_files.dart
+dart run tool/check_version_sync.dart
+dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
+dart run tool/check_markdown_links.dart
 dart format --output=none --set-exit-if-changed lib test integration_test tool
 flutter analyze
 flutter test
-dart run tool/check_markdown_links.dart
 flutter build web --release
 ```
 
 Run relevant host-native builds for platform-specific changes.
 
-For changes to a primary user journey, run or update:
+For changes to a primary user journey, run the integration suite on a configured target. For Linux:
 
 ```bash
-flutter test integration_test/app_journey_test.dart
+flutter test integration_test -d linux -r github
 ```
 
 ## Code requirements
@@ -51,9 +56,14 @@ flutter test integration_test/app_journey_test.dart
 - Keep business rules outside widgets where practical.
 - Keep plugin access behind interfaces.
 - Preserve absolute UTC persisted deadlines and the stable runtime clock model.
+- Reconcile expired running timers before persisting a pause transition.
+- Do not truncate positive fractional remaining time when converting a running deadline into paused whole seconds.
 - Route persisted/imported state through `CountoraStateCodec`.
 - Do not weaken backup/entity/duration caps without evidence and documentation.
 - Keep async callbacks safe; do not knowingly introduce unhandled persistence/plugin failures.
+- Keep platform notification capability explicit and fail closed on unsupported/unknown targets.
+- Preserve deferred iOS/macOS notification permission initialization.
+- Preserve stable Android channel IDs for the four sound/vibration cue profiles unless a documented migration is intentionally designed.
 - Add deterministic regression coverage with every reproducible bug fix.
 - Avoid unnecessary dependencies.
 - Do not introduce forced sign-in, analytics, advertising, or remote storage without an explicit architecture/privacy/security proposal.
@@ -62,9 +72,10 @@ flutter test integration_test/app_journey_test.dart
 
 Visible application copy belongs in `lib/l10n/app_en.arb` and should be read through generated localization resources.
 
-After changing ARB files:
+After changing ARB files or localized getter references:
 
 ```bash
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
@@ -98,6 +109,12 @@ Never commit:
 Do not log user timer names, backup JSON, authorization data, credentials, or unrelated personal content.
 
 Review [`PRIVACY.md`](PRIVACY.md) and [`SECURITY.md`](SECURITY.md) for changes affecting those boundaries.
+
+## Release metadata
+
+Version/build changes must keep `pubspec.yaml`, `AppMetadata`, and the exact `CHANGELOG.md` version heading synchronized. `tool/check_version_sync.dart` also validates GitHub tag/version consistency and intentionally rejects a tagged release while its changelog entry remains marked unreleased.
+
+Do not bypass this guard to publish an unverified candidate.
 
 ## Commit style
 
@@ -135,11 +152,13 @@ A reviewer should check:
 
 - behavior is coherent with Countora
 - new data has validation and migration strategy
-- timer correctness is deterministic
-- platform permissions are least-privilege
-- user-visible text is localized
+- timer correctness is deterministic at normal and deadline-boundary states
+- platform permissions are least-privilege and not prompted earlier than needed
+- Android notification cue/channel behavior remains coherent
+- user-visible text is localized and passes the localization-source audit
 - accessibility basics are preserved
 - tests cover the regression/feature boundary
 - docs match source
+- release/version metadata remains synchronized
 - no secrets or private data are present
 - commit history remains meaningful
