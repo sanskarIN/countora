@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/local_store.dart';
 import '../data/notification_service.dart';
+import '../domain/backup_codec.dart';
 import '../domain/models.dart';
 
 class TimerController extends ChangeNotifier {
@@ -270,23 +270,15 @@ class TimerController extends ChangeNotifier {
     await updateSettings(_settings.copyWith(onboardingSeen: true));
   }
 
-  String exportJson() {
-    return const JsonEncoder.withIndent('  ').convert(_state.toJson());
-  }
+  String exportJson() => BackupCodec.encode(_state);
 
   Future<void> importJson(String raw) async {
     _clearError();
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<Object?, Object?>) {
-        throw const FormatException('The backup root must be a JSON object.');
-      }
-      final imported = CountoraState.fromJson(
-        decoded.map((key, value) => MapEntry('$key', value)),
-      );
+      final imported = BackupCodec.decode(raw);
       _timers = imported.timers;
       _presets = imported.presets;
-      _history = imported.history.take(500).toList();
+      _history = imported.history;
       _settings = imported.settings;
       await _reconcileTimers();
       await _persist();
