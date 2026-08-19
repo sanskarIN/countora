@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import 'core/app_theme.dart';
 import 'presentation/home_page.dart';
 import 'presentation/timer_controller.dart';
@@ -45,7 +46,9 @@ class _CountoraAppState extends State<CountoraApp>
       builder: (context, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Countora',
+          onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: controller.settings.themeMode,
