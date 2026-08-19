@@ -23,6 +23,11 @@ void main() {
       'Use scheduled platform notifications where supported so countdowns can '
       'alert you while Countora is not in the foreground.',
     );
+    expect(
+      strings.completionNotificationsUnavailable,
+      'Scheduled background completion notifications are not available on this '
+      'platform. In-app countdown state and visual completion cues still work.',
+    );
   });
 
   test('English is a supported application locale', () {
