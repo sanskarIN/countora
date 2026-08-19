@@ -26,6 +26,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Monotonic in-process runtime clock
 - [x] App-resume timer reconciliation
 - [x] Interval catch-up without accumulated wake-up drift
+- [x] Deadline-safe single/bulk pause reconciliation
+- [x] Fractional-second-safe pause persistence
 - [x] Persistence-first notification side effects for timer mutations/reconciliation
 - [x] Failed-import rollback before platform notification replacement
 - [x] Notification exact-to-inexact fallback
@@ -52,6 +54,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Main accessibility semantics improvements
 - [x] Correct focus-mode entry/exit semantics copy
 - [x] English generated-localization architecture
+- [x] Deferred iOS/macOS notification permission prompts
+- [x] Stable Android notification channels per sound/vibration cue profile
 - [x] Structured redacting diagnostics
 - [x] Guarded URL-launch and clipboard failure handling
 - [x] Responsive phone/desktop navigation
@@ -60,38 +64,58 @@ This roadmap distinguishes implemented source work from release verification. A 
 ### Automated quality
 
 - [x] State codec tests
+- [x] State codec malformed-input/fuzz regression coverage
 - [x] Local persistence recovery tests
 - [x] Stable clock tests
 - [x] Expanded controller workflow tests
 - [x] Persistence/notification consistency regression tests
+- [x] Timer pause/deadline boundary tests
+- [x] Notification initialization and Android channel-profile tests
 - [x] Platform patch regression tests
 - [x] External-link failure regression tests
 - [x] Primary widget journey tests
+- [x] Settings/accessibility widget regression coverage
 - [x] Focus-mode semantics widget regression
 - [x] Primary integration journey source
 - [x] Dedicated Linux/Xvfb integration CI job source
 - [x] Localization tests
+- [x] Deterministic localization-source audit
+- [x] Localization audit wired into CI/repository/release gates
 - [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
 - [x] Required-file/version/secret repository audit tooling
+- [x] Release-tag/changelog version guard with unit tests
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
 - [x] Multi-platform tagged release workflow source
 - [x] Tagged-release SHA-256 artifact checksum generation
+- [x] Minimum supported Flutter SDK declared in package metadata
+
+### Documentation and maintainership
+
+- [x] Architecture/setup/development/testing/release documentation
+- [x] Backup-format and privacy-safe inspection documentation
+- [x] Notification capability/permission/channel documentation
+- [x] Repository CLI-tool reference
+- [x] GitHub maintainership/repository-settings guidance
+- [x] Branding guidance
+- [x] Performance measurement policy
+- [x] Current README/CHANGELOG/roadmap/handoff synchronized with implemented source
 
 ### Still required before final 0.2 release
 
-- [ ] Observe a successful CI run for formatting, analyze, tests, docs links, Web release build, and the Linux integration job
+- [ ] Observe a successful CI run for formatting, analyze, tests, docs links, Web release build, repository audit, and the Linux integration job
 - [ ] Fix every concrete CI/compiler/test issue discovered by a real Flutter toolchain run
 - [ ] Run the integration journey on a configured local/release Flutter target and record the result
 - [ ] Run the state-codec benchmark on representative hardware and record environment/results
 - [ ] Generate dependencies with a real Flutter SDK and review/commit the application `pubspec.lock` if appropriate for the release policy
-- [ ] Verify Android notification permission/completion behavior on a real device/emulator
+- [ ] Verify Android notification permission/completion/channel behavior on a real device/emulator
 - [ ] Verify at least one desktop native build from the release workflow
 - [ ] Verify Windows/macOS/iOS notification behavior on supported real environments before making platform-specific delivery claims
 - [ ] Complete manual accessibility review with a real screen reader, keyboard-only navigation, reduced motion, and large text
 - [ ] Capture real application screenshots from a verified build
 - [ ] Run the final clean-checkout documentation/repository/release audit and record its successful output
+- [ ] Replace the `0.2.0` changelog candidate label with the actual release date only after verification, then create tag `v0.2.0`
 
 ## 1.0 — Stable release
 
