@@ -25,6 +25,9 @@ Before a release, update:
 From a clean clone:
 
 ```bash
+dart run tool/check_required_files.dart
+dart run tool/check_version_sync.dart
+dart run tool/check_secrets.dart
 dart run tool/bootstrap_platforms.dart
 flutter pub get
 flutter gen-l10n
@@ -34,10 +37,16 @@ flutter test
 dart run tool/check_markdown_links.dart
 ```
 
-Then run the integration journey on a configured target:
+Then run the integration journey on a configured target. For Linux:
 
 ```bash
-flutter test integration_test/app_journey_test.dart
+flutter test integration_test -d linux -r github
+```
+
+A headless Linux host can provide a virtual display:
+
+```bash
+xvfb-run -a flutter test integration_test -d linux -r github
 ```
 
 ## Platform build verification
@@ -93,6 +102,9 @@ An unsigned iOS application verifies compilation only. App Store/device distribu
 
 The initial Ubuntu quality job must pass before desktop/Apple jobs run. It performs:
 
+- required-file verification
+- version-metadata synchronization verification
+- tracked-source obvious-secret scan
 - platform runner generation
 - dependency resolution
 - localization generation
@@ -102,14 +114,38 @@ The initial Ubuntu quality job must pass before desktop/Apple jobs run. It perfo
 - local Markdown-link check
 - Web release build
 - Android APK/AAB builds
+- SHA-256 checksum generation for Android/Web artifacts
 
 After that quality gate:
 
-- Ubuntu builds Linux x64
-- Windows builds Windows x64
-- macOS builds macOS and an unsigned iOS application
+- Ubuntu runs the primary integration journey under Xvfb, builds Linux x64, and emits a SHA-256 checksum
+- Windows builds Windows x64 and emits a SHA-256 checksum
+- macOS builds macOS plus an unsigned iOS application and emits SHA-256 checksums
 
-The workflow attaches matching artifacts to the GitHub release.
+The workflow attaches matching artifacts and checksum files to the GitHub release.
+
+## Artifact integrity
+
+Checksum files let a user verify that a downloaded artifact has not changed since the workflow produced it. The tagged workflow publishes:
+
+- `countora-android-web.sha256`
+- `countora-linux-x64.tar.gz.sha256`
+- `countora-windows-x64.zip.sha256`
+- `countora-apple.sha256`
+
+On Linux/macOS, verification can use the platform SHA-256 utility appropriate to the checksum format. For example, a single Linux artifact can be checked from the directory containing both files with:
+
+```bash
+sha256sum -c countora-linux-x64.tar.gz.sha256
+```
+
+On Windows, compare the published digest with:
+
+```powershell
+(Get-FileHash .\countora-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+```
+
+A checksum proves file integrity against the published digest; it does not replace code signing, trusted release provenance, or platform notarization.
 
 ## Security/repository checks
 
@@ -121,7 +157,8 @@ Before tagging:
 4. Review Dependabot alerts/update pull requests where available.
 5. Confirm `.env`, keystores, signing profiles, private keys, tokens, and generated credentials are not tracked.
 6. Confirm generated backup/test fixtures contain only fictional data.
-7. Run a repository secret scan if a trusted scanner is available in the release environment.
+7. Run the repository required-file/version/secret/link audit.
+8. Use a trusted additional secret scanner in the release environment when available.
 
 ## Native behavior checks
 
@@ -165,6 +202,7 @@ Convert the matching `CHANGELOG.md` candidate section into a dated release entry
 - privacy/security changes
 - known limitations
 - supported artifact types
+- checksum files
 - upgrade/backup compatibility notes
 
 ## Rollback
