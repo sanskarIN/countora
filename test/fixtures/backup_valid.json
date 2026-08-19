@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "timers": [
+    {
+      "id": "fixture_timer",
+      "name": "Synthetic timer",
+      "group": "Fixture",
+      "steps": [
+        {
+          "label": "Synthetic interval",
+          "durationSeconds": 120
+        }
+      ],
+      "currentStepIndex": 0,
+      "status": "paused",
+      "remainingWhenPausedSeconds": 120
+    }
+  ],
+  "presets": [],
+  "history": [],
+  "settings": {
+    "notificationsEnabled": false
+  }
+}
