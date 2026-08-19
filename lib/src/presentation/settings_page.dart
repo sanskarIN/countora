@@ -238,9 +238,18 @@ class SettingsPage extends StatelessWidget {
 
   Future<void> _exportBackup(BuildContext context) async {
     final strings = context.l10n;
-    await Clipboard.setData(
-      ClipboardData(text: controller.exportJson()),
-    );
+    try {
+      await Clipboard.setData(
+        ClipboardData(text: controller.exportJson()),
+      );
+    } on Object {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.backupExportFailed)),
+      );
+      return;
+    }
+
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(strings.backupCopied)),
