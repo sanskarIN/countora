@@ -1,13 +1,42 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'presentation/home_page.dart';
 import 'presentation/timer_controller.dart';
 
-class CountoraApp extends StatelessWidget {
+class CountoraApp extends StatefulWidget {
   const CountoraApp({required this.controller, super.key});
 
   final TimerController controller;
+
+  @override
+  State<CountoraApp> createState() => _CountoraAppState();
+}
+
+class _CountoraAppState extends State<CountoraApp>
+    with WidgetsBindingObserver {
+  TimerController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(controller.reconcile());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
