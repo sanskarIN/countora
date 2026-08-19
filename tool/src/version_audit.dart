@@ -52,7 +52,11 @@ VersionAuditResult auditVersionMetadata({
     );
   }
 
-  if (!changelog.contains('[$packageVersion]')) {
+  final releaseHeading = RegExp(
+    '^## \\[$packageVersion\\] - (.+)\\s*\$',
+    multiLine: true,
+  ).firstMatch(changelog);
+  if (releaseHeading == null) {
     errors.add('CHANGELOG.md does not contain a [$packageVersion] section.');
   }
 
@@ -63,6 +67,14 @@ VersionAuditResult auditVersionMetadata({
       errors.add(
         'Release tag mismatch: tag=$tag, expected=$expectedTag for '
         'pubspec version $packageVersion.',
+      );
+    }
+
+    final releaseLabel = releaseHeading?.group(1)?.trim().toLowerCase();
+    if (releaseLabel != null && releaseLabel.contains('unreleased')) {
+      errors.add(
+        'Release tag $tag requires a finalized dated CHANGELOG.md entry for '
+        '$packageVersion.',
       );
     }
   }
