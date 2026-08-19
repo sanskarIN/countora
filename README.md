@@ -40,6 +40,7 @@ Current development version: **0.2.0+2**.
 - Android exact-alarm fallback to inexact scheduling when exact permission is unavailable
 - Corruption-safe local persistence recovery
 - Bounded, schema-aware JSON backup validation and migration
+- Resilient external-link and clipboard-export failure handling
 
 ### Accessibility and desktop usability
 
@@ -110,6 +111,15 @@ For complete setup instructions, see [`docs/setup.md`](docs/setup.md).
 
 ## Verification
 
+Repository integrity checks:
+
+```bash
+dart run tool/check_required_files.dart
+dart run tool/check_version_sync.dart
+dart run tool/check_secrets.dart
+dart run tool/check_markdown_links.dart
+```
+
 Formatting:
 
 ```bash
@@ -124,16 +134,16 @@ flutter analyze
 flutter test
 ```
 
-Documentation integrity:
+Primary integration journey on Linux:
 
 ```bash
-dart run tool/check_markdown_links.dart
+flutter test integration_test -d linux -r github
 ```
 
-Primary integration journey on a configured Flutter target:
+For a headless Linux environment:
 
 ```bash
-flutter test integration_test/app_journey_test.dart
+xvfb-run -a flutter test integration_test -d linux -r github
 ```
 
 Web release verification:
@@ -158,7 +168,7 @@ flutter build macos --release
 flutter build ios --release --no-codesign
 ```
 
-The tagged GitHub release workflow performs the supported host-specific builds and publishes artifacts after the main quality job succeeds.
+The tagged GitHub release workflow performs the supported host-specific builds and publishes artifacts after the main quality job succeeds. It also publishes SHA-256 digest files for Android/Web, Linux, Windows, macOS, and unsigned iOS release artifacts. See [`docs/release.md`](docs/release.md) for integrity-verification examples and the distinction between checksums and platform code signing.
 
 ## Project structure
 
@@ -168,7 +178,7 @@ lib/
     app_en.arb              # English localization source
   main.dart
   src/
-    core/                   # metadata, links, logging, clock, theme, tokens
+    core/                   # metadata, links, safe launch, logging, clock, theme, tokens
     data/                   # validated persistence and notifications
     domain/                 # timers, presets, history, settings
     presentation/           # controller and responsive UI
@@ -186,7 +196,7 @@ Countora uses a small modular-monolith structure:
 1. **Domain** — countdown, interval, preset, history, and settings models.
 2. **Data** — persistence codec/store and platform notification adapter.
 3. **Presentation** — controller-driven state transitions and adaptive Flutter UI.
-4. **Core** — stable clock, design tokens, metadata, links, localization helper, formatting, and structured logging.
+4. **Core** — stable clock, design tokens, metadata, links, localization helper, formatting, structured logging, and safe external-link launching.
 
 Running timers persist an absolute UTC deadline. During one process lifetime, countdown calculations use a monotonic clock anchored to UTC so a wall-clock edit does not directly make a live timer jump. On resume/startup, the controller reconciles elapsed interval steps and reschedules completion notifications.
 
@@ -207,7 +217,7 @@ Current safety bounds include:
 - maximum group length: 40 characters
 - maximum individual interval: 365 days
 
-Unknown future schema versions are rejected instead of silently interpreted. A valid import is previewed before it replaces current local data.
+Unknown future schema versions are rejected instead of silently interpreted. A valid import is previewed before it replaces current local data. Clipboard export failures are reported without changing the current local state.
 
 ## Localization
 
@@ -230,6 +240,8 @@ Countora has no authentication or cloud service. Security work therefore focuses
 - Sensitive structured-log keys are redacted.
 - Dependency Review blocks newly introduced moderate-or-higher vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
+- Tagged releases run deterministic required-file, version-sync, tracked-secret, and documentation-link audits.
+- Release artifacts include SHA-256 digests for post-download integrity checks.
 - Signing keys, `.env`, keystores, and generated credentials are ignored.
 
 Read [`SECURITY.md`](SECURITY.md) and [`PRIVACY.md`](PRIVACY.md).
@@ -247,7 +259,7 @@ The main CI workflow checks:
 - local Markdown links
 - Web release build
 
-Tagged releases additionally build Android APK/AAB, Web, Linux, Windows, macOS, and an unsigned iOS application artifact. Signed store distribution remains an external release-credential step.
+A separate Linux CI job runs the primary `integration_test` journey under Xvfb. Tagged releases additionally run repository-integrity checks and build Android APK/AAB, Web, Linux, Windows, macOS, and an unsigned iOS application artifact, with SHA-256 checksum files published alongside them. Signed store distribution remains an external release-credential step.
 
 No release should be considered verified until the corresponding GitHub Actions run is observed as successful.
 
