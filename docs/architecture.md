@@ -48,12 +48,15 @@ Owns cross-cutting application infrastructure:
 - `StableClock`
 - structured `AppLogger`
 - `openExternalUri` guarded external-launch boundary
+- `supportsScheduledNotifications` platform capability policy
 - design tokens/theme
 - formatting helpers
 - application metadata/links
 - localization context helper
 
 External links are routed through one small helper that converts a declined or throwing platform URL launch into a safe `false` result. Widgets can then show localized feedback without depending directly on plugin exception behavior.
+
+Scheduled-notification capability is centralized in `platform_capabilities.dart`. The current policy explicitly allows Android, iOS, macOS, and Windows native targets and fails closed for Web, Linux, Fuchsia, or any target not deliberately added to the supported set. The notification adapter and Settings UI consume the same policy so product copy, controls, and platform calls do not diverge.
 
 ### `lib/l10n`
 
@@ -90,7 +93,8 @@ When a running step expires:
 1. the controller checks for a next step;
 2. the next step starts from the previous absolute deadline, not from an arbitrary delayed UI tick;
 3. if no next step exists, the timer completes and a history entry is created;
-4. scheduled completion notifications are reconciled accordingly where the target supports scheduling.
+4. reconciled state is persisted;
+5. only after successful persistence are affected completion notifications synchronized where the target supports scheduling.
 
 The notification adapter schedules the remaining sequence completion instants from the current step onward on targets with future-notification support.
 
@@ -113,7 +117,9 @@ All persisted/imported JSON crosses `CountoraStateCodec`, which enforces:
 - malformed-state normalization where safe
 - controlled `FormatException` for invalid field types
 
-Clipboard import validates and previews the incoming state before current application data is replaced. Clipboard export catches platform-channel failures and reports them without mutating local state.
+The codec owns persistence schema versioning. `CountoraState.toJson()` serializes domain state without stamping a schema version, while `CountoraStateCodec` adds the current persisted schema at the trust boundary. This keeps migration/version authority in one place.
+
+Clipboard import validates and previews the incoming state before replacement. Import then stages the decoded/reconciled state, persists it, and only after successful persistence replaces related notification schedules. If that save fails, the previous in-memory state is restored and the previous schedules are left untouched. Clipboard export catches platform-channel failures and reports them without mutating local state.
 
 If locally persisted data is corrupted, startup falls back to a safe empty state rather than crashing. Import remains strict because silently replacing current valid data with malformed input would be destructive.
 
@@ -126,27 +132,31 @@ The production adapter:
 - initializes platform notification implementations, including the web implementation when available
 - requests notification permissions only on targets where Countora can use future scheduling
 - schedules remaining timer/interval deadlines on supported scheduling targets
-- intentionally avoids future scheduling on Web and Linux while the underlying capability is unsupported there
+- intentionally avoids future scheduling on Web and Linux and fails closed for unsupported native targets
 - falls back from exact Android scheduling to inexact scheduling when necessary
 - catches plugin/platform failures so notification infrastructure cannot crash a timer operation
-- cancels stale schedules when a timer is paused, removed, reset, or imported away
+- cancels stale schedules when a successfully persisted timer transition requires it
 - derives its cancellation bound from the same state-codec interval limit used for validation
 - avoids logging user timer names/payload contents
 
-Web and Linux still use the same local timer model, persistence, resume reconciliation, and visible in-app completion state. Their lack of background scheduled completion delivery is a platform-capability limitation, not a different timer data model.
+Web and Linux still use the same local timer model, persistence, resume reconciliation, and visible in-app completion state. Their lack of background scheduled completion delivery is a platform-capability limitation, not a different timer data model. Settings disables the scheduled-notification controls there and explains that in-app completion cues continue to work.
 
 Generated Android runner configuration is patched by `tool/bootstrap_platforms.dart` using pure transforms in `tool/src/platform_patches.dart`. Those transforms validate expected template anchors and their postconditions rather than silently accepting an unpatched runner when Flutter's template changes.
 
 ## State change and persistence model
 
-There is one application controller and one persisted state document. Mutating operations follow this pattern:
+There is one application controller and one persisted state document. State-dependent platform notification side effects follow ADR 0005.
+
+A normal timer/settings mutation follows this pattern:
 
 1. validate API input at the controller boundary;
 2. create immutable updated model values;
-3. replace the relevant in-memory collection item(s);
-4. persist state;
-5. update/cancel platform notification schedules as needed;
-6. notify Flutter listeners.
+3. replace the relevant candidate in-memory collection item(s);
+4. persist the resulting Countora state;
+5. only after successful persistence, update/cancel dependent platform notification schedules;
+6. notify Flutter listeners as state/error information changes.
+
+This ordering protects the durable local state as Countora's restart authority. Notification delivery itself remains best-effort: if a platform operation fails after persistence, the local timer state remains valid and the failure is contained/logged rather than rolling back durable data.
 
 No global mutable singleton stores domain state.
 
@@ -154,8 +164,10 @@ No global mutable singleton stores domain state.
 
 - user/import validation failures are rejected before destructive replacement;
 - local persistence failures are surfaced through controller error state;
+- failed imported-state persistence restores the previous in-memory state before reporting failure;
 - notification platform errors are logged in redacted structured diagnostics and do not corrupt timer state;
 - external-link and clipboard platform failures become user-visible feedback instead of uncaught widget exceptions;
+- unsupported future notification targets fail closed before scheduling calls;
 - corrupted saved JSON does not block startup;
 - unsupported future backup schemas fail closed;
 - generated Android template drift fails bootstrap explicitly when required patch anchors disappear.
@@ -180,4 +192,4 @@ If requirements grow beyond these bounds, replace `SharedPreferencesTimerStore` 
 
 ## Related decisions
 
-See [`adr/`](adr/) for durable architecture decisions.
+See [`adr/`](adr/) for durable architecture decisions, including [`ADR 0005`](adr/0005-persist-before-platform-side-effects.md) for persistence/notification ordering.
