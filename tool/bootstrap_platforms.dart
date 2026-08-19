@@ -35,18 +35,20 @@ void _patchAndroidManifest() {
   }
 
   var text = manifest.readAsStringSync();
-  const receiveBoot =
-      '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>';
-  const exactAlarm =
-      '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>';
+  const manifestOpen =
+      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">';
+  const requiredPermissions = <String>[
+    '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>',
+    '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>',
+  ];
 
-  if (!text.contains(receiveBoot)) {
-    text = text.replaceFirst(
-      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
-      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
-          '    $receiveBoot\n'
-          '    $exactAlarm',
-    );
+  for (final permission in requiredPermissions) {
+    if (!text.contains(permission)) {
+      text = text.replaceFirst(
+        manifestOpen,
+        '$manifestOpen\n    $permission',
+      );
+    }
   }
 
   const receivers = '''
@@ -91,6 +93,14 @@ void _patchAndroidGradle() {
       'compileOptions {',
       'compileOptions {\n'
           '        isCoreLibraryDesugaringEnabled = true',
+    );
+  }
+
+  if (!text.contains('multiDexEnabled = true')) {
+    text = text.replaceFirst(
+      'defaultConfig {',
+      'defaultConfig {\n'
+          '        multiDexEnabled = true',
     );
   }
 
