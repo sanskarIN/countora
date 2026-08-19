@@ -90,7 +90,8 @@ class SettingsPage extends StatelessWidget {
                   ? strings.completionNotificationsHelp
                   : strings.completionNotificationsUnavailable,
             ),
-            value: scheduledNotificationsSupported && settings.notificationsEnabled,
+            value:
+                scheduledNotificationsSupported && settings.notificationsEnabled,
             onChanged: scheduledNotificationsSupported
                 ? (value) => unawaited(
                       controller.updateSettings(
