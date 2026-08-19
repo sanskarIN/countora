@@ -19,6 +19,27 @@ abstract interface class NotificationService {
   Future<void> cancelTimer(String timerId);
 }
 
+InitializationSettings countoraNotificationInitializationSettings() {
+  final darwinSettings = DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
+  );
+
+  return InitializationSettings(
+    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    iOS: darwinSettings,
+    macOS: darwinSettings,
+    linux: LinuxInitializationSettings(defaultActionName: 'Open Countora'),
+    windows: WindowsInitializationSettings(
+      appName: 'Countora',
+      appUserModelId: 'Sanskar.Countora',
+      guid: '2f2dc0ea-51c6-4ed1-9b53-8725823f34e0',
+    ),
+    web: const WebInitializationSettings(),
+  );
+}
+
 class LocalNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -30,21 +51,11 @@ class LocalNotificationService implements NotificationService {
   Future<void> initialize() async {
     tz_data.initializeTimeZones();
 
-    final settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
-      macOS: DarwinInitializationSettings(),
-      linux: LinuxInitializationSettings(defaultActionName: 'Open Countora'),
-      windows: WindowsInitializationSettings(
-        appName: 'Countora',
-        appUserModelId: 'Sanskar.Countora',
-        guid: '2f2dc0ea-51c6-4ed1-9b53-8725823f34e0',
-      ),
-      web: const WebInitializationSettings(),
-    );
-
     try {
-      _ready = await _plugin.initialize(settings: settings) ?? false;
+      _ready = await _plugin.initialize(
+            settings: countoraNotificationInitializationSettings(),
+          ) ??
+          false;
       _logger.info('initialized', fields: <String, Object?>{'ready': _ready});
     } on Object catch (error) {
       _logger.warning('initialize_failed', error: error);
