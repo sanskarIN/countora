@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../core/formatters.dart';
+import '../core/l10n.dart';
 import '../domain/models.dart';
 import 'timer_controller.dart';
 
@@ -18,23 +20,29 @@ class TimerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     final remaining = controller.remainingFor(timer);
     final total = Duration(seconds: timer.currentStep.durationSeconds);
     final progress = total.inMilliseconds <= 0
         ? 1.0
         : 1 - (remaining.inMilliseconds / total.inMilliseconds);
     final compact = controller.settings.compactCards;
+    final statusLabel = switch (timer.status) {
+      CountdownStatus.running => strings.running,
+      CountdownStatus.paused => strings.paused,
+      CountdownStatus.completed => strings.done,
+    };
 
     return Semantics(
       container: true,
       label:
-          '${timer.name}, ${formatDuration(remaining)} remaining, ${timer.status.name}',
-      hint: 'Open full-screen focus mode',
+          '${timer.name}, ${formatDuration(remaining)} ${strings.timer.toLowerCase()}, $statusLabel',
+      hint: strings.exitFocusMode,
       button: true,
       child: Card(
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => _showFocusMode(context),
+          onTap: () => unawaited(_showFocusMode(context)),
           child: Padding(
             padding: EdgeInsets.all(compact ? 14 : 20),
             child: Column(
@@ -62,8 +70,8 @@ class TimerCard extends StatelessWidget {
                             ),
                           if (timer.isSequence)
                             Text(
-                              'Step ${timer.currentStepIndex + 1}/${timer.steps.length}: '
-                              '${timer.currentStep.label}',
+                              '${strings.step} ${timer.currentStepIndex + 1}/'
+                              '${timer.steps.length}: ${timer.currentStep.label}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall,
@@ -72,47 +80,48 @@ class TimerCard extends StatelessWidget {
                       ),
                     ),
                     PopupMenuButton<_TimerMenuAction>(
-                      tooltip: 'Timer options',
-                      onSelected: (value) => _handleMenuAction(context, value),
-                      itemBuilder: (context) => const [
+                      tooltip: strings.timerOptions,
+                      onSelected: (value) =>
+                          unawaited(_handleMenuAction(context, value)),
+                      itemBuilder: (context) => [
                         PopupMenuItem(
                           value: _TimerMenuAction.rename,
                           child: ListTile(
-                            leading: Icon(Icons.edit_outlined),
-                            title: Text('Rename / move'),
+                            leading: const Icon(Icons.edit_outlined),
+                            title: Text(strings.renameMove),
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
                         PopupMenuItem(
                           value: _TimerMenuAction.duplicate,
                           child: ListTile(
-                            leading: Icon(Icons.copy_outlined),
-                            title: Text('Duplicate paused'),
+                            leading: const Icon(Icons.copy_outlined),
+                            title: Text(strings.duplicatePaused),
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
                         PopupMenuItem(
                           value: _TimerMenuAction.preset,
                           child: ListTile(
-                            leading: Icon(Icons.bookmark_add_outlined),
-                            title: Text('Save as preset'),
+                            leading: const Icon(Icons.bookmark_add_outlined),
+                            title: Text(strings.saveAsPreset),
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
                         PopupMenuItem(
                           value: _TimerMenuAction.restart,
                           child: ListTile(
-                            leading: Icon(Icons.replay),
-                            title: Text('Restart'),
+                            leading: const Icon(Icons.replay),
+                            title: Text(strings.restart),
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
-                        PopupMenuDivider(),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: _TimerMenuAction.delete,
                           child: ListTile(
-                            leading: Icon(Icons.delete_outline),
-                            title: Text('Delete'),
+                            leading: const Icon(Icons.delete_outline),
+                            title: Text(strings.delete),
                             contentPadding: EdgeInsets.zero,
                           ),
                         ),
@@ -135,9 +144,9 @@ class TimerCard extends StatelessWidget {
                   value: progress.clamp(0.0, 1.0).toDouble(),
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(999),
-                  semanticsLabel: 'Timer progress',
+                  semanticsLabel: strings.timerProgress,
                   semanticsValue:
-                      '${(progress.clamp(0.0, 1.0) * 100).round()} percent',
+                      '${(progress.clamp(0.0, 1.0) * 100).round()} ${strings.percent}',
                 ),
                 SizedBox(height: compact ? 8 : 16),
                 Wrap(
@@ -147,30 +156,35 @@ class TimerCard extends StatelessWidget {
                   children: [
                     if (timer.status == CountdownStatus.running)
                       FilledButton.tonalIcon(
-                        onPressed: () => controller.pause(timer.id),
+                        onPressed: () =>
+                            unawaited(controller.pause(timer.id)),
                         icon: const Icon(Icons.pause),
-                        label: const Text('Pause'),
+                        label: Text(strings.pause),
                       )
                     else if (timer.status == CountdownStatus.paused)
                       FilledButton.tonalIcon(
-                        onPressed: () => controller.resume(timer.id),
+                        onPressed: () =>
+                            unawaited(controller.resume(timer.id)),
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('Resume'),
+                        label: Text(strings.resume),
                       )
                     else
                       FilledButton.tonalIcon(
-                        onPressed: () => controller.restart(timer.id),
+                        onPressed: () =>
+                            unawaited(controller.restart(timer.id)),
                         icon: const Icon(Icons.replay),
-                        label: const Text('Restart'),
+                        label: Text(strings.restart),
                       ),
                     OutlinedButton(
                       onPressed: timer.status == CountdownStatus.completed
                           ? null
-                          : () => controller.addTime(
-                                timer.id,
-                                const Duration(minutes: 1),
+                          : () => unawaited(
+                                controller.addTime(
+                                  timer.id,
+                                  const Duration(minutes: 1),
+                                ),
                               ),
-                      child: const Text('+1 min'),
+                      child: Text(strings.addOneMinute),
                     ),
                   ],
                 ),
@@ -201,13 +215,14 @@ class TimerCard extends StatelessWidget {
   }
 
   Future<void> _renameTimer(BuildContext context) async {
+    final strings = context.l10n;
     final nameController = TextEditingController(text: timer.name);
     final groupController = TextEditingController(text: timer.group);
     final formKey = GlobalKey<FormState>();
     final shouldSave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename timer'),
+        title: Text(strings.renameTimer),
         content: Form(
           key: formKey,
           child: SizedBox(
@@ -219,17 +234,17 @@ class TimerCard extends StatelessWidget {
                   controller: nameController,
                   autofocus: true,
                   maxLength: 80,
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  decoration: InputDecoration(labelText: strings.name),
                   validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Name is required.'
+                      ? strings.nameRequired
                       : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: groupController,
                   maxLength: 40,
-                  decoration: const InputDecoration(
-                    labelText: 'Group (optional)',
+                  decoration: InputDecoration(
+                    labelText: strings.groupOptional,
                   ),
                 ),
               ],
@@ -239,7 +254,7 @@ class TimerCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -247,7 +262,7 @@ class TimerCard extends StatelessWidget {
                 Navigator.of(context).pop(true);
               }
             },
-            child: const Text('Save'),
+            child: Text(strings.save),
           ),
         ],
       ),
@@ -265,19 +280,22 @@ class TimerCard extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final strings = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete timer?'),
-        content: Text('Delete “${timer.name}”? This does not clear history.'),
+        title: Text(strings.deleteTimerTitle),
+        content: Text(
+          '${strings.delete} “${timer.name}”? ${strings.deleteTimerHistoryNote}',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
@@ -288,6 +306,7 @@ class TimerCard extends StatelessWidget {
   }
 
   Future<void> _showFocusMode(BuildContext context) async {
+    final strings = context.l10n;
     await showDialog<void>(
       context: context,
       builder: (context) {
@@ -306,7 +325,7 @@ class TimerCard extends StatelessWidget {
                 child: Center(
                   child: FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Timer was removed'),
+                    child: Text(strings.timerWasRemoved),
                   ),
                 ),
               );
@@ -344,7 +363,7 @@ class TimerCard extends StatelessWidget {
                               const SizedBox(height: 28),
                               Semantics(
                                 liveRegion: true,
-                                label: '${formatDuration(remaining)} remaining',
+                                label: '${formatDuration(remaining)} ${strings.timer.toLowerCase()}',
                                 child: Text(
                                   formatDuration(remaining),
                                   textAlign: TextAlign.center,
@@ -357,12 +376,16 @@ class TimerCard extends StatelessWidget {
                                 value: progress.clamp(0.0, 1.0).toDouble(),
                                 minHeight: 10,
                                 borderRadius: BorderRadius.circular(999),
+                                semanticsLabel: strings.timerProgress,
+                                semanticsValue:
+                                    '${(progress.clamp(0.0, 1.0) * 100).round()} ${strings.percent}',
                               ),
                               if (active.isSequence) ...[
                                 const SizedBox(height: 18),
                                 Text(
-                                  'Step ${active.currentStepIndex + 1} of '
-                                  '${active.steps.length}: ${active.currentStep.label}',
+                                  '${strings.step} ${active.currentStepIndex + 1} '
+                                  '${strings.of} ${active.steps.length}: '
+                                  '${active.currentStep.label}',
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.titleMedium,
                                 ),
@@ -375,36 +398,41 @@ class TimerCard extends StatelessWidget {
                                 children: [
                                   if (active.status == CountdownStatus.running)
                                     FilledButton.icon(
-                                      onPressed: () =>
-                                          controller.pause(active.id),
+                                      onPressed: () => unawaited(
+                                        controller.pause(active.id),
+                                      ),
                                       icon: const Icon(Icons.pause),
-                                      label: const Text('Pause'),
+                                      label: Text(strings.pause),
                                     )
                                   else if (active.status ==
                                       CountdownStatus.paused)
                                     FilledButton.icon(
-                                      onPressed: () =>
-                                          controller.resume(active.id),
+                                      onPressed: () => unawaited(
+                                        controller.resume(active.id),
+                                      ),
                                       icon: const Icon(Icons.play_arrow),
-                                      label: const Text('Resume'),
+                                      label: Text(strings.resume),
                                     )
                                   else
                                     FilledButton.icon(
-                                      onPressed: () =>
-                                          controller.restart(active.id),
+                                      onPressed: () => unawaited(
+                                        controller.restart(active.id),
+                                      ),
                                       icon: const Icon(Icons.replay),
-                                      label: const Text('Restart'),
+                                      label: Text(strings.restart),
                                     ),
                                   OutlinedButton.icon(
                                     onPressed: active.status ==
                                             CountdownStatus.completed
                                         ? null
-                                        : () => controller.addTime(
-                                              active.id,
-                                              const Duration(minutes: 1),
+                                        : () => unawaited(
+                                              controller.addTime(
+                                                active.id,
+                                                const Duration(minutes: 1),
+                                              ),
                                             ),
                                     icon: const Icon(Icons.add),
-                                    label: const Text('1 minute'),
+                                    label: Text(strings.oneMinute),
                                   ),
                                 ],
                               ),
@@ -417,7 +445,7 @@ class TimerCard extends StatelessWidget {
                       top: 12,
                       right: 12,
                       child: IconButton.filledTonal(
-                        tooltip: 'Exit focus mode',
+                        tooltip: strings.exitFocusMode,
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close_fullscreen),
                       ),
