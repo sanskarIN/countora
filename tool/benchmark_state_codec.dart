@@ -156,5 +156,5 @@ Map<String, int> _summary(List<int> values) {
 
 int _percentile(List<int> sorted, double percentile) {
   final index = ((sorted.length - 1) * percentile).round();
-  return sorted[index.clamp(0, sorted.length - 1)];
+  return sorted[index.clamp(0, sorted.length - 1).toInt()];
 }
