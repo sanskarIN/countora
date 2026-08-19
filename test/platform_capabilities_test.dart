@@ -12,14 +12,17 @@ void main() {
     }
   });
 
-  test('Linux desktop reports future scheduling as unsupported', () {
-    expect(
-      supportsScheduledNotifications(
-        isWeb: false,
-        platform: TargetPlatform.linux,
-      ),
-      isFalse,
-    );
+  test('unsupported native targets fail closed', () {
+    for (final platform in <TargetPlatform>[
+      TargetPlatform.linux,
+      TargetPlatform.fuchsia,
+    ]) {
+      expect(
+        supportsScheduledNotifications(isWeb: false, platform: platform),
+        isFalse,
+        reason: '$platform is not a supported scheduled-notification target',
+      );
+    }
   });
 
   test('supported native targets report future scheduling capability', () {
