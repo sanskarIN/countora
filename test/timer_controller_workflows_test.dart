@@ -101,7 +101,7 @@ void main() {
     expect(controller.timers, hasLength(2));
     final duplicate = controller.timers.last;
     expect(duplicate.id, isNot(original.id));
-    expect(duplicate.name, 'Tea copy');
+    expect(duplicate.name, 'Tea');
     expect(duplicate.group, 'Kitchen');
     expect(duplicate.status, CountdownStatus.paused);
     expect(duplicate.remainingWhenPausedSeconds, 180);
@@ -128,6 +128,26 @@ void main() {
     expect(after.group, 'Focus');
     expect(after.status, before.status);
     expect(after.endsAtUtc, before.endsAtUtc);
+  });
+
+  test('editing a paused timer does not request notification permission', () async {
+    await controller.addTimer(
+      name: 'Paused',
+      group: '',
+      steps: const <IntervalStep>[
+        IntervalStep(label: 'Paused', durationSeconds: 60),
+      ],
+      startImmediately: false,
+    );
+
+    await controller.updateTimerDetails(
+      timerId: controller.timers.single.id,
+      name: 'Still paused',
+      group: 'Later',
+    );
+
+    expect(notifications.permissionRequests, 0);
+    expect(notifications.scheduled, isEmpty);
   });
 
   test('pauses and resumes all eligible timers', () async {
