@@ -9,9 +9,10 @@ permissions:
   contents: write
 
 jobs:
-  web-and-android:
+  quality-and-mobile-web:
+    name: Verify and build Android/Web
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -28,8 +29,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate localization source
+        run: flutter gen-l10n
+
       - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed lib test tool
+        run: >-
+          dart format --output=none --set-exit-if-changed
+          lib test integration_test tool
 
       - name: Analyze
         run: flutter analyze
@@ -46,13 +52,110 @@ jobs:
       - name: Build Android APK release
         run: flutter build apk --release
 
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release
+
       - name: Archive web release
         run: cd build/web && zip -r ../countora-web.zip .
 
-      - name: Publish GitHub release artifacts
+      - name: Publish Android and Web artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
             build/countora-web.zip
           generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  linux:
+    name: Build Linux
+    needs: quality-and-mobile-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - run: dart run tool/bootstrap_platforms.dart
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Build Linux release
+        run: flutter build linux --release
+      - name: Archive Linux release
+        run: tar -C build/linux/x64/release/bundle -czf build/countora-linux-x64.tar.gz .
+      - name: Publish Linux artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/countora-linux-x64.tar.gz
+          fail_on_unmatched_files: true
+
+  windows:
+    name: Build Windows
+    needs: quality-and-mobile-web
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: dart run tool/bootstrap_platforms.dart
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Build Windows release
+        run: flutter build windows --release
+      - name: Archive Windows release
+        shell: pwsh
+        run: >-
+          Compress-Archive
+          -Path build\windows\x64\runner\Release\*
+          -DestinationPath build\countora-windows-x64.zip
+      - name: Publish Windows artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/countora-windows-x64.zip
+          fail_on_unmatched_files: true
+
+  apple:
+    name: Build macOS and unsigned iOS
+    needs: quality-and-mobile-web
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: dart run tool/bootstrap_platforms.dart
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Build macOS release
+        run: flutter build macos --release
+      - name: Archive macOS application
+        run: >-
+          ditto -c -k --sequesterRsrc --keepParent
+          build/macos/Build/Products/Release/countora.app
+          build/countora-macos.zip
+      - name: Build unsigned iOS application
+        run: flutter build ios --release --no-codesign
+      - name: Archive unsigned iOS application
+        run: >-
+          ditto -c -k --sequesterRsrc --keepParent
+          build/ios/iphoneos/Runner.app
+          build/countora-ios-unsigned.zip
+      - name: Publish Apple artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/countora-macos.zip
+            build/countora-ios-unsigned.zip
+          fail_on_unmatched_files: true
