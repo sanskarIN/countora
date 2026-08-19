@@ -28,9 +28,14 @@ void main() {
   });
 
   test('backup size limit rejects oversized payload before model parsing', () {
+    final padding = List<String>.filled(
+      CountoraStateCodec.maxBackupBytes + 1,
+      'x',
+      growable: false,
+    ).join();
     final oversized = jsonEncode(<String, Object?>{
       'schemaVersion': 1,
-      'padding': 'x' * (CountoraStateCodec.maxBackupBytes + 1),
+      'padding': padding,
     });
 
     expect(() => codec.decode(oversized), throwsFormatException);
@@ -102,7 +107,5 @@ String _randomKey(Random random, int index) {
   ];
 
   if (random.nextBool()) return known[random.nextInt(known.length)];
-  return 'unknown_${depthSafe(index)}_${random.nextInt(50)}';
+  return 'unknown_${index.abs()}_${random.nextInt(50)}';
 }
-
-int depthSafe(int value) => value.abs();
