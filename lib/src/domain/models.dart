@@ -346,7 +346,6 @@ class CountoraState {
   final CountoraSettings settings;
 
   Map<String, Object?> toJson() => {
-        'schemaVersion': 1,
         'timers': timers.map((item) => item.toJson()).toList(),
         'presets': presets.map((item) => item.toJson()).toList(),
         'history': history.map((item) => item.toJson()).toList(),
