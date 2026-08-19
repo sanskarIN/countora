@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_links.dart';
 import '../core/app_metadata.dart';
+import '../core/external_link_launcher.dart';
 import '../core/l10n.dart';
 
 class AboutPage extends StatelessWidget {
@@ -125,7 +125,7 @@ class _LinkTile extends StatelessWidget {
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.open_in_new),
       onTap: () async {
-        final launched = await launchUrl(uri);
+        final launched = await openExternalUri(uri);
         if (!launched && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.l10n.openLinkFailed)),
