@@ -9,7 +9,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Presets and groups
 - [x] Interval sequences
 - [x] History
-- [x] Scheduled notifications
+- [x] Scheduled notifications on supported scheduling targets
 - [x] Backup/restore
 - [x] Responsive UI and accessibility baseline
 - [x] Automated unit/controller tests
@@ -20,13 +20,18 @@ This roadmap distinguishes implemented source work from release verification. A 
 ### Data and timing
 
 - [x] Schema-aware backup codec and migration boundary
+- [x] Codec-owned persistence schema version
 - [x] Bounded untrusted backup validation
 - [x] Corrupted local-state recovery
 - [x] Monotonic in-process runtime clock
 - [x] App-resume timer reconciliation
 - [x] Interval catch-up without accumulated wake-up drift
+- [x] Persistence-first notification side effects for timer mutations/reconciliation
+- [x] Failed-import rollback before platform notification replacement
 - [x] Notification exact-to-inexact fallback
+- [x] Unsupported Web/Linux future-notification scheduling guard
 - [x] Generated Android notification configuration hardening
+- [x] Validated/idempotent generated Android patch helpers
 
 ### Product workflows
 
@@ -45,8 +50,10 @@ This roadmap distinguishes implemented source work from release verification. A 
 
 - [x] Shared design tokens
 - [x] Main accessibility semantics improvements
+- [x] Correct focus-mode entry/exit semantics copy
 - [x] English generated-localization architecture
 - [x] Structured redacting diagnostics
+- [x] Guarded URL-launch and clipboard failure handling
 - [x] Responsive phone/desktop navigation
 - [x] Dark/light/system themes and reduced motion
 
@@ -56,23 +63,35 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Local persistence recovery tests
 - [x] Stable clock tests
 - [x] Expanded controller workflow tests
+- [x] Persistence/notification consistency regression tests
+- [x] Platform patch regression tests
+- [x] External-link failure regression tests
 - [x] Primary widget journey tests
+- [x] Focus-mode semantics widget regression
 - [x] Primary integration journey source
+- [x] Dedicated Linux/Xvfb integration CI job source
 - [x] Localization tests
+- [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
+- [x] Required-file/version/secret repository audit tooling
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
 - [x] Multi-platform tagged release workflow source
+- [x] Tagged-release SHA-256 artifact checksum generation
 
 ### Still required before final 0.2 release
 
-- [ ] Observe a successful CI run for formatting, analyze, tests, docs links, and Web release build
-- [ ] Fix every concrete CI/compiler/test issue discovered
-- [ ] Run integration journey on a configured Flutter target
+- [ ] Observe a successful CI run for formatting, analyze, tests, docs links, Web release build, and the Linux integration job
+- [ ] Fix every concrete CI/compiler/test issue discovered by a real Flutter toolchain run
+- [ ] Run the integration journey on a configured local/release Flutter target and record the result
+- [ ] Run the state-codec benchmark on representative hardware and record environment/results
+- [ ] Generate dependencies with a real Flutter SDK and review/commit the application `pubspec.lock` if appropriate for the release policy
 - [ ] Verify Android notification permission/completion behavior on a real device/emulator
 - [ ] Verify at least one desktop native build from the release workflow
+- [ ] Verify Windows/macOS/iOS notification behavior on supported real environments before making platform-specific delivery claims
+- [ ] Complete manual accessibility review with a real screen reader, keyboard-only navigation, reduced motion, and large text
 - [ ] Capture real application screenshots from a verified build
-- [ ] Complete final documentation/release audit
+- [ ] Run the final clean-checkout documentation/repository/release audit and record its successful output
 
 ## 1.0 — Stable release
 
