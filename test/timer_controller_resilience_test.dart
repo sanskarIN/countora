@@ -25,6 +25,9 @@ class _FailingStore implements TimerStore {
 }
 
 class _QuietNotifications implements NotificationService {
+  int permissionRequests = 0;
+  int scheduleCount = 0;
+
   @override
   Future<void> cancelTimer(String timerId) async {}
 
@@ -32,7 +35,9 @@ class _QuietNotifications implements NotificationService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> requestPermissions() async {}
+  Future<void> requestPermissions() async {
+    permissionRequests += 1;
+  }
 
   @override
   Future<void> scheduleTimer(
@@ -40,7 +45,9 @@ class _QuietNotifications implements NotificationService {
     required bool soundEnabled,
     required bool vibrationEnabled,
     required bool quietMode,
-  }) async {}
+  }) async {
+    scheduleCount += 1;
+  }
 }
 
 void main() {
@@ -68,6 +75,36 @@ void main() {
 
     expect(controller.timers, hasLength(1));
     expect(controller.lastError, contains('could not save'));
+  });
+
+  test('failed persistence does not create a platform notification schedule', () async {
+    final store = _FailingStore(failSave: true);
+    final notifications = _QuietNotifications();
+    final controller = TimerController(
+      store: store,
+      notifications: notifications,
+      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+    );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+
+    await controller.updateSettings(
+      controller.settings.copyWith(notificationsEnabled: true),
+    );
+    expect(controller.lastError, contains('could not save'));
+
+    controller.clearError();
+    await controller.addTimer(
+      name: 'Unsaved running timer',
+      group: '',
+      steps: const <IntervalStep>[
+        IntervalStep(label: 'Timer', durationSeconds: 60),
+      ],
+    );
+
+    expect(controller.timers, hasLength(1));
+    expect(controller.lastError, contains('could not save'));
+    expect(notifications.scheduleCount, 0);
   });
 
   test('clear failure keeps in-memory state and exposes safe error text', () async {
