@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/l10n.dart';
 import '../data/state_codec.dart';
 import '../domain/models.dart';
 import 'about_page.dart';
@@ -13,180 +16,175 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     final settings = controller.settings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(strings.settings)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          _sectionTitle(context, 'Appearance'),
+          _sectionTitle(context, strings.appearance),
           SegmentedButton<ThemeMode>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: ThemeMode.system,
-                icon: Icon(Icons.brightness_auto),
-                label: Text('System'),
+                icon: const Icon(Icons.brightness_auto),
+                label: Text(strings.systemTheme),
               ),
               ButtonSegment(
                 value: ThemeMode.light,
-                icon: Icon(Icons.light_mode),
-                label: Text('Light'),
+                icon: const Icon(Icons.light_mode),
+                label: Text(strings.lightTheme),
               ),
               ButtonSegment(
                 value: ThemeMode.dark,
-                icon: Icon(Icons.dark_mode),
-                label: Text('Dark'),
+                icon: const Icon(Icons.dark_mode),
+                label: Text(strings.darkTheme),
               ),
             ],
             selected: <ThemeMode>{settings.themeMode},
-            onSelectionChanged: (value) {
+            onSelectionChanged: (value) => unawaited(
               controller.updateSettings(
                 settings.copyWith(themeMode: value.first),
-              );
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Compact timer cards'),
-            subtitle: const Text('Use denser layouts on small or busy screens.'),
-            value: settings.compactCards,
-            onChanged: (value) => controller.updateSettings(
-              settings.copyWith(compactCards: value),
+              ),
             ),
           ),
           SwitchListTile(
-            title: const Text('Reduced motion'),
-            subtitle: const Text('Prefer minimal movement and transitions.'),
+            title: Text(strings.compactTimerCards),
+            subtitle: Text(strings.compactTimerCardsHelp),
+            value: settings.compactCards,
+            onChanged: (value) => unawaited(
+              controller.updateSettings(
+                settings.copyWith(compactCards: value),
+              ),
+            ),
+          ),
+          SwitchListTile(
+            title: Text(strings.reducedMotion),
+            subtitle: Text(strings.reducedMotionHelp),
             value: settings.reducedMotion,
-            onChanged: (value) => controller.updateSettings(
-              settings.copyWith(reducedMotion: value),
+            onChanged: (value) => unawaited(
+              controller.updateSettings(
+                settings.copyWith(reducedMotion: value),
+              ),
             ),
           ),
           const Divider(height: 32),
-          _sectionTitle(context, 'Notifications & cues'),
+          _sectionTitle(context, strings.notificationsCues),
           SwitchListTile(
-            title: const Text('Completion notifications'),
-            subtitle: const Text(
-              'Use platform notifications so countdowns can finish while '
-              'Countora is not in the foreground.',
-            ),
+            title: Text(strings.completionNotifications),
+            subtitle: Text(strings.completionNotificationsHelp),
             value: settings.notificationsEnabled,
-            onChanged: (value) => controller.updateSettings(
-              settings.copyWith(notificationsEnabled: value),
+            onChanged: (value) => unawaited(
+              controller.updateSettings(
+                settings.copyWith(notificationsEnabled: value),
+              ),
             ),
           ),
           SwitchListTile(
-            title: const Text('Sound'),
+            title: Text(strings.sound),
             value: settings.soundEnabled,
             onChanged: settings.notificationsEnabled
-                ? (value) => controller.updateSettings(
-                      settings.copyWith(soundEnabled: value),
+                ? (value) => unawaited(
+                      controller.updateSettings(
+                        settings.copyWith(soundEnabled: value),
+                      ),
                     )
                 : null,
           ),
           SwitchListTile(
-            title: const Text('Vibration'),
+            title: Text(strings.vibration),
             value: settings.vibrationEnabled,
             onChanged: settings.notificationsEnabled
-                ? (value) => controller.updateSettings(
-                      settings.copyWith(vibrationEnabled: value),
+                ? (value) => unawaited(
+                      controller.updateSettings(
+                        settings.copyWith(vibrationEnabled: value),
+                      ),
                     )
                 : null,
           ),
           SwitchListTile(
-            title: const Text('Quiet mode'),
-            subtitle: const Text(
-              'Keep visual notifications while suppressing sound and vibration.',
-            ),
+            title: Text(strings.quietMode),
+            subtitle: Text(strings.quietModeHelp),
             value: settings.quietMode,
-            onChanged: (value) => controller.updateSettings(
-              settings.copyWith(quietMode: value),
+            onChanged: (value) => unawaited(
+              controller.updateSettings(
+                settings.copyWith(quietMode: value),
+              ),
             ),
           ),
           const Divider(height: 32),
-          _sectionTitle(context, 'Privacy & data'),
-          const ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text('Local-first storage'),
-            subtitle: Text(
-              'Timers, presets, history, and preferences stay on this device '
-              'unless you explicitly copy a backup.',
-            ),
+          _sectionTitle(context, strings.privacyData),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined),
+            title: Text(strings.localFirstStorage),
+            subtitle: Text(strings.localFirstStorageHelp),
           ),
           ListTile(
             leading: const Icon(Icons.file_upload_outlined),
-            title: const Text('Export local backup'),
-            subtitle: const Text('Copy a versioned JSON backup to the clipboard.'),
-            onTap: () async {
-              await Clipboard.setData(
-                ClipboardData(text: controller.exportJson()),
-              );
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Backup copied to clipboard.')),
-              );
-            },
+            title: Text(strings.exportLocalBackup),
+            subtitle: Text(strings.exportLocalBackupHelp),
+            onTap: () => unawaited(_exportBackup(context)),
           ),
           ListTile(
             leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Import local backup'),
-            subtitle: const Text(
-              'Validate and preview a Countora JSON backup before replacing data.',
-            ),
-            onTap: () => _importBackup(context),
+            title: Text(strings.importLocalBackup),
+            subtitle: Text(strings.importLocalBackupHelp),
+            onTap: () => unawaited(_importBackup(context)),
           ),
           ListTile(
             leading: const Icon(Icons.history),
-            title: const Text('Clear history'),
-            subtitle: const Text('Keep active timers and presets.'),
-            onTap: () => _confirmClearHistory(context),
+            title: Text(strings.clearHistory),
+            subtitle: Text(strings.clearHistoryHelp),
+            onTap: () => unawaited(_confirmClearHistory(context)),
           ),
           const Divider(height: 32),
-          _sectionTitle(context, 'Desktop shortcuts'),
-          const ListTile(
-            leading: Icon(Icons.keyboard_outlined),
-            title: Text('New timer or preset'),
-            trailing: Text('Ctrl/Cmd + N'),
+          _sectionTitle(context, strings.desktopShortcuts),
+          ListTile(
+            leading: const Icon(Icons.keyboard_outlined),
+            title: Text(strings.newTimerOrPreset),
+            trailing: const Text('Ctrl/Cmd + N'),
           ),
-          const ListTile(
-            leading: Icon(Icons.search),
-            title: Text('Search timers'),
-            trailing: Text('Ctrl/Cmd + F'),
+          ListTile(
+            leading: const Icon(Icons.search),
+            title: Text(strings.searchTimers),
+            trailing: const Text('Ctrl/Cmd + F'),
           ),
-          const ListTile(
-            leading: Icon(Icons.settings_outlined),
-            title: Text('Open settings'),
-            trailing: Text('Ctrl/Cmd + ,'),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: Text(strings.openSettings),
+            trailing: const Text('Ctrl/Cmd + ,'),
           ),
           const Divider(height: 32),
-          _sectionTitle(context, 'About'),
+          _sectionTitle(context, strings.about),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('About Countora'),
+            title: Text(strings.aboutCountora),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AboutPage(),
+              unawaited(
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AboutPage(),
+                  ),
                 ),
               );
             },
           ),
           const Divider(height: 32),
-          _sectionTitle(context, 'Danger zone'),
+          _sectionTitle(context, strings.dangerZone),
           ListTile(
             leading: Icon(
               Icons.delete_forever_outlined,
               color: Theme.of(context).colorScheme.error,
             ),
             title: Text(
-              'Erase all local Countora data',
+              strings.eraseAllData,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-            subtitle: const Text(
-              'Deletes timers, presets, history, and settings from this device.',
-            ),
-            onTap: () => _confirmResetAll(context),
+            subtitle: Text(strings.eraseAllDataHelp),
+            onTap: () => unawaited(_confirmResetAll(context)),
           ),
         ],
       ),
@@ -200,31 +198,43 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  Future<void> _exportBackup(BuildContext context) async {
+    final strings = context.l10n;
+    await Clipboard.setData(
+      ClipboardData(text: controller.exportJson()),
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.backupCopied)),
+    );
+  }
+
   Future<void> _importBackup(BuildContext context) async {
+    final strings = context.l10n;
     final textController = TextEditingController();
     final shouldPreview = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Import backup'),
+        title: Text(strings.importBackup),
         content: SizedBox(
           width: 560,
           child: TextField(
             controller: textController,
             minLines: 8,
             maxLines: 16,
-            decoration: const InputDecoration(
-              hintText: 'Paste Countora JSON here',
+            decoration: InputDecoration(
+              hintText: strings.pasteBackupHint,
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Validate'),
+            child: Text(strings.validate),
           ),
         ],
       ),
@@ -246,20 +256,21 @@ class SettingsPage extends StatelessWidget {
         context: context,
         builder: (context) => AlertDialog(
           icon: const Icon(Icons.fact_check_outlined),
-          title: const Text('Backup is valid'),
+          title: Text(strings.backupValid),
           content: Text(
-            'Import ${state.timers.length} timers, ${state.presets.length} '
-            'presets, and ${state.history.length} history entries?\n\n'
-            'Your current local Countora data will be replaced.',
+            '${strings.import} ${state.timers.length} ${strings.timers.toLowerCase()}, '
+            '${state.presets.length} ${strings.presets.toLowerCase()}, '
+            '${state.history.length} ${strings.history.toLowerCase()}?\n\n'
+            '${strings.currentDataReplaced}',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Import'),
+              child: Text(strings.import),
             ),
           ],
         ),
@@ -269,39 +280,36 @@ class SettingsPage extends StatelessWidget {
       await controller.importJson(raw);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup imported.')),
+        SnackBar(content: Text(strings.backupImported)),
       );
     } on FormatException catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Backup rejected: ${error.message}')),
+        SnackBar(content: Text('${strings.backupRejected}: ${error.message}')),
       );
     } on Object {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Import failed. Your current data was not intentionally cleared.'),
-        ),
+        SnackBar(content: Text(strings.importFailed)),
       );
     }
   }
 
   Future<void> _confirmClearHistory(BuildContext context) async {
+    final strings = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear history?'),
-        content: const Text(
-          'This removes local completion history. Active timers and presets stay.',
-        ),
+        title: Text(strings.clearHistoryTitle),
+        content: Text(strings.clearHistoryMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: Text(strings.clear),
           ),
         ],
       ),
@@ -312,6 +320,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _confirmResetAll(BuildContext context) async {
+    final strings = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -319,19 +328,16 @@ class SettingsPage extends StatelessWidget {
           Icons.warning_amber_rounded,
           color: Theme.of(context).colorScheme.error,
         ),
-        title: const Text('Erase all local data?'),
-        content: const Text(
-          'This cannot be undone unless you exported a backup first. Active '
-          'notifications will also be cancelled.',
-        ),
+        title: Text(strings.eraseAllDataTitle),
+        content: Text(strings.eraseAllDataWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Erase all data'),
+            child: Text(strings.eraseAllDataAction),
           ),
         ],
       ),
