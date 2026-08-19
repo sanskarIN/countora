@@ -37,7 +37,7 @@ class TimerCard extends StatelessWidget {
       container: true,
       label:
           '${timer.name}, ${formatDuration(remaining)} ${strings.timer.toLowerCase()}, $statusLabel',
-      hint: strings.exitFocusMode,
+      hint: strings.openFocusMode,
       button: true,
       child: Card(
         child: InkWell(
