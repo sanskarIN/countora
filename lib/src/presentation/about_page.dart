@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_links.dart';
+import '../core/app_metadata.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -16,7 +17,7 @@ class AboutPage extends StatelessWidget {
           const Icon(Icons.timer_outlined, size: 72),
           const SizedBox(height: 16),
           Text(
-            'Countora',
+            AppMetadata.name,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium,
           ),
@@ -26,11 +27,16 @@ class AboutPage extends StatelessWidget {
             'cooking, routines, and interval workflows.',
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 12),
+          const Text(
+            'Version ${AppMetadata.version}+${AppMetadata.buildNumber}',
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 24),
           const Center(
             child: Chip(
               avatar: Icon(Icons.favorite_outline),
-              label: Text('Made by the Sanskar'),
+              label: Text(AppMetadata.credit),
             ),
           ),
           const SizedBox(height: 24),
@@ -39,6 +45,12 @@ class AboutPage extends StatelessWidget {
             title: 'Source repository',
             subtitle: AppLinks.repository,
             uri: Uri.parse(AppLinks.repository),
+          ),
+          _LinkTile(
+            icon: Icons.person_outline,
+            title: 'GitHub profile',
+            subtitle: AppLinks.github,
+            uri: Uri.parse(AppLinks.github),
           ),
           _LinkTile(
             icon: Icons.coffee_outlined,
@@ -68,13 +80,26 @@ class AboutPage extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.license_outlined),
             title: Text('License'),
-            subtitle: Text('MIT License'),
+            subtitle: Text(AppMetadata.license),
+          ),
+          const ListTile(
+            leading: Icon(Icons.storage_outlined),
+            title: Text('Data model'),
+            subtitle: Text(AppMetadata.storageModel),
           ),
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy'),
             subtitle: Text(
               'Timer data is stored locally. Countora does not require an account.',
+            ),
+          ),
+          const ListTile(
+            leading: Icon(Icons.accessibility_new),
+            title: Text('Accessibility'),
+            subtitle: Text(
+              'Keyboard navigation, semantic labels, scalable text, reduced '
+              'motion, and non-audio countdown cues are supported.',
             ),
           ),
         ],
