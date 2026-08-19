@@ -1,0 +1,33 @@
+name: Release build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  web-and-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: dart run tool/bootstrap_platforms.dart
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build web --release
+      - run: flutter build apk --release
+      - name: Archive web
+        run: cd build/web && zip -r ../countora-web.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/countora-web.zip
+          generate_release_notes: true
