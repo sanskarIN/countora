@@ -34,7 +34,12 @@ class CountoraStateCodec {
       throw const FormatException('The backup is larger than 2 MiB.');
     }
 
-    final decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      rethrow;
+    }
     if (decoded is! Map<Object?, Object?>) {
       throw const FormatException('The backup root must be a JSON object.');
     }
@@ -42,7 +47,16 @@ class CountoraStateCodec {
     final root = decoded.map((key, value) => MapEntry('$key', value));
     final schemaVersion = _readSchemaVersion(root['schemaVersion']);
     final migrated = _migrate(root, schemaVersion);
-    return _sanitize(CountoraState.fromJson(migrated));
+
+    try {
+      return _sanitize(CountoraState.fromJson(migrated));
+    } on FormatException {
+      rethrow;
+    } on Object {
+      throw const FormatException(
+        'The backup contains fields with invalid data types.',
+      );
+    }
   }
 
   int _readSchemaVersion(Object? value) {
