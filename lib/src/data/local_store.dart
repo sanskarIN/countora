@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models.dart';
+import 'state_codec.dart';
 
 abstract interface class TimerStore {
   Future<CountoraState> load();
@@ -11,11 +10,15 @@ abstract interface class TimerStore {
 }
 
 class SharedPreferencesTimerStore implements TimerStore {
-  SharedPreferencesTimerStore(this._preferences);
+  SharedPreferencesTimerStore(
+    this._preferences, {
+    CountoraStateCodec codec = const CountoraStateCodec(),
+  }) : _codec = codec;
 
   static const _stateKey = 'countora_state_v1';
 
   final SharedPreferences _preferences;
+  final CountoraStateCodec _codec;
 
   @override
   Future<CountoraState> load() async {
@@ -25,21 +28,18 @@ class SharedPreferencesTimerStore implements TimerStore {
     }
 
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<Object?, Object?>) {
-        return const CountoraState();
-      }
-      return CountoraState.fromJson(
-        decoded.map((key, value) => MapEntry('$key', value)),
-      );
+      return _codec.decode(raw);
     } on FormatException {
+      // Corrupted local state must never prevent Countora from starting. Import
+      // operations are strict and surface validation errors to the user; local
+      // recovery instead falls back to a safe empty state.
       return const CountoraState();
     }
   }
 
   @override
   Future<void> save(CountoraState state) async {
-    final encoded = jsonEncode(state.toJson());
+    final encoded = _codec.encode(state);
     final didSave = await _preferences.setString(_stateKey, encoded);
     if (!didSave) {
       throw StateError('Countora could not save local data.');
