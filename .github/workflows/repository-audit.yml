@@ -1,0 +1,42 @@
+name: Repository audit
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify required repository files
+        run: dart run tool/check_required_files.dart
+
+      - name: Verify version metadata
+        run: dart run tool/check_version_sync.dart
+
+      - name: Scan tracked source for obvious secrets
+        run: dart run tool/check_secrets.dart
+
+      - name: Verify local documentation links
+        run: dart run tool/check_markdown_links.dart
