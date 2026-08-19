@@ -1,0 +1,66 @@
+name: Documentation
+
+description: Report missing, unclear, outdated, or incorrect Countora documentation.
+title: "[Docs]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Countora documentation. Do not include secrets, private backup data, or credentials.
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Which file, section, command, or page needs attention?
+      placeholder: docs/setup.md — Windows setup section
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or unclear?
+      description: Explain the documentation problem and why it is confusing, incomplete, outdated, or incorrect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should the documentation say or explain?
+      description: Describe the correction, missing explanation, or expected guidance.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Countora version or commit
+      placeholder: 0.2.0+2 or a commit SHA
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform involved
+      options:
+        - Not platform-specific
+        - Android
+        - iOS
+        - Web
+        - Windows
+        - macOS
+        - Linux
+        - Multiple platforms
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for the same documentation problem.
+          required: true
+        - label: I removed secrets, credentials, and private backup/timer data from this report.
+          required: true
