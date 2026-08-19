@@ -28,7 +28,7 @@ void main() {
     'docs/accessibility.md',
     'docs/performance.md',
     'docs/github.md',
-    'docs/adr/0001-local-first-architecture.md',
+    'docs/adr/0001-local-first-modular-flutter.md',
     'docs/adr/0002-monotonic-runtime-clock.md',
     'docs/adr/0003-versioned-bounded-json-state.md',
     'docs/adr/0004-generated-platform-runners.md',
