@@ -5,22 +5,29 @@ import 'package:countora/src/presentation/timer_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FailingStore implements TimerStore {
-  _FailingStore({this.failSave = false, this.failClear = false});
+  _FailingStore({
+    this.failSave = false,
+    this.failClear = false,
+    CountoraState initialState = const CountoraState(),
+  }) : _state = initialState;
 
   bool failSave;
   bool failClear;
+  CountoraState _state;
 
   @override
   Future<void> clear() async {
     if (failClear) throw StateError('simulated clear failure');
+    _state = const CountoraState();
   }
 
   @override
-  Future<CountoraState> load() async => const CountoraState();
+  Future<CountoraState> load() async => _state;
 
   @override
   Future<void> save(CountoraState state) async {
     if (failSave) throw StateError('simulated save failure');
+    _state = state;
   }
 }
 
@@ -189,6 +196,102 @@ void main() {
     expect(controller.lastError, contains('could not save'));
     expect(notifications.cancelCount, 0);
     expect(notifications.scheduleCount, 1);
+  });
+
+  test('failed reconciliation persistence does not cancel schedules', () async {
+    final now = DateTime.utc(2026, 8, 19, 9);
+    final notifications = _QuietNotifications();
+    final store = _FailingStore(
+      failSave: true,
+      initialState: CountoraState(
+        timers: <CountdownTimer>[
+          CountdownTimer(
+            id: 'expired',
+            name: 'Expired',
+            group: '',
+            steps: const <IntervalStep>[
+              IntervalStep(label: 'Timer', durationSeconds: 60),
+            ],
+            currentStepIndex: 0,
+            status: CountdownStatus.running,
+            remainingWhenPausedSeconds: 60,
+            startedAtUtc: now.subtract(const Duration(minutes: 2)),
+            endsAtUtc: now.subtract(const Duration(minutes: 1)),
+          ),
+        ],
+      ),
+    );
+    final controller = TimerController(
+      store: store,
+      notifications: notifications,
+      nowUtc: () => now,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+
+    expect(controller.timers.single.status, CountdownStatus.completed);
+    expect(controller.lastError, contains('could not save'));
+    expect(notifications.cancelCount, 0);
+    expect(notifications.scheduleCount, 0);
+  });
+
+  test('failed import persistence restores prior in-memory state', () async {
+    final store = _FailingStore(
+      initialState: const CountoraState(
+        settings: CountoraSettings(notificationsEnabled: false),
+        timers: <CountdownTimer>[
+          CountdownTimer(
+            id: 'original',
+            name: 'Original',
+            group: '',
+            steps: <IntervalStep>[
+              IntervalStep(label: 'Timer', durationSeconds: 60),
+            ],
+            currentStepIndex: 0,
+            status: CountdownStatus.paused,
+            remainingWhenPausedSeconds: 60,
+          ),
+        ],
+      ),
+    );
+    final notifications = _QuietNotifications();
+    final controller = TimerController(
+      store: store,
+      notifications: notifications,
+      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+    );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+    store.failSave = true;
+
+    await expectLater(
+      controller.importJson('''
+{
+  "schemaVersion": 1,
+  "timers": [
+    {
+      "id": "replacement",
+      "name": "Replacement",
+      "group": "",
+      "steps": [{"label":"Timer","durationSeconds":120}],
+      "currentStepIndex": 0,
+      "status": "paused",
+      "remainingWhenPausedSeconds": 120
+    }
+  ],
+  "presets": [],
+  "history": [],
+  "settings": {"notificationsEnabled": false}
+}
+'''),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(controller.timers.single.id, 'original');
+    expect(controller.timers.single.name, 'Original');
+    expect(controller.lastError, contains('could not save'));
+    expect(notifications.cancelCount, 0);
   });
 
   test('clear failure keeps in-memory state and exposes safe error text', () async {
