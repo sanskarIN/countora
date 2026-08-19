@@ -99,7 +99,7 @@
   "nonAudioCuesHelp": "Progress bars, status text, and focus-mode countdowns stay visible even when sound and vibration are off.",
   "notificationsCues": "Notifications & cues",
   "completionNotifications": "Completion notifications",
-  "completionNotificationsHelp": "Use platform notifications so countdowns can finish while Countora is not in the foreground.",
+  "completionNotificationsHelp": "Use scheduled platform notifications where supported so countdowns can alert you while Countora is not in the foreground.",
   "sound": "Sound",
   "vibration": "Vibration",
   "quietMode": "Quiet mode",
