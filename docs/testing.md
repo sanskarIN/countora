@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, platform capability decisions, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -13,6 +13,8 @@ Countora treats timing, persistence, backup parsing, external-link handling, and
 `test/state_codec_test.dart` covers:
 
 - supported-state round trips
+- codec-owned schema stamping
+- domain serialization remaining schema-agnostic
 - legacy unversioned migration
 - future-schema rejection
 - non-object backup rejection
@@ -34,21 +36,35 @@ Countora treats timing, persistence, backup parsing, external-link handling, and
 
 `test/stable_clock_test.dart` verifies the monotonic clock anchor behavior without using real elapsed time.
 
-`test/timer_controller_test.dart`, `test/timer_controller_workflows_test.dart`, and `test/timer_controller_resilience_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, history reuse, and recoverable infrastructure failures.
+`test/timer_controller_test.dart` and `test/timer_controller_workflows_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, and history reuse.
+
+`test/timer_controller_resilience_test.dart` specifically covers recoverable infrastructure failures, including:
+
+- save failures surfaced without escaping normal UI-facing operations
+- no notification scheduling after a failed timer persistence attempt
+- no notification cancellation after failed pause/removal persistence
+- no notification side effects after failed notification-settings persistence
+- no reconciliation notification side effects when the reconciled state cannot be saved
+- failed backup-import persistence restoring the previous in-memory state
+- local-store clear failure preserving current in-memory state
 
 ### Platform-boundary tests
 
 `test/external_link_launcher_test.dart` verifies that successful, declined, and throwing URL-launch operations are converted into a safe boolean result instead of allowing platform failures to escape into the widget tree.
 
+`test/platform_capabilities_test.dart` verifies Countora's explicit future-notification policy: Web and Linux are unsupported by the current scheduled-notification adapter while Android, iOS, macOS, and Windows use their native adapter paths.
+
+`test/platform_patches_test.dart` verifies generated Android runner transforms for required notification permissions/receivers, desugaring, multidex, idempotence, and explicit template-drift failure.
+
 ### Widget tests
 
-`test/home_page_test.dart` covers primary timer presentation, accessible semantics, filtered empty states, resume controls, and history replay.
+`test/home_page_test.dart` covers primary timer presentation, accessible semantics, the focus-mode entry hint, filtered empty states, resume controls, and history replay.
 
 `test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, and clipboard-backup failure feedback.
 
 `test/keyboard_shortcuts_test.dart` covers the primary desktop keyboard shortcuts.
 
-`test/localization_test.dart` verifies English localization generation/delegate behavior.
+`test/localization_test.dart` verifies English localization generation/delegate behavior, including distinct focus-mode entry/exit semantics and supported/unsupported notification explanatory copy.
 
 ### Integration journey
 
@@ -60,7 +76,25 @@ Countora treats timing, persistence, backup parsing, external-link handling, and
 4. save it as a preset
 5. start another timer from that preset
 
-CI now has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, generates Countora's platform runners, and executes the integration suite against the Linux desktop target in a virtual display.
+CI has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, generates Countora's platform runners, and executes the integration suite against the Linux desktop target in a virtual display.
+
+## Performance measurement
+
+The deterministic codec benchmark harness is not a correctness test and intentionally has no universal wall-clock pass/fail threshold.
+
+Run:
+
+```bash
+dart run tool/benchmark_state_codec.dart
+```
+
+or:
+
+```bash
+dart run tool/benchmark_state_codec.dart --iterations 500
+```
+
+The harness verifies every encode/decode round trip and emits JSON with fixture size plus minimum, p50, p95, and maximum encode/decode microseconds. See [`performance.md`](performance.md) for the measurement policy and required environment metadata.
 
 ## Standard local quality suite
 
@@ -149,6 +183,7 @@ Automated Dart/widget/Linux integration tests cannot fully prove OS notification
 - app-resume reconciliation
 - keyboard shortcuts and focus traversal on desktop/web
 - screen-reader labels and live-region behavior
+- Settings capability messaging on targets without scheduled background notification support
 
 ## Regression rule
 
