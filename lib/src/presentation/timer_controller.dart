@@ -239,8 +239,9 @@ class TimerController extends ChangeNotifier {
       clearStartedAt: true,
     );
     _replaceTimer(updated);
-    await _notifications.cancelTimer(timerId);
-    await _persist();
+    if (await _persist()) {
+      await _notifications.cancelTimer(timerId);
+    }
   }
 
   Future<void> pauseAllRunning() async {
@@ -261,10 +262,11 @@ class TimerController extends ChangeNotifier {
       );
     }).toList();
 
-    for (final timer in running) {
-      await _notifications.cancelTimer(timer.id);
+    if (await _persist()) {
+      for (final timer in running) {
+        await _notifications.cancelTimer(timer.id);
+      }
     }
-    await _persist();
   }
 
   Future<void> resume(String timerId) async {
@@ -337,8 +339,9 @@ class TimerController extends ChangeNotifier {
 
   Future<void> removeTimer(String timerId) async {
     _timers = _timers.where((timer) => timer.id != timerId).toList();
-    await _notifications.cancelTimer(timerId);
-    await _persist();
+    if (await _persist()) {
+      await _notifications.cancelTimer(timerId);
+    }
   }
 
   Future<void> removeCompletedTimers() async {
@@ -390,6 +393,8 @@ class TimerController extends ChangeNotifier {
         _settings.notificationsEnabled && !value.notificationsEnabled;
     _settings = value;
 
+    if (!await _persist()) return;
+
     if (notificationsWereDisabled) {
       for (final timer in _timers) {
         await _notifications.cancelTimer(timer.id);
@@ -401,8 +406,6 @@ class TimerController extends ChangeNotifier {
         await _schedule(timer);
       }
     }
-
-    await _persist();
   }
 
   Future<void> markOnboardingSeen() async {
