@@ -2,6 +2,7 @@ name: Dependency security review
 
 on:
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -9,8 +10,13 @@ permissions:
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
