@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../core/app_links.dart';
 import '../core/external_link_launcher.dart';
 import '../core/l10n.dart';
+import '../core/platform_capabilities.dart';
 import '../data/state_codec.dart';
 import '../domain/models.dart';
 import 'about_page.dart';
@@ -20,6 +21,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = context.l10n;
     final settings = controller.settings;
+    final scheduledNotificationsSupported = supportsScheduledNotifications();
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.settings)),
@@ -83,45 +85,56 @@ class SettingsPage extends StatelessWidget {
           _sectionTitle(context, strings.notificationsCues),
           SwitchListTile(
             title: Text(strings.completionNotifications),
-            subtitle: Text(strings.completionNotificationsHelp),
-            value: settings.notificationsEnabled,
-            onChanged: (value) => unawaited(
-              controller.updateSettings(
-                settings.copyWith(notificationsEnabled: value),
-              ),
+            subtitle: Text(
+              scheduledNotificationsSupported
+                  ? strings.completionNotificationsHelp
+                  : strings.completionNotificationsUnavailable,
             ),
+            value: scheduledNotificationsSupported && settings.notificationsEnabled,
+            onChanged: scheduledNotificationsSupported
+                ? (value) => unawaited(
+                      controller.updateSettings(
+                        settings.copyWith(notificationsEnabled: value),
+                      ),
+                    )
+                : null,
           ),
           SwitchListTile(
             title: Text(strings.sound),
             value: settings.soundEnabled,
-            onChanged: settings.notificationsEnabled
-                ? (value) => unawaited(
-                      controller.updateSettings(
-                        settings.copyWith(soundEnabled: value),
-                      ),
-                    )
-                : null,
+            onChanged:
+                scheduledNotificationsSupported && settings.notificationsEnabled
+                    ? (value) => unawaited(
+                          controller.updateSettings(
+                            settings.copyWith(soundEnabled: value),
+                          ),
+                        )
+                    : null,
           ),
           SwitchListTile(
             title: Text(strings.vibration),
             value: settings.vibrationEnabled,
-            onChanged: settings.notificationsEnabled
-                ? (value) => unawaited(
-                      controller.updateSettings(
-                        settings.copyWith(vibrationEnabled: value),
-                      ),
-                    )
-                : null,
+            onChanged:
+                scheduledNotificationsSupported && settings.notificationsEnabled
+                    ? (value) => unawaited(
+                          controller.updateSettings(
+                            settings.copyWith(vibrationEnabled: value),
+                          ),
+                        )
+                    : null,
           ),
           SwitchListTile(
             title: Text(strings.quietMode),
             subtitle: Text(strings.quietModeHelp),
             value: settings.quietMode,
-            onChanged: (value) => unawaited(
-              controller.updateSettings(
-                settings.copyWith(quietMode: value),
-              ),
-            ),
+            onChanged:
+                scheduledNotificationsSupported && settings.notificationsEnabled
+                    ? (value) => unawaited(
+                          controller.updateSettings(
+                            settings.copyWith(quietMode: value),
+                          ),
+                        )
+                    : null,
           ),
           const Divider(height: 32),
           _sectionTitle(context, strings.privacyData),
