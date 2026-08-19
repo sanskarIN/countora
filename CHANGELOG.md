@@ -33,8 +33,10 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Structured diagnostics with sensitive-key redaction.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
-- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-patch, and integration regression tests.
+- Central scheduled-notification capability policy shared by Settings and the notification adapter.
+- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-capability, platform-patch, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
+- ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
@@ -55,7 +57,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Notification permission is requested at most once per controller session.
 - Disabling notifications cancels active schedules; enabling them reschedules running timers after settings persistence succeeds.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
-- Unsupported future notification scheduling is skipped on Web and Linux while preserving in-app timer completion behavior.
+- Future scheduled-notification capability now fails closed: Android, iOS, macOS, and Windows are explicitly enabled while Web, Linux, Fuchsia, and unapproved future targets are not assumed capable.
+- Settings disables completion-notification, sound, vibration, and quiet-mode controls when scheduled background completion is unavailable and explains that in-app completion cues still work.
 - Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup through validated idempotent patch helpers.
 - Settings backup/import/reset UI is safer and more explicit.
 - Clipboard backup export now surfaces a localized failure message instead of allowing a platform-channel exception to escape.
@@ -71,6 +74,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Prevented persistence failures from creating/cancelling notification schedules for state not durably saved.
 - Prevented failed backup persistence from being reported as a successful import.
 - Prevented generated-runner patching from silently succeeding when expected Flutter Android template anchors disappear.
+- Prevented unsupported or unknown notification targets from being treated as future-scheduling capable by default.
 
 ### Security
 
