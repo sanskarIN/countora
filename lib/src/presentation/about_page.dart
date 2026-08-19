@@ -128,7 +128,7 @@ class _LinkTile extends StatelessWidget {
         final launched = await launchUrl(uri);
         if (!launched && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open $subtitle')),
+            SnackBar(content: Text(context.l10n.openLinkFailed)),
           );
         }
       },
