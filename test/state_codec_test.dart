@@ -52,6 +52,15 @@ void main() {
       );
     });
 
+    test('domain state serialization does not own persistence schema', () {
+      expect(
+        const CountoraState().toJson(),
+        isNot(contains('schemaVersion')),
+      );
+      final encoded = jsonDecode(codec.encode(const CountoraState())) as Map;
+      expect(encoded, contains('schemaVersion'));
+    });
+
     test('migrates legacy unversioned state to the current schema', () {
       final decoded = codec.decode(
         '{"timers":[],"presets":[],"history":[],"settings":{}}',
