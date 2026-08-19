@@ -187,10 +187,15 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent
           build/ios/iphoneos/Runner.app
           build/countora-ios-unsigned.zip
+      - name: Create Apple checksums
+        run: |
+          cd build
+          shasum -a 256 countora-macos.zip countora-ios-unsigned.zip > countora-apple.sha256
       - name: Publish Apple artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/countora-macos.zip
             build/countora-ios-unsigned.zip
+            build/countora-apple.sha256
           fail_on_unmatched_files: true
