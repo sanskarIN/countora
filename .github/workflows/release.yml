@@ -67,6 +67,15 @@ jobs:
       - name: Archive web release
         run: cd build/web && zip -r ../countora-web.zip .
 
+      - name: Create Android and Web checksums
+        run: |
+          cd build
+          sha256sum \
+            app/outputs/flutter-apk/app-release.apk \
+            app/outputs/bundle/release/app-release.aab \
+            countora-web.zip \
+            > countora-android-web.sha256
+
       - name: Publish Android and Web artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -74,6 +83,7 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
             build/countora-web.zip
+            build/countora-android-web.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
 
