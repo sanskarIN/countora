@@ -110,6 +110,7 @@
   "exportLocalBackup": "Export local backup",
   "exportLocalBackupHelp": "Copy a versioned JSON backup to the clipboard.",
   "backupCopied": "Backup copied to clipboard.",
+  "backupExportFailed": "Could not copy the backup. Your local Countora data was unchanged.",
   "importLocalBackup": "Import local backup",
   "importLocalBackupHelp": "Validate and preview a Countora JSON backup before replacing data.",
   "clearHistory": "Clear history",
