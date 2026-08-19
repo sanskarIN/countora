@@ -587,8 +587,9 @@ class TimerController extends ChangeNotifier {
   }
 
   Future<void> _persistAndSchedule(CountdownTimer timer) async {
-    await _persist();
-    await _schedule(timer);
+    if (await _persist()) {
+      await _schedule(timer);
+    }
   }
 
   Future<void> _schedule(CountdownTimer timer) async {
