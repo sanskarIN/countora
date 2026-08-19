@@ -2,6 +2,7 @@ import 'package:countora/src/app.dart';
 import 'package:countora/src/domain/models.dart';
 import 'package:countora/src/presentation/timer_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fakes.dart';
@@ -52,6 +53,39 @@ void main() {
     await tester.pump();
 
     expect(controller.settings.reducedMotion, isTrue);
+  });
+
+  testWidgets('backup export reports clipboard platform failures', (tester) async {
+    controller = await _buildController();
+    final messenger = TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        throw PlatformException(code: 'clipboard-unavailable');
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await tester.pumpWidget(CountoraApp(controller: controller));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Export local backup'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Export local backup'));
+    await tester.pump();
+
+    expect(
+      find.text('Could not copy the backup. Your local Countora data was unchanged.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('erase all data requires confirmation and clears local state', (
