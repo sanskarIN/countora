@@ -36,7 +36,8 @@ Current development version: **0.2.0+2**.
 - Monotonic in-process clock to reduce live countdown jumps after wall-clock changes
 - App-resume reconciliation for expired or suspended timers
 - Interval catch-up that preserves absolute sequence timing after suspension
-- Background local completion notifications
+- Background local completion notifications on supported scheduling targets
+- Safe Web/Linux fallback to in-app timer completion when future notification scheduling is unavailable
 - Android exact-alarm fallback to inexact scheduling when exact permission is unavailable
 - Corruption-safe local persistence recovery
 - Bounded, schema-aware JSON backup validation and migration
@@ -68,14 +69,16 @@ Real product captures will be committed only after a verified runnable multi-pla
 
 ## Platforms
 
-| Platform | Source target | Release workflow |
-| --- | --- | --- |
-| Android | Supported | APK + AAB |
-| Web | Supported | ZIP |
-| Linux | Supported | x64 tar.gz |
-| Windows | Supported | x64 ZIP |
-| macOS | Supported | app ZIP |
-| iOS | iOS-ready | unsigned app ZIP for CI verification; distribution requires signing |
+| Platform | Source target | Release workflow | Scheduled background completion |
+| --- | --- | --- | --- |
+| Android | Supported | APK + AAB | Supported; exact scheduling falls back to inexact when required |
+| Web | Supported | ZIP | Not currently supported by the notification scheduling capability |
+| Linux | Supported | x64 tar.gz | Not currently supported by the notification scheduling capability |
+| Windows | Supported | x64 ZIP | Source support present; release verification required |
+| macOS | Supported | app ZIP | Source support present; release verification required |
+| iOS | iOS-ready | unsigned app ZIP for CI verification; distribution requires signing | Source support present; device/signing verification required |
+
+Web and Linux still retain local timer state, live in-app countdowns, completion state, history, and resume reconciliation; only future background notification scheduling is unavailable there in the current implementation.
 
 Native runner folders are generated from the installed Flutter SDK so stale framework boilerplate is not frozen into source control.
 
@@ -85,9 +88,9 @@ Native runner folders are generated from the installed Flutter SDK so stale fram
 - Flutter Material 3
 - Flutter generated localization (`gen_l10n`)
 - `shared_preferences` for small local state persistence
-- `flutter_local_notifications` for scheduled local notifications
+- `flutter_local_notifications` for local notifications where supported
 - `timezone` for timezone-aware notification scheduling
-- `url_launcher` for support/source links
+- `url_launcher` behind a guarded external-link helper
 
 ## Quick start
 
@@ -105,7 +108,7 @@ flutter gen-l10n
 flutter run
 ```
 
-`tool/bootstrap_platforms.dart` runs `flutter create` for Android, iOS, Web, Windows, macOS, and Linux runners, then applies Android notification/desugaring configuration idempotently.
+`tool/bootstrap_platforms.dart` runs `flutter create` for Android, iOS, Web, Windows, macOS, and Linux runners, then applies validated Android notification/desugaring transforms from `tool/src/platform_patches.dart`.
 
 For complete setup instructions, see [`docs/setup.md`](docs/setup.md).
 
@@ -183,8 +186,11 @@ lib/
     domain/                 # timers, presets, history, settings
     presentation/           # controller and responsive UI
 integration_test/           # end-to-end Flutter user journeys
-test/                       # domain, controller, persistence, UI, localization tests
-tool/                       # platform bootstrap and repository checks
+test/                       # domain, controller, persistence, UI, localization, tool tests
+tool/
+  bootstrap_platforms.dart  # deterministic Flutter runner generation
+  src/platform_patches.dart # pure validated Android runner transforms
+  ...                       # repository checks
 docs/                       # architecture, setup, testing, release, ADRs
 .github/                    # CI, release, security, templates, Dependabot/funding
 ```
@@ -198,7 +204,7 @@ Countora uses a small modular-monolith structure:
 3. **Presentation** — controller-driven state transitions and adaptive Flutter UI.
 4. **Core** — stable clock, design tokens, metadata, links, localization helper, formatting, structured logging, and safe external-link launching.
 
-Running timers persist an absolute UTC deadline. During one process lifetime, countdown calculations use a monotonic clock anchored to UTC so a wall-clock edit does not directly make a live timer jump. On resume/startup, the controller reconciles elapsed interval steps and reschedules completion notifications.
+Running timers persist an absolute UTC deadline. During one process lifetime, countdown calculations use a monotonic clock anchored to UTC so a wall-clock edit does not directly make a live timer jump. On resume/startup, the controller reconciles elapsed interval steps and reschedules completion notifications where the target supports future scheduling.
 
 See [`docs/architecture.md`](docs/architecture.md) and [`docs/adr/`](docs/adr/) for architectural decisions.
 
@@ -238,6 +244,8 @@ Countora has no authentication or cloud service. Security work therefore focuses
 - Backup/import JSON is schema/type/size bounded.
 - Local corruption falls back to a safe recoverable state.
 - Sensitive structured-log keys are redacted.
+- External URL-launch and clipboard platform failures are contained at guarded boundaries.
+- Unsupported scheduled-notification targets are not sent future-scheduling calls.
 - Dependency Review blocks newly introduced moderate-or-higher vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
 - Tagged releases run deterministic required-file, version-sync, tracked-secret, and documentation-link audits.
