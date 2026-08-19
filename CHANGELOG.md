@@ -33,10 +33,12 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Structured diagnostics with sensitive-key redaction.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
-- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, and integration regression tests.
 - Markdown local-link checker.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
+- Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
+- SHA-256 checksum files for tagged Android/Web, Linux, Windows, macOS, and unsigned iOS artifacts.
 
 ### Changed
 
@@ -50,9 +52,11 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
 - Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup.
 - Settings backup/import/reset UI is safer and more explicit.
+- Clipboard backup export now surfaces a localized failure message instead of allowing a platform-channel exception to escape.
+- Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
 - Main UI strings are externalized for future translations.
-- CI now generates localization source and formats `integration_test/` in addition to `lib/`, `test/`, and `tool/`.
-- Release quality gates now run before publication of artifacts.
+- CI now generates localization source, formats `integration_test/`, and runs the primary Linux integration journey in a virtual display.
+- Release quality gates now include repository-file, version-sync, tracked-secret, test, integration, documentation, and build checks before publication.
 
 ### Security
 
@@ -60,11 +64,13 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Added dependency-review failure threshold of moderate severity.
 - Added redacting structured diagnostics.
 - Added CodeQL analysis for GitHub Actions workflow source.
+- Added deterministic repository audits to the tagged release gate.
+- Added release artifact SHA-256 digests for post-download integrity checks.
 - Kept signing keys and secrets outside version control.
 
 ### Known release requirements
 
-- Do not tag the final 0.2.0 release until actual Flutter analyze/test/build runs have been observed as successful.
+- Do not tag the final 0.2.0 release until actual Flutter analyze/test/build/integration runs have been observed as successful.
 - Native notification behavior must be verified on supported real platforms/devices.
 - Signed mobile/desktop distribution remains a release-environment responsibility.
 - Real screenshots must come from an actual verified build; mockups are not presented as product captures.
