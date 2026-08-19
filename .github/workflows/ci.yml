@@ -28,6 +28,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify localization source
+        run: dart run tool/check_localization_source.dart
+
       - name: Generate platform runners
         run: dart run tool/bootstrap_platforms.dart
 
