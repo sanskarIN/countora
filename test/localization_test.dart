@@ -12,6 +12,8 @@ void main() {
     expect(strings.history, 'History');
     expect(strings.madeBySanskar, 'Made by the Sanskar');
     expect(strings.importLocalBackup, 'Import local backup');
+    expect(strings.openFocusMode, 'Open focus mode');
+    expect(strings.exitFocusMode, 'Exit focus mode');
     expect(
       strings.backupExportFailed,
       'Could not copy the backup. Your local Countora data was unchanged.',
