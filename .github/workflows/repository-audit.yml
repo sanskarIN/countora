@@ -38,5 +38,8 @@ jobs:
       - name: Scan tracked source for obvious secrets
         run: dart run tool/check_secrets.dart
 
+      - name: Verify localization source
+        run: dart run tool/check_localization_source.dart
+
       - name: Verify local documentation links
         run: dart run tool/check_markdown_links.dart
