@@ -47,10 +47,13 @@ Owns cross-cutting application infrastructure:
 
 - `StableClock`
 - structured `AppLogger`
+- `openExternalUri` guarded external-launch boundary
 - design tokens/theme
 - formatting helpers
 - application metadata/links
 - localization context helper
+
+External links are routed through one small helper that converts a declined or throwing platform URL launch into a safe `false` result. Widgets can then show localized feedback without depending directly on plugin exception behavior.
 
 ### `lib/l10n`
 
@@ -87,9 +90,9 @@ When a running step expires:
 1. the controller checks for a next step;
 2. the next step starts from the previous absolute deadline, not from an arbitrary delayed UI tick;
 3. if no next step exists, the timer completes and a history entry is created;
-4. scheduled completion notifications are reconciled accordingly.
+4. scheduled completion notifications are reconciled accordingly where the target supports scheduling.
 
-The notification adapter schedules the remaining sequence completion instants from the current step onward.
+The notification adapter schedules the remaining sequence completion instants from the current step onward on targets with future-notification support.
 
 ## Persistence and backup trust boundary
 
@@ -110,7 +113,7 @@ All persisted/imported JSON crosses `CountoraStateCodec`, which enforces:
 - malformed-state normalization where safe
 - controlled `FormatException` for invalid field types
 
-Clipboard import validates and previews the incoming state before current application data is replaced.
+Clipboard import validates and previews the incoming state before current application data is replaced. Clipboard export catches platform-channel failures and reports them without mutating local state.
 
 If locally persisted data is corrupted, startup falls back to a safe empty state rather than crashing. Import remains strict because silently replacing current valid data with malformed input would be destructive.
 
@@ -120,14 +123,19 @@ If locally persisted data is corrupted, startup falls back to a safe empty state
 
 The production adapter:
 
-- initializes platform notification implementations
-- requests permissions only when the controller enables/schedules notifications
-- schedules remaining timer/interval deadlines
+- initializes platform notification implementations, including the web implementation when available
+- requests notification permissions only on targets where Countora can use future scheduling
+- schedules remaining timer/interval deadlines on supported scheduling targets
+- intentionally avoids future scheduling on Web and Linux while the underlying capability is unsupported there
 - falls back from exact Android scheduling to inexact scheduling when necessary
+- catches plugin/platform failures so notification infrastructure cannot crash a timer operation
 - cancels stale schedules when a timer is paused, removed, reset, or imported away
+- derives its cancellation bound from the same state-codec interval limit used for validation
 - avoids logging user timer names/payload contents
 
-Generated Android runner configuration is patched idempotently by `tool/bootstrap_platforms.dart`.
+Web and Linux still use the same local timer model, persistence, resume reconciliation, and visible in-app completion state. Their lack of background scheduled completion delivery is a platform-capability limitation, not a different timer data model.
+
+Generated Android runner configuration is patched by `tool/bootstrap_platforms.dart` using pure transforms in `tool/src/platform_patches.dart`. Those transforms validate expected template anchors and their postconditions rather than silently accepting an unpatched runner when Flutter's template changes.
 
 ## State change and persistence model
 
@@ -147,8 +155,10 @@ No global mutable singleton stores domain state.
 - user/import validation failures are rejected before destructive replacement;
 - local persistence failures are surfaced through controller error state;
 - notification platform errors are logged in redacted structured diagnostics and do not corrupt timer state;
+- external-link and clipboard platform failures become user-visible feedback instead of uncaught widget exceptions;
 - corrupted saved JSON does not block startup;
-- unsupported future backup schemas fail closed.
+- unsupported future backup schemas fail closed;
+- generated Android template drift fails bootstrap explicitly when required patch anchors disappear.
 
 ## Localization
 
@@ -160,7 +170,7 @@ Background notification copy remains English-first in 0.2 because notification s
 
 Native runners are generated using the installed Flutter SDK via `tool/bootstrap_platforms.dart`. This keeps framework-generated platform boilerplate reproducible and avoids committing stale runner files.
 
-The script also applies Countora-specific Android notification/desugaring configuration after generation.
+The script applies Countora-specific Android notification/desugaring configuration after generation. The pure text transforms are isolated in `tool/src/platform_patches.dart` and regression-tested for required additions, idempotence, and template-drift failure behavior.
 
 ## Why not an embedded database yet?
 
