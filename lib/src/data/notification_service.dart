@@ -40,6 +40,42 @@ InitializationSettings countoraNotificationInitializationSettings() {
   );
 }
 
+AndroidNotificationDetails countoraAndroidNotificationDetails({
+  required bool soundEnabled,
+  required bool vibrationEnabled,
+  required bool quietMode,
+}) {
+  final playSound = soundEnabled && !quietMode;
+  final enableVibration = vibrationEnabled && !quietMode;
+
+  late final String channelId;
+  late final String channelName;
+  if (playSound && enableVibration) {
+    channelId = 'countora_timers_sound_vibration';
+    channelName = 'Countora timers - sound and vibration';
+  } else if (playSound) {
+    channelId = 'countora_timers_sound_only';
+    channelName = 'Countora timers - sound';
+  } else if (enableVibration) {
+    channelId = 'countora_timers_vibration_only';
+    channelName = 'Countora timers - vibration';
+  } else {
+    channelId = 'countora_timers_silent';
+    channelName = 'Countora timers - silent';
+  }
+
+  return AndroidNotificationDetails(
+    channelId,
+    channelName,
+    channelDescription: 'Countdown completion notifications',
+    importance: Importance.high,
+    priority: Priority.high,
+    playSound: playSound,
+    enableVibration: enableVibration,
+    category: AndroidNotificationCategory.alarm,
+  );
+}
+
 class LocalNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -117,15 +153,10 @@ class LocalNotificationService implements NotificationService {
       if (!scheduledAt!.isAfter(DateTime.now().toUtc())) continue;
 
       final details = NotificationDetails(
-        android: AndroidNotificationDetails(
-          quietMode ? 'countora_quiet' : 'countora_timers',
-          quietMode ? 'Countora quiet timers' : 'Countora timers',
-          channelDescription: 'Countdown completion notifications',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: soundEnabled && !quietMode,
-          enableVibration: vibrationEnabled && !quietMode,
-          category: AndroidNotificationCategory.alarm,
+        android: countoraAndroidNotificationDetails(
+          soundEnabled: soundEnabled,
+          vibrationEnabled: vibrationEnabled,
+          quietMode: quietMode,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
