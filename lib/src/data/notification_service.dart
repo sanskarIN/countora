@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../core/app_logger.dart';
+import '../core/platform_capabilities.dart';
 import '../domain/models.dart';
 import 'state_codec.dart';
 
@@ -25,9 +25,6 @@ class LocalNotificationService implements NotificationService {
   static const _logger = AppLogger('notifications');
 
   bool _ready = false;
-
-  bool get _supportsScheduledNotifications =>
-      !kIsWeb && defaultTargetPlatform != TargetPlatform.linux;
 
   @override
   Future<void> initialize() async {
@@ -57,7 +54,7 @@ class LocalNotificationService implements NotificationService {
 
   @override
   Future<void> requestPermissions() async {
-    if (!_ready || !_supportsScheduledNotifications) return;
+    if (!_ready || !supportsScheduledNotifications()) return;
 
     try {
       final android = _plugin.resolvePlatformSpecificImplementation<
@@ -87,7 +84,7 @@ class LocalNotificationService implements NotificationService {
     required bool quietMode,
   }) async {
     if (!_ready ||
-        !_supportsScheduledNotifications ||
+        !supportsScheduledNotifications() ||
         timer.status != CountdownStatus.running) {
       return;
     }
