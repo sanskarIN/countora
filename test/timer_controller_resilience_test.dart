@@ -1,0 +1,97 @@
+import 'package:countora/src/data/local_store.dart';
+import 'package:countora/src/data/notification_service.dart';
+import 'package:countora/src/domain/models.dart';
+import 'package:countora/src/presentation/timer_controller.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class _FailingStore implements TimerStore {
+  _FailingStore({this.failSave = false, this.failClear = false});
+
+  bool failSave;
+  bool failClear;
+
+  @override
+  Future<void> clear() async {
+    if (failClear) throw StateError('simulated clear failure');
+  }
+
+  @override
+  Future<CountoraState> load() async => const CountoraState();
+
+  @override
+  Future<void> save(CountoraState state) async {
+    if (failSave) throw StateError('simulated save failure');
+  }
+}
+
+class _QuietNotifications implements NotificationService {
+  @override
+  Future<void> cancelTimer(String timerId) async {}
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> requestPermissions() async {}
+
+  @override
+  Future<void> scheduleTimer(
+    CountdownTimer timer, {
+    required bool soundEnabled,
+    required bool vibrationEnabled,
+    required bool quietMode,
+  }) async {}
+}
+
+void main() {
+  test('save failure is surfaced without escaping the UI-facing operation', () async {
+    final store = _FailingStore(failSave: true);
+    final controller = TimerController(
+      store: store,
+      notifications: _QuietNotifications(),
+      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+    );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+
+    await expectLater(
+      controller.addTimer(
+        name: 'Unsaved timer',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Timer', durationSeconds: 60),
+        ],
+        startImmediately: false,
+      ),
+      completes,
+    );
+
+    expect(controller.timers, hasLength(1));
+    expect(controller.lastError, contains('could not save'));
+  });
+
+  test('clear failure keeps in-memory state and exposes safe error text', () async {
+    final store = _FailingStore();
+    final controller = TimerController(
+      store: store,
+      notifications: _QuietNotifications(),
+      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+    );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+    await controller.addTimer(
+      name: 'Keep me',
+      group: '',
+      steps: const <IntervalStep>[
+        IntervalStep(label: 'Timer', durationSeconds: 60),
+      ],
+      startImmediately: false,
+    );
+    store.failClear = true;
+
+    await controller.clearAllData();
+
+    expect(controller.timers, hasLength(1));
+    expect(controller.lastError, contains('could not erase'));
+  });
+}
