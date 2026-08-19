@@ -231,10 +231,16 @@ class TimerController extends ChangeNotifier {
     final timer = _findTimer(timerId);
     if (timer == null || timer.status != CountdownStatus.running) return;
 
-    final remaining = timer.remaining(_nowUtc()).inSeconds;
+    final now = _nowUtc();
+    final remaining = timer.remaining(now);
+    if (remaining <= Duration.zero) {
+      await _reconcileExpiredTimer(timerId, now);
+      return;
+    }
+
     final updated = timer.copyWith(
       status: CountdownStatus.paused,
-      remainingWhenPausedSeconds: remaining,
+      remainingWhenPausedSeconds: _wholeSecondsCeiling(remaining),
       clearEndsAt: true,
       clearStartedAt: true,
     );
@@ -246,17 +252,43 @@ class TimerController extends ChangeNotifier {
 
   Future<void> pauseAllRunning() async {
     final now = _nowUtc();
+    final runningIds = _timers
+        .where((timer) => timer.status == CountdownStatus.running)
+        .map((timer) => timer.id)
+        .toList();
+    if (runningIds.isEmpty) return;
+
+    final expiredIds = runningIds.where((timerId) {
+      final timer = _findTimer(timerId);
+      return timer != null && timer.remaining(now) <= Duration.zero;
+    }).toList();
+    if (expiredIds.isNotEmpty) {
+      var changed = false;
+      for (final timerId in expiredIds) {
+        changed =
+            await _consumeExpiredTimer(timerId, now, scheduleFinal: false) ||
+            changed;
+      }
+      if (changed) {
+        if (!await _persist()) return;
+        await _syncNotificationsForTimerIds(expiredIds);
+      }
+    }
+
+    final pauseNow = _nowUtc();
     final running = _timers
         .where((timer) => timer.status == CountdownStatus.running)
         .toList();
     if (running.isEmpty) return;
 
-    final runningIds = running.map((timer) => timer.id).toSet();
+    final pausableIds = running.map((timer) => timer.id).toSet();
     _timers = _timers.map((timer) {
-      if (!runningIds.contains(timer.id)) return timer;
+      if (!pausableIds.contains(timer.id)) return timer;
       return timer.copyWith(
         status: CountdownStatus.paused,
-        remainingWhenPausedSeconds: timer.remaining(now).inSeconds,
+        remainingWhenPausedSeconds: _wholeSecondsCeiling(
+          timer.remaining(pauseNow),
+        ),
         clearEndsAt: true,
         clearStartedAt: true,
       );
@@ -494,6 +526,25 @@ class TimerController extends ChangeNotifier {
       await _syncNotificationsForTimerIds(runningIds);
     }
     return true;
+  }
+
+  Future<void> _reconcileExpiredTimer(String timerId, DateTime now) async {
+    final changed = await _consumeExpiredTimer(
+      timerId,
+      now,
+      scheduleFinal: false,
+    );
+    if (!changed) return;
+    if (await _persist()) {
+      await _syncNotificationsForTimerIds(<String>[timerId]);
+    }
+  }
+
+  int _wholeSecondsCeiling(Duration duration) {
+    if (duration <= Duration.zero) return 0;
+    final micros = duration.inMicroseconds;
+    return (micros + Duration.microsecondsPerSecond - 1) ~/
+        Duration.microsecondsPerSecond;
   }
 
   void _startTicker() {
