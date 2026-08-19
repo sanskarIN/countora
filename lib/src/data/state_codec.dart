@@ -27,8 +27,11 @@ class CountoraStateCodec {
       const JsonEncoder.withIndent('  ').convert(_encodedMap(state));
 
   Map<String, Object?> _encodedMap(CountoraState state) => <String, Object?>{
-        'schemaVersion': currentSchemaVersion,
         ...state.toJson(),
+        // The persistence codec owns schema evolution. Keep this last so a
+        // model-level serialization default can never override the current
+        // persisted schema during a future migration.
+        'schemaVersion': currentSchemaVersion,
       };
 
   CountoraState decode(String raw) {
