@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/l10n.dart';
 import '../data/state_codec.dart';
 import '../domain/models.dart';
 
@@ -61,8 +64,8 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
     if (!_validateDuration(showMessage: true)) return;
     if (_steps.length >= CountoraStateCodec.maxIntervalsPerTimer) {
       _showMessage(
-        'A sequence can contain at most '
-        '${CountoraStateCodec.maxIntervalsPerTimer} intervals.',
+        '${context.l10n.intervalSequence}: '
+        '${CountoraStateCodec.maxIntervalsPerTimer} ${context.l10n.steps} max.',
       );
       return;
     }
@@ -72,7 +75,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
       _steps.add(
         IntervalStep(
           label: explicitLabel.isEmpty
-              ? 'Interval ${_steps.length + 1}'
+              ? '${context.l10n.step} ${_steps.length + 1}'
               : explicitLabel,
           durationSeconds: _durationSeconds,
         ),
@@ -91,28 +94,29 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
   }
 
   Future<void> _renameInterval(int index) async {
+    final strings = context.l10n;
     final controller = TextEditingController(text: _steps[index].label);
     final formKey = GlobalKey<FormState>();
     final shouldSave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename interval'),
+        title: Text(strings.renameInterval),
         content: Form(
           key: formKey,
           child: TextFormField(
             controller: controller,
             autofocus: true,
             maxLength: CountoraStateCodec.maxNameLength,
-            decoration: const InputDecoration(labelText: 'Label'),
+            decoration: InputDecoration(labelText: strings.label),
             validator: (value) => value == null || value.trim().isEmpty
-                ? 'Label is required.'
+                ? strings.labelRequired
                 : null,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -120,7 +124,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                 Navigator.of(context).pop(true);
               }
             },
-            child: const Text('Save'),
+            child: Text(strings.save),
           ),
         ],
       ),
@@ -143,7 +147,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
     final valid = seconds > 0 &&
         seconds <= CountoraStateCodec.maxIntervalSeconds;
     if (!valid && showMessage) {
-      _showMessage('Choose a duration between 1 second and 365 days.');
+      _showMessage(context.l10n.durationRangeError);
     }
     return valid;
   }
@@ -178,8 +182,9 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     return AlertDialog(
-      title: Text(widget.forPreset ? 'New preset' : 'New countdown'),
+      title: Text(widget.forPreset ? strings.newPreset : strings.newCountdown),
       content: SizedBox(
         width: 560,
         child: Form(
@@ -194,13 +199,13 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                   autofocus: true,
                   maxLength: CountoraStateCodec.maxNameLength,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Tea, Deep work, Exam…',
+                  decoration: InputDecoration(
+                    labelText: strings.name,
+                    hintText: strings.nameHint,
                   ),
                   validator: (value) =>
                       value == null || value.trim().isEmpty
-                          ? 'Name is required.'
+                          ? strings.nameRequired
                           : null,
                 ),
                 const SizedBox(height: 12),
@@ -208,14 +213,14 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                   controller: _groupController,
                   maxLength: CountoraStateCodec.maxGroupLength,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Group (optional)',
-                    hintText: 'Study, Kitchen, Work…',
+                  decoration: InputDecoration(
+                    labelText: strings.groupOptional,
+                    hintText: strings.groupHint,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Duration',
+                  strings.duration,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
@@ -224,7 +229,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                     Expanded(
                       child: _numberField(
                         _hoursController,
-                        'Hours',
+                        strings.hours,
                         max: 8760,
                       ),
                     ),
@@ -232,7 +237,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                     Expanded(
                       child: _numberField(
                         _minutesController,
-                        'Minutes',
+                        strings.minutes,
                         max: 59,
                       ),
                     ),
@@ -240,7 +245,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                     Expanded(
                       child: _numberField(
                         _secondsController,
-                        'Seconds',
+                        strings.seconds,
                         max: 59,
                       ),
                     ),
@@ -250,9 +255,9 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                 TextFormField(
                   controller: _stepLabelController,
                   maxLength: CountoraStateCodec.maxNameLength,
-                  decoration: const InputDecoration(
-                    labelText: 'Interval label (optional)',
-                    hintText: 'Focus, Rest, Simmer…',
+                  decoration: InputDecoration(
+                    labelText: strings.intervalLabelOptional,
+                    hintText: strings.intervalLabelHint,
                   ),
                 ),
                 OutlinedButton.icon(
@@ -262,7 +267,7 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                           : _addInterval,
                   icon: const Icon(Icons.playlist_add),
                   label: Text(
-                    'Add interval (${_steps.length}/'
+                    '${strings.addInterval} (${_steps.length}/'
                     '${CountoraStateCodec.maxIntervalsPerTimer})',
                   ),
                 ),
@@ -272,11 +277,11 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Interval sequence',
+                          strings.intervalSequence,
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
-                      Text('${_steps.length} steps'),
+                      Text('${_steps.length} ${strings.steps}'),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -291,26 +296,27 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
                             subtitle: Text(
                               _humanDuration(entry.value.durationSeconds),
                             ),
-                            onTap: () => _renameInterval(entry.key),
+                            onTap: () =>
+                                unawaited(_renameInterval(entry.key)),
                             trailing: Wrap(
                               spacing: 0,
                               children: [
                                 IconButton(
-                                  tooltip: 'Move interval up',
+                                  tooltip: strings.moveIntervalUp,
                                   onPressed: entry.key == 0
                                       ? null
                                       : () => _moveInterval(entry.key, -1),
                                   icon: const Icon(Icons.arrow_upward),
                                 ),
                                 IconButton(
-                                  tooltip: 'Move interval down',
+                                  tooltip: strings.moveIntervalDown,
                                   onPressed: entry.key == _steps.length - 1
                                       ? null
                                       : () => _moveInterval(entry.key, 1),
                                   icon: const Icon(Icons.arrow_downward),
                                 ),
                                 IconButton(
-                                  tooltip: 'Remove interval',
+                                  tooltip: strings.removeInterval,
                                   onPressed: () {
                                     setState(() => _steps.removeAt(entry.key));
                                   },
@@ -330,11 +336,11 @@ class _TimerEditorDialogState extends State<TimerEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(strings.cancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(widget.forPreset ? 'Save preset' : 'Start timer'),
+          child: Text(widget.forPreset ? strings.savePreset : strings.startTimer),
         ),
       ],
     );
