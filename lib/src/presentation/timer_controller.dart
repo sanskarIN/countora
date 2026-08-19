@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/local_store.dart';
 import '../data/notification_service.dart';
+import '../data/state_codec.dart';
 import '../domain/models.dart';
 
 class TimerController extends ChangeNotifier {
@@ -13,13 +13,16 @@ class TimerController extends ChangeNotifier {
     required TimerStore store,
     required NotificationService notifications,
     DateTime Function()? nowUtc,
+    CountoraStateCodec stateCodec = const CountoraStateCodec(),
   })  : _store = store,
         _notifications = notifications,
-        _nowUtc = nowUtc ?? (() => DateTime.now().toUtc());
+        _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+        _stateCodec = stateCodec;
 
   final TimerStore _store;
   final NotificationService _notifications;
   final DateTime Function() _nowUtc;
+  final CountoraStateCodec _stateCodec;
 
   List<CountdownTimer> _timers = const <CountdownTimer>[];
   List<TimerPreset> _presets = const <TimerPreset>[];
@@ -29,6 +32,9 @@ class TimerController extends ChangeNotifier {
   String _searchQuery = '';
   String _groupFilter = '';
   String? _lastError;
+  int _nextIdSequence = 0;
+  bool _tickInProgress = false;
+  bool _notificationPermissionRequestedThisSession = false;
 
   List<CountdownTimer> get timers => List.unmodifiable(_timers);
   List<TimerPreset> get presets => List.unmodifiable(_presets);
@@ -37,6 +43,13 @@ class TimerController extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   String get groupFilter => _groupFilter;
   String? get lastError => _lastError;
+
+  int get runningCount =>
+      _timers.where((timer) => timer.status == CountdownStatus.running).length;
+  int get pausedCount =>
+      _timers.where((timer) => timer.status == CountdownStatus.paused).length;
+  int get completedCount =>
+      _timers.where((timer) => timer.status == CountdownStatus.completed).length;
 
   List<String> get groups {
     final values = <String>{
@@ -70,6 +83,7 @@ class TimerController extends ChangeNotifier {
     _presets = state.presets;
     _history = state.history;
     _settings = state.settings;
+    _nextIdSequence = _timers.length + _presets.length;
     await _reconcileTimers();
     _startTicker();
   }
@@ -86,6 +100,12 @@ class TimerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearError() {
+    if (_lastError == null) return;
+    _lastError = null;
+    notifyListeners();
+  }
+
   Future<void> addTimer({
     required String name,
     required String group,
@@ -94,6 +114,7 @@ class TimerController extends ChangeNotifier {
   }) async {
     _clearError();
     final safeName = _validatedName(name);
+    final safeGroup = _validatedGroup(group);
     final safeSteps = _validatedSteps(steps);
     final now = _nowUtc();
     final first = safeSteps.first;
@@ -101,7 +122,7 @@ class TimerController extends ChangeNotifier {
     final timer = CountdownTimer(
       id: _newId(),
       name: safeName,
-      group: group.trim(),
+      group: safeGroup,
       steps: safeSteps,
       currentStepIndex: 0,
       status:
@@ -117,6 +138,35 @@ class TimerController extends ChangeNotifier {
     await _persistAndSchedule(timer);
   }
 
+  Future<void> duplicateTimer(
+    String timerId, {
+    bool startImmediately = false,
+  }) async {
+    final timer = _findTimer(timerId);
+    if (timer == null) return;
+    await addTimer(
+      name: '${timer.name} copy',
+      group: timer.group,
+      steps: timer.steps,
+      startImmediately: startImmediately,
+    );
+  }
+
+  Future<void> updateTimerDetails({
+    required String timerId,
+    required String name,
+    required String group,
+  }) async {
+    final timer = _findTimer(timerId);
+    if (timer == null) return;
+    final updated = timer.copyWith(
+      name: _validatedName(name),
+      group: _validatedGroup(group),
+    );
+    _replaceTimer(updated);
+    await _persistAndSchedule(updated);
+  }
+
   Future<void> addPreset({
     required String name,
     required String group,
@@ -125,7 +175,7 @@ class TimerController extends ChangeNotifier {
     final preset = TimerPreset(
       id: _newId(),
       name: _validatedName(name),
-      group: group.trim(),
+      group: _validatedGroup(group),
       steps: _validatedSteps(steps),
       useCount: 0,
     );
@@ -145,6 +195,23 @@ class TimerController extends ChangeNotifier {
     final updated = preset.copyWith(useCount: preset.useCount + 1);
     _presets = <TimerPreset>[..._presets]..[index] = updated;
     await _persist();
+  }
+
+  Future<void> startFromHistory(TimerHistoryEntry entry) async {
+    final duration = entry.totalDurationSeconds.clamp(
+      1,
+      CountoraStateCodec.maxIntervalSeconds,
+    );
+    await addTimer(
+      name: entry.name,
+      group: entry.group,
+      steps: <IntervalStep>[
+        IntervalStep(
+          label: entry.name,
+          durationSeconds: duration.toInt(),
+        ),
+      ],
+    );
   }
 
   Future<void> saveTimerAsPreset(String timerId) async {
@@ -173,6 +240,30 @@ class TimerController extends ChangeNotifier {
     await _persist();
   }
 
+  Future<void> pauseAllRunning() async {
+    final now = _nowUtc();
+    final running = _timers
+        .where((timer) => timer.status == CountdownStatus.running)
+        .toList();
+    if (running.isEmpty) return;
+
+    final runningIds = running.map((timer) => timer.id).toSet();
+    _timers = _timers.map((timer) {
+      if (!runningIds.contains(timer.id)) return timer;
+      return timer.copyWith(
+        status: CountdownStatus.paused,
+        remainingWhenPausedSeconds: timer.remaining(now).inSeconds,
+        clearEndsAt: true,
+        clearStartedAt: true,
+      );
+    }).toList();
+
+    for (final timer in running) {
+      await _notifications.cancelTimer(timer.id);
+    }
+    await _persist();
+  }
+
   Future<void> resume(String timerId) async {
     final timer = _findTimer(timerId);
     if (timer == null || timer.status != CountdownStatus.paused) return;
@@ -191,6 +282,18 @@ class TimerController extends ChangeNotifier {
     );
     _replaceTimer(updated);
     await _persistAndSchedule(updated);
+  }
+
+  Future<void> resumeAllPaused() async {
+    final pausedIds = _timers
+        .where((timer) => timer.status == CountdownStatus.paused)
+        .map((timer) => timer.id)
+        .toList();
+    if (pausedIds.isEmpty) return;
+
+    for (final id in pausedIds) {
+      await resume(id);
+    }
   }
 
   Future<void> addTime(String timerId, Duration amount) async {
@@ -235,6 +338,16 @@ class TimerController extends ChangeNotifier {
     await _persist();
   }
 
+  Future<void> removeCompletedTimers() async {
+    if (!_timers.any((timer) => timer.status == CountdownStatus.completed)) {
+      return;
+    }
+    _timers = _timers
+        .where((timer) => timer.status != CountdownStatus.completed)
+        .toList();
+    await _persist();
+  }
+
   Future<void> removePreset(String presetId) async {
     _presets = _presets.where((preset) => preset.id != presetId).toList();
     await _persist();
@@ -243,6 +356,21 @@ class TimerController extends ChangeNotifier {
   Future<void> clearHistory() async {
     _history = const <TimerHistoryEntry>[];
     await _persist();
+  }
+
+  Future<void> clearAllData() async {
+    for (final timer in _timers) {
+      await _notifications.cancelTimer(timer.id);
+    }
+    await _store.clear();
+    _timers = const <CountdownTimer>[];
+    _presets = const <TimerPreset>[];
+    _history = const <TimerHistoryEntry>[];
+    _settings = const CountoraSettings();
+    _searchQuery = '';
+    _groupFilter = '';
+    _lastError = null;
+    notifyListeners();
   }
 
   Future<void> updateSettings(CountoraSettings value) async {
@@ -255,7 +383,7 @@ class TimerController extends ChangeNotifier {
         await _notifications.cancelTimer(timer.id);
       }
     } else if (value.notificationsEnabled) {
-      await _notifications.requestPermissions();
+      await _ensureNotificationPermissions();
       for (final timer in _timers.where(
         (item) => item.status == CountdownStatus.running,
       )) {
@@ -270,24 +398,24 @@ class TimerController extends ChangeNotifier {
     await updateSettings(_settings.copyWith(onboardingSeen: true));
   }
 
-  String exportJson() {
-    return const JsonEncoder.withIndent('  ').convert(_state.toJson());
-  }
+  String exportJson() => _stateCodec.encodePretty(_state);
 
   Future<void> importJson(String raw) async {
     _clearError();
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<Object?, Object?>) {
-        throw const FormatException('The backup root must be a JSON object.');
+      final imported = _stateCodec.decode(raw);
+
+      for (final timer in _timers) {
+        await _notifications.cancelTimer(timer.id);
       }
-      final imported = CountoraState.fromJson(
-        decoded.map((key, value) => MapEntry('$key', value)),
-      );
+
       _timers = imported.timers;
       _presets = imported.presets;
-      _history = imported.history.take(500).toList();
+      _history = imported.history;
       _settings = imported.settings;
+      _searchQuery = '';
+      _groupFilter = '';
+      _nextIdSequence = _timers.length + _presets.length;
       await _reconcileTimers();
       await _persist();
     } on FormatException catch (error) {
@@ -298,6 +426,11 @@ class TimerController extends ChangeNotifier {
   }
 
   Duration remainingFor(CountdownTimer timer) => timer.remaining(_nowUtc());
+
+  Future<void> reconcile() async {
+    await _reconcileTimers();
+    notifyListeners();
+  }
 
   Future<void> _reconcileTimers() async {
     final now = _nowUtc();
@@ -324,8 +457,18 @@ class TimerController extends ChangeNotifier {
   void _startTicker() {
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      unawaited(_tick());
+      unawaited(_runTickSafely());
     });
+  }
+
+  Future<void> _runTickSafely() async {
+    if (_tickInProgress) return;
+    _tickInProgress = true;
+    try {
+      await _tick();
+    } finally {
+      _tickInProgress = false;
+    }
   }
 
   Future<void> _tick() async {
@@ -430,7 +573,7 @@ class TimerController extends ChangeNotifier {
           totalDurationSeconds: latest.totalDurationSeconds,
         ),
         ..._history,
-      ].take(500).toList();
+      ].take(CountoraStateCodec.maxHistoryEntries).toList();
       await _notifications.cancelTimer(latest.id);
     }
 
@@ -444,12 +587,19 @@ class TimerController extends ChangeNotifier {
 
   Future<void> _schedule(CountdownTimer timer) async {
     if (!_settings.notificationsEnabled) return;
+    await _ensureNotificationPermissions();
     await _notifications.scheduleTimer(
       timer,
       soundEnabled: _settings.soundEnabled,
       vibrationEnabled: _settings.vibrationEnabled,
       quietMode: _settings.quietMode,
     );
+  }
+
+  Future<void> _ensureNotificationPermissions() async {
+    if (_notificationPermissionRequestedThisSession) return;
+    _notificationPermissionRequestedThisSession = true;
+    await _notifications.requestPermissions();
   }
 
   Future<void> _persist() async {
@@ -488,43 +638,72 @@ class TimerController extends ChangeNotifier {
     if (clean.isEmpty) {
       throw ArgumentError.value(value, 'name', 'Timer name is required.');
     }
-    if (clean.length > 80) {
-      throw ArgumentError.value(value, 'name', 'Maximum length is 80.');
+    if (clean.length > CountoraStateCodec.maxNameLength) {
+      throw ArgumentError.value(
+        value,
+        'name',
+        'Maximum length is ${CountoraStateCodec.maxNameLength}.',
+      );
+    }
+    return clean;
+  }
+
+  String _validatedGroup(String value) {
+    final clean = value.trim();
+    if (clean.length > CountoraStateCodec.maxGroupLength) {
+      throw ArgumentError.value(
+        value,
+        'group',
+        'Maximum length is ${CountoraStateCodec.maxGroupLength}.',
+      );
     }
     return clean;
   }
 
   List<IntervalStep> _validatedSteps(List<IntervalStep> value) {
-    if (value.isEmpty || value.length > 32) {
+    if (value.isEmpty || value.length > CountoraStateCodec.maxIntervalsPerTimer) {
       throw ArgumentError.value(
         value.length,
         'steps',
-        'Use between 1 and 32 intervals.',
+        'Use between 1 and ${CountoraStateCodec.maxIntervalsPerTimer} intervals.',
       );
     }
+    final result = <IntervalStep>[];
     for (final step in value) {
       if (step.durationSeconds <= 0 ||
-          step.durationSeconds > const Duration(days: 365).inSeconds) {
+          step.durationSeconds > CountoraStateCodec.maxIntervalSeconds) {
         throw ArgumentError.value(
           step.durationSeconds,
           'durationSeconds',
           'Each interval must be between 1 second and 365 days.',
         );
       }
-      if (step.label.trim().isEmpty || step.label.length > 80) {
+      final label = step.label.trim();
+      if (label.isEmpty || label.length > CountoraStateCodec.maxNameLength) {
         throw ArgumentError.value(
           step.label,
           'label',
           'Interval labels must contain 1–80 characters.',
         );
       }
+      result.add(
+        IntervalStep(label: label, durationSeconds: step.durationSeconds),
+      );
     }
-    return List<IntervalStep>.unmodifiable(value);
+    return List<IntervalStep>.unmodifiable(result);
   }
 
   String _newId() {
-    final now = _nowUtc().microsecondsSinceEpoch;
-    return 't_${now}_${_timers.length + _presets.length}';
+    final usedIds = <String>{
+      ..._timers.map((timer) => timer.id),
+      ..._presets.map((preset) => preset.id),
+    };
+    String candidate;
+    do {
+      _nextIdSequence += 1;
+      candidate = 't_${_nowUtc().microsecondsSinceEpoch}_$_nextIdSequence';
+    } while (usedIds.contains(candidate));
+    return candidate;
   }
 
   void _clearError() => _lastError = null;
