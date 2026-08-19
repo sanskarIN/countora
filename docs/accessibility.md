@@ -1,17 +1,82 @@
 # Accessibility
 
-Countora uses Material controls with semantic labels and tooltips for icon-only actions.
+Countora is designed so timing status does not depend on sound, vibration, color, or precise pointer input.
 
-Baseline practices:
+## Implemented baseline
 
-- scalable system text
-- light/dark/system themes
-- semantic timer descriptions
-- non-color status text and icons
-- minimum Material touch targets
-- keyboard-focusable standard controls
-- reduced-motion preference
-- quiet mode preserves visual completion cues
-- full-screen focus mode retains an explicit exit control
+### Semantics and assistive technology
 
-Manual screen-reader and keyboard-only review is required before a stable release on each target platform.
+- Timer cards expose the timer identity, remaining time, and status through semantics.
+- Progress indicators expose semantic labels/values rather than relying only on a visual bar.
+- Full-screen focus mode exposes a live countdown semantic region.
+- Icon-only controls include tooltips that also improve discoverability.
+- Destructive operations use descriptive confirmation dialogs.
+
+### Non-audio cues
+
+Sound and vibration are optional. Countdown state remains visible through:
+
+- large remaining-time text
+- progress bars
+- running/paused/completed status controls
+- interval-step labels and ordering
+- focus-mode visual countdown
+- system visual notifications when quiet mode suppresses sound/vibration
+
+The Settings Accessibility section explicitly describes these non-audio cues.
+
+### Keyboard and desktop access
+
+Standard Flutter focus traversal applies to interactive controls. Additional shortcuts:
+
+- `Ctrl/Cmd + N` — create timer/preset
+- `Ctrl/Cmd + F` — focus timer search
+- `Ctrl/Cmd + ,` — open Settings
+
+The same primary actions remain reachable without shortcuts.
+
+### Motion
+
+The Reduced motion setting propagates through `MediaQuery.disableAnimations`, preserving any platform-provided reduced-motion preference as well.
+
+### Text and layout
+
+- UI uses Flutter text themes rather than fixed bitmap text.
+- Main views are responsive across phone/desktop widths.
+- Timer cards can switch to compact density without removing core controls.
+- Scrolling is available for long Settings, dialogs, and history/preset lists.
+- Primary button theme touch targets are at least 48 logical pixels high.
+
+## Color and status
+
+Do not encode timer state only with color. Running/paused/completed states have text/icons/actions in addition to theme colors.
+
+Theme colors are derived from a Material 3 color scheme. Contrast must still be manually checked for any future custom color outside the scheme.
+
+## Testing
+
+Automated regression coverage includes timer semantic labels and key Settings/keyboard journeys. Automated tests are not a substitute for a manual accessibility pass.
+
+Before a stable release, manually verify:
+
+- TalkBack on Android
+- VoiceOver on iOS/macOS where available
+- Windows Narrator where available
+- keyboard-only navigation on desktop/web
+- 200% or larger text scaling
+- light/dark theme contrast
+- reduced-motion behavior
+- quiet mode with all audio/haptics disabled
+- focus visibility and modal focus trapping
+
+## Contributor checklist
+
+For every new interactive feature:
+
+1. Give icon-only controls a tooltip/semantic purpose.
+2. Ensure it is keyboard reachable on desktop/web.
+3. Do not rely only on color/sound/vibration.
+4. Confirm scaled text does not remove the action.
+5. Respect reduced motion.
+6. Keep destructive actions explicit and reversible where practical.
+7. Add regression semantics/widget coverage when the behavior is important.
