@@ -63,6 +63,7 @@
   "deleteTimerTitle": "Delete timer?",
   "deleteTimerHistoryNote": "This does not clear history.",
   "timerWasRemoved": "Timer was removed",
+  "openFocusMode": "Open focus mode",
   "exitFocusMode": "Exit focus mode",
   "oneMinute": "1 minute",
   "newPreset": "New preset",
