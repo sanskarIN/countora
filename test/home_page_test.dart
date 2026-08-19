@@ -26,10 +26,9 @@ void main() {
     expect(find.text('Tea'), findsOneWidget);
     expect(find.text('05:00'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Resume'), findsOneWidget);
-    expect(
-      tester.getSemantics(find.byType(Card).first).label,
-      contains('Tea'),
-    );
+    final timerSemantics = tester.getSemantics(find.byType(Card).first);
+    expect(timerSemantics.label, contains('Tea'));
+    expect(timerSemantics.hint, 'Open focus mode');
 
     semantics.dispose();
   });
