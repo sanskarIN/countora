@@ -34,8 +34,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate localization source
+        run: flutter gen-l10n
+
       - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed lib test tool
+        run: >-
+          dart format --output=none --set-exit-if-changed
+          lib test integration_test tool
 
       - name: Analyze
         run: flutter analyze
