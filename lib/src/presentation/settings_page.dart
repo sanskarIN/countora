@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_links.dart';
 import '../core/l10n.dart';
 import '../data/state_codec.dart';
 import '../domain/models.dart';
@@ -60,6 +62,8 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
           ),
+          const Divider(height: 32),
+          _sectionTitle(context, strings.accessibilityPreferences),
           SwitchListTile(
             title: Text(strings.reducedMotion),
             subtitle: Text(strings.reducedMotionHelp),
@@ -69,6 +73,11 @@ class SettingsPage extends StatelessWidget {
                 settings.copyWith(reducedMotion: value),
               ),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.visibility_outlined),
+            title: Text(strings.nonAudioCues),
+            subtitle: Text(strings.nonAudioCuesHelp),
           ),
           const Divider(height: 32),
           _sectionTitle(context, strings.notificationsCues),
@@ -157,6 +166,26 @@ class SettingsPage extends StatelessWidget {
             trailing: const Text('Ctrl/Cmd + ,'),
           ),
           const Divider(height: 32),
+          _sectionTitle(context, strings.updates),
+          ListTile(
+            leading: const Icon(Icons.system_update_alt),
+            title: Text(strings.checkForUpdates),
+            subtitle: Text(strings.checkForUpdatesHelp),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () => unawaited(
+              _openExternal(context, Uri.parse(AppLinks.releases)),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: Text(strings.reportIssue),
+            subtitle: Text(strings.reportIssueHelp),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () => unawaited(
+              _openExternal(context, Uri.parse(AppLinks.issues)),
+            ),
+          ),
+          const Divider(height: 32),
           _sectionTitle(context, strings.about),
           ListTile(
             leading: const Icon(Icons.info_outline),
@@ -196,6 +225,15 @@ class SettingsPage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(text, style: Theme.of(context).textTheme.titleMedium),
     );
+  }
+
+  Future<void> _openExternal(BuildContext context, Uri uri) async {
+    final launched = await launchUrl(uri);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.openLinkFailed)),
+      );
+    }
   }
 
   Future<void> _exportBackup(BuildContext context) async {
@@ -346,6 +384,8 @@ class SettingsPage extends StatelessWidget {
 
     await controller.clearAllData();
     if (!context.mounted) return;
-    Navigator.of(context).pop();
+    if (controller.lastError == null) {
+      Navigator.of(context).pop();
+    }
   }
 }
