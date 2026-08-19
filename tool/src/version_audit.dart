@@ -52,8 +52,9 @@ VersionAuditResult auditVersionMetadata({
     );
   }
 
+  final escapedPackageVersion = RegExp.escape(packageVersion);
   final releaseHeading = RegExp(
-    '^## \\[$packageVersion\\] - (.+)\\s*\$',
+    '^## \\[$escapedPackageVersion\\] - (.+)\\s*\$',
     multiLine: true,
   ).firstMatch(changelog);
   if (releaseHeading == null) {
