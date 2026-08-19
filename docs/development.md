@@ -24,11 +24,12 @@ Before a release candidate, also execute host-supported release builds and the i
 ## Architectural rules
 
 - Business rules belong in domain/controller code, not widgets.
-- Platform plugins stay behind interfaces.
+- Platform plugins stay behind interfaces or small guarded boundary helpers.
 - Persist absolute UTC completion instants for running timers.
 - Use the monotonic `StableClock` for live in-process countdown calculations.
 - Validate names, groups, durations, interval counts, and imported data at trust boundaries.
 - All persisted/imported state must pass through `CountoraStateCodec`.
+- Keep persistence schema ownership in the codec, not domain-model serialization.
 - Keep local state bounded; do not raise caps without profiling and migration consideration.
 - Never introduce global mutable domain state without a documented ADR.
 - Keep donation/external-link UI optional and non-intrusive.
@@ -50,9 +51,13 @@ A timer mutation should generally:
 1. validate input;
 2. build a new immutable model value;
 3. replace collection state;
-4. persist;
-5. update notification scheduling if relevant;
+4. persist the new durable state;
+5. only after successful persistence, apply external notification scheduling/cancellation side effects when the operation depends on that state;
 6. notify listeners.
+
+This ordering matters. A failed local save must not cancel or create a platform notification for state that durable storage does not yet represent. Regression coverage in `test/timer_controller_resilience_test.dart` protects this rule for direct scheduling, pause/removal cancellation, and notification-setting changes.
+
+Platform operations that are best-effort by nature, such as URL launching, remain guarded so plugin/platform exceptions do not escape into the widget tree.
 
 ## Persistence changes
 
@@ -67,11 +72,23 @@ Any incompatible persisted-model change must:
 
 Do not manually edit persisted user data as a migration strategy.
 
+`CountoraState.toJson()` intentionally contains only domain state. `CountoraStateCodec` adds the persisted `schemaVersion`, keeping migration/version authority in one boundary.
+
 ## Platform customizations
 
 Generated runner directories are ignored. Never rely on an untracked manual edit in `android/`, `ios/`, `windows/`, etc.
 
-Encode required native changes in `tool/bootstrap_platforms.dart` or in Countora-owned templates copied by that script.
+Encode required native changes through `tool/bootstrap_platforms.dart`. Pure generated-template transforms belong in `tool/src/platform_patches.dart` so they can be regression-tested without launching Flutter or mutating the file system.
+
+A platform patch must:
+
+1. detect the template structure it expects;
+2. fail explicitly when required anchors disappear;
+3. verify required postconditions;
+4. remain idempotent;
+5. gain/update a test in `test/platform_patches_test.dart`.
+
+Silent success with an incompletely patched native runner is not acceptable.
 
 ## Localization
 
@@ -86,6 +103,8 @@ When adding visible UI text:
 
 Avoid reintroducing hard-coded visible copy into localized screens.
 
+Semantics hints are user-facing copy too. For example, a timer card announces that activating it will **open** focus mode, while the close control announces the separate exit action.
+
 ## Diagnostics
 
 Use `AppLogger` for structured diagnostic events.
@@ -94,6 +113,24 @@ Use `AppLogger` for structured diagnostic events.
 - Do not log timer names, imported backup JSON, email addresses, tokens, cookies, authorization headers, or user-entered text.
 - Pass errors as `error:` so only their runtime type is emitted by the logger.
 - User-facing error messages must be safe and must not expose stack traces or raw plugin/storage exceptions.
+
+## Performance work
+
+Do not guess at performance improvements. Use bounded deterministic fixtures and record environment details for wall-clock measurements.
+
+The codec benchmark can be run with:
+
+```bash
+dart run tool/benchmark_state_codec.dart
+```
+
+or:
+
+```bash
+dart run tool/benchmark_state_codec.dart --iterations 500
+```
+
+See [`performance.md`](performance.md) for fixture details and benchmarking policy. Do not add a universal CI timing threshold unless the runner environment is controlled well enough to make it meaningful.
 
 ## Async UI
 
