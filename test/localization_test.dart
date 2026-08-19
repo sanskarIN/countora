@@ -16,6 +16,11 @@ void main() {
       strings.backupExportFailed,
       'Could not copy the backup. Your local Countora data was unchanged.',
     );
+    expect(
+      strings.completionNotificationsHelp,
+      'Use scheduled platform notifications where supported so countdowns can '
+      'alert you while Countora is not in the foreground.',
+    );
   });
 
   test('English is a supported application locale', () {
