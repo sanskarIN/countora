@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_logger.dart';
 import '../data/local_store.dart';
 import '../data/notification_service.dart';
 import '../data/state_codec.dart';
@@ -18,6 +19,8 @@ class TimerController extends ChangeNotifier {
         _notifications = notifications,
         _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
         _stateCodec = stateCodec;
+
+  static const _logger = AppLogger('timer_controller');
 
   final TimerStore _store;
   final NotificationService _notifications;
@@ -145,7 +148,7 @@ class TimerController extends ChangeNotifier {
     final timer = _findTimer(timerId);
     if (timer == null) return;
     await addTimer(
-      name: '${timer.name} copy',
+      name: timer.name,
       group: timer.group,
       steps: timer.steps,
       startImmediately: startImmediately,
@@ -359,10 +362,19 @@ class TimerController extends ChangeNotifier {
   }
 
   Future<void> clearAllData() async {
+    _clearError();
+    try {
+      await _store.clear();
+    } on Object catch (error) {
+      _logger.error('local_clear_failed', error: error);
+      _lastError = 'Countora could not erase local data. Please try again.';
+      notifyListeners();
+      return;
+    }
+
     for (final timer in _timers) {
       await _notifications.cancelTimer(timer.id);
     }
-    await _store.clear();
     _timers = const <CountdownTimer>[];
     _presets = const <TimerPreset>[];
     _history = const <TimerHistoryEntry>[];
@@ -383,7 +395,6 @@ class TimerController extends ChangeNotifier {
         await _notifications.cancelTimer(timer.id);
       }
     } else if (value.notificationsEnabled) {
-      await _ensureNotificationPermissions();
       for (final timer in _timers.where(
         (item) => item.status == CountdownStatus.running,
       )) {
@@ -501,8 +512,6 @@ class TimerController extends ChangeNotifier {
     bool scheduleFinal = true,
   }) async {
     var changed = false;
-    // A timer has at most 32 interval steps, so this guard also protects
-    // against corrupted state causing an accidental infinite loop.
     for (var guard = 0; guard < 33; guard += 1) {
       final current = _findTimer(timerId);
       if (current == null ||
@@ -539,9 +548,6 @@ class TimerController extends ChangeNotifier {
     if (nextIndex < latest.steps.length) {
       final now = _nowUtc();
       final next = latest.steps[nextIndex];
-      // Anchor the next interval to the previous absolute deadline rather than
-      // to the moment the UI wakes up. This prevents interval drift and lets
-      // suspended apps catch up through multiple elapsed steps deterministically.
       final nextStartedAt = latest.endsAtUtc ?? now;
       final advanced = latest.copyWith(
         currentStepIndex: nextIndex,
@@ -586,7 +592,11 @@ class TimerController extends ChangeNotifier {
   }
 
   Future<void> _schedule(CountdownTimer timer) async {
-    if (!_settings.notificationsEnabled) return;
+    if (!_settings.notificationsEnabled ||
+        timer.status != CountdownStatus.running ||
+        timer.endsAtUtc == null) {
+      return;
+    }
     await _ensureNotificationPermissions();
     await _notifications.scheduleTimer(
       timer,
@@ -602,14 +612,16 @@ class TimerController extends ChangeNotifier {
     await _notifications.requestPermissions();
   }
 
-  Future<void> _persist() async {
+  Future<bool> _persist() async {
     try {
       await _store.save(_state);
       notifyListeners();
+      return true;
     } on Object catch (error) {
-      _lastError = 'Local save failed: $error';
+      _logger.error('local_save_failed', error: error);
+      _lastError = 'Countora could not save local changes. Please try again.';
       notifyListeners();
-      rethrow;
+      return false;
     }
   }
 
