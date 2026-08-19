@@ -1,6 +1,6 @@
 # Release
 
-Countora release tags must represent verified source, not merely a version bump. Do not create a final release tag while known analyzer/test/build failures remain.
+Countora release tags must represent verified source, not merely a version bump. Do not create a final release tag while known analyzer/test/build failures remain or while the matching changelog entry is still marked unreleased.
 
 ## Versioning
 
@@ -20,6 +20,16 @@ Before a release, update:
 - `ROADMAP.md`
 - `what_changed.md`
 
+`tool/check_version_sync.dart` verifies package/AppMetadata/changelog consistency. During a GitHub tag run it additionally requires the tag to equal `vMAJOR.MINOR.PATCH` and rejects a matching changelog heading that still contains `Unreleased`.
+
+For example, `pubspec.yaml` version `0.2.0+2` requires tag `v0.2.0`. Before that tag is pushed, the changelog heading must be finalized from an unreleased candidate label to a dated release entry.
+
+## Supported toolchain baseline
+
+Use Flutter stable satisfying `pubspec.yaml`. The current source declares Flutter `>=3.38.1` and Dart `>=3.10.0 <4.0.0`.
+
+Resolve dependencies with a real supported Flutter SDK. Do not fabricate `pubspec.lock` or generated runner output.
+
 ## Clean-checkout release candidate
 
 From a clean clone:
@@ -28,6 +38,7 @@ From a clean clone:
 dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
 dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
 dart run tool/bootstrap_platforms.dart
 flutter pub get
 flutter gen-l10n
@@ -103,8 +114,9 @@ An unsigned iOS application verifies compilation only. App Store/device distribu
 The initial Ubuntu quality job must pass before desktop/Apple jobs run. It performs:
 
 - required-file verification
-- version-metadata synchronization verification
+- version/build/changelog/tag synchronization verification
 - tracked-source obvious-secret scan
+- localization-source audit
 - platform runner generation
 - dependency resolution
 - localization generation
@@ -157,7 +169,7 @@ Before tagging:
 4. Review Dependabot alerts/update pull requests where available.
 5. Confirm `.env`, keystores, signing profiles, private keys, tokens, and generated credentials are not tracked.
 6. Confirm generated backup/test fixtures contain only fictional data.
-7. Run the repository required-file/version/secret/link audit.
+7. Run the repository required-file/version/secret/localization/link audit.
 8. Use a trusted additional secret scanner in the release environment when available.
 
 ## Native behavior checks
@@ -165,12 +177,15 @@ Before tagging:
 Before a stable public release, manually verify on representative targets:
 
 - timer start/pause/resume/restart/add-time
+- pause at/around the countdown deadline
 - multiple simultaneous timers
 - interval rollover
 - app suspension/resume reconciliation
 - completion notification delivery
 - notification permission denial
+- deferred iOS/macOS permission prompt behavior
 - Android exact-alarm denial fallback
+- Android sound/vibration/silent channel profiles and OS-level overrides
 - quiet mode/sound/vibration combinations
 - backup export/import/reset
 - keyboard shortcuts on desktop/web
@@ -182,9 +197,25 @@ Before a stable public release, manually verify on representative targets:
 
 Use only screenshots from an actual release-candidate build. Do not publish mockups as product captures. Store source captures in `docs/screenshots/` when they become available and update README references in the same commit.
 
+## Finalize changelog before tagging
+
+The release heading must be dated before a tag is pushed. Example:
+
+```text
+## [0.2.0] - 2026-08-19
+```
+
+A heading such as `## [0.2.0] - Unreleased release candidate` is intentionally accepted during normal development but will make the tagged version audit fail.
+
+Run the local version check again after finalizing the changelog:
+
+```bash
+dart run tool/check_version_sync.dart
+```
+
 ## Tagging
 
-Only after the release commit is verified:
+Only after the release commit is verified and the changelog entry is finalized:
 
 ```bash
 git tag -s vX.Y.Z -m "Countora vX.Y.Z"
