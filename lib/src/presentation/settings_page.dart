@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_links.dart';
+import '../core/external_link_launcher.dart';
 import '../core/l10n.dart';
 import '../data/state_codec.dart';
 import '../domain/models.dart';
@@ -228,7 +228,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   Future<void> _openExternal(BuildContext context, Uri uri) async {
-    final launched = await launchUrl(uri);
+    final launched = await openExternalUri(uri);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.openLinkFailed)),
