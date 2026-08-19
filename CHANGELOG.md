@@ -33,7 +33,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Structured diagnostics with sensitive-key redaction.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
-- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-patch, and integration regression tests.
+- Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - Markdown local-link checker.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
@@ -43,20 +44,33 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 ### Changed
 
 - SharedPreferences persistence now routes through bounded validation/sanitization.
+- Persistence schema ownership now lives exclusively at the `CountoraStateCodec` boundary instead of leaking into domain-state serialization.
 - Corrupted persisted state recovers to an empty safe state instead of blocking startup.
 - Import rejects malformed types rather than allowing low-level type-cast failures.
+- Backup import now reconciles staged state and requires successful persistence before replacing platform notification schedules; a failed import save restores the prior in-memory state and surfaces failure.
 - Timer ticker execution is guarded against overlapping asynchronous ticks.
 - Interval catch-up anchors later steps to prior deadlines to reduce drift after suspension.
+- Timer reconciliation persists completed/advanced state before changing associated platform schedules.
+- Direct pause, bulk pause, timer removal, timer scheduling, and notification-setting changes keep notification side effects behind successful local persistence.
 - Notification permission is requested at most once per controller session.
-- Disabling notifications cancels active schedules; enabling them reschedules running timers.
+- Disabling notifications cancels active schedules; enabling them reschedules running timers after settings persistence succeeds.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
-- Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup.
+- Unsupported future notification scheduling is skipped on Web and Linux while preserving in-app timer completion behavior.
+- Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup through validated idempotent patch helpers.
 - Settings backup/import/reset UI is safer and more explicit.
 - Clipboard backup export now surfaces a localized failure message instead of allowing a platform-channel exception to escape.
 - Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
+- Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
 - Main UI strings are externalized for future translations.
 - CI now generates localization source, formats `integration_test/`, and runs the primary Linux integration journey in a virtual display.
 - Release quality gates now include repository-file, version-sync, tracked-secret, test, integration, documentation, and build checks before publication.
+
+### Fixed
+
+- Corrected the required-file audit to reference the repository's actual `0001-local-first-modular-flutter.md` ADR path.
+- Prevented persistence failures from creating/cancelling notification schedules for state not durably saved.
+- Prevented failed backup persistence from being reported as a successful import.
+- Prevented generated-runner patching from silently succeeding when expected Flutter Android template anchors disappear.
 
 ### Security
 
@@ -71,6 +85,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 ### Known release requirements
 
 - Do not tag the final 0.2.0 release until actual Flutter analyze/test/build/integration runs have been observed as successful.
+- Generate dependency resolution with a real Flutter SDK and review whether the resulting application `pubspec.lock` should be committed before the stable release; do not fabricate a lockfile.
 - Native notification behavior must be verified on supported real platforms/devices.
 - Signed mobile/desktop distribution remains a release-environment responsibility.
 - Real screenshots must come from an actual verified build; mockups are not presented as product captures.
