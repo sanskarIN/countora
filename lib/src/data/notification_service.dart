@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -25,6 +26,9 @@ class LocalNotificationService implements NotificationService {
 
   bool _ready = false;
 
+  bool get _supportsScheduledNotifications =>
+      !kIsWeb && defaultTargetPlatform != TargetPlatform.linux;
+
   @override
   Future<void> initialize() async {
     tz_data.initializeTimeZones();
@@ -39,12 +43,13 @@ class LocalNotificationService implements NotificationService {
         appUserModelId: 'Sanskar.Countora',
         guid: '2f2dc0ea-51c6-4ed1-9b53-8725823f34e0',
       ),
+      web: const WebInitializationSettings(),
     );
 
     try {
       _ready = await _plugin.initialize(settings: settings) ?? false;
       _logger.info('initialized', fields: <String, Object?>{'ready': _ready});
-    } on Exception catch (error) {
+    } on Object catch (error) {
       _logger.warning('initialize_failed', error: error);
       _ready = false;
     }
@@ -52,7 +57,7 @@ class LocalNotificationService implements NotificationService {
 
   @override
   Future<void> requestPermissions() async {
-    if (!_ready) return;
+    if (!_ready || !_supportsScheduledNotifications) return;
 
     try {
       final android = _plugin.resolvePlatformSpecificImplementation<
@@ -69,7 +74,7 @@ class LocalNotificationService implements NotificationService {
           .resolvePlatformSpecificImplementation<
               MacOSFlutterLocalNotificationsPlugin>()
           ?.requestPermissions(alert: true, sound: true, badge: false);
-    } on Exception catch (error) {
+    } on Object catch (error) {
       _logger.warning('permission_request_failed', error: error);
     }
   }
@@ -81,7 +86,11 @@ class LocalNotificationService implements NotificationService {
     required bool vibrationEnabled,
     required bool quietMode,
   }) async {
-    if (!_ready || timer.status != CountdownStatus.running) return;
+    if (!_ready ||
+        !_supportsScheduledNotifications ||
+        timer.status != CountdownStatus.running) {
+      return;
+    }
 
     await cancelTimer(timer.id);
 
@@ -136,10 +145,11 @@ class LocalNotificationService implements NotificationService {
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           payload: timer.id,
         );
-      } on Exception catch (error) {
+      } on Object catch (error) {
         // Exact alarms can be denied independently from normal notification
         // permission on Android. Fall back to inexact scheduling rather than
-        // silently losing completion cues.
+        // silently losing completion cues. Treat platform-plugin failures as a
+        // soft failure so a notification issue never crashes the timer UI.
         _logger.warning(
           'exact_schedule_failed',
           error: error,
@@ -159,7 +169,7 @@ class LocalNotificationService implements NotificationService {
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
             payload: timer.id,
           );
-        } on Exception catch (fallbackError) {
+        } on Object catch (fallbackError) {
           _logger.error(
             'fallback_schedule_failed',
             error: fallbackError,
@@ -178,7 +188,7 @@ class LocalNotificationService implements NotificationService {
         index += 1) {
       try {
         await _plugin.cancel(id: _notificationId(timerId, index));
-      } on Exception catch (error) {
+      } on Object catch (error) {
         _logger.warning(
           'cancel_failed',
           error: error,
