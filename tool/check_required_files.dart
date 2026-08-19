@@ -35,6 +35,8 @@ void main() {
     'tool/bootstrap_platforms.dart',
     'tool/src/platform_patches.dart',
     'tool/benchmark_state_codec.dart',
+    'lib/src/core/platform_capabilities.dart',
+    'test/platform_capabilities_test.dart',
     'test/platform_patches_test.dart',
     'test/external_link_launcher_test.dart',
     'test/timer_controller_resilience_test.dart',
