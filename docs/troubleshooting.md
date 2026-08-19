@@ -71,11 +71,13 @@ Countora continues to run its timer model and in-app completion state on Web and
 
 This is intentional defensive behavior: Countora avoids calling an unsupported scheduled-notification API and therefore avoids turning a normal timer operation into an unsupported-platform exception. Keep Countora open when an in-app completion cue is required on those targets.
 
-Do not treat the Settings toggle as a promise that every platform can schedule background delivery. The UI describes completion notifications as available where supported.
+Settings uses the same centralized capability policy as the notification adapter. On a target where future notification scheduling is unavailable, the completion-notification switch and its sound/vibration/quiet controls are disabled and the UI explains that in-app completion cues still work.
+
+Countora also fails closed for native targets that are not explicitly included in the supported scheduled-notification set. A newly added platform must gain an intentional capability decision and regression coverage before the UI or service assumes scheduling is available.
 
 ## Notifications were disabled and old alerts still appear
 
-Open Countora, disable completion notifications again, and verify the app has been allowed to run long enough to cancel stored timer schedules. Removing/resetting timers also cancels known scheduled IDs.
+Open Countora, disable completion notifications again, and verify the app has been allowed to run long enough to cancel stored timer schedules. Removing/resetting timers also cancels known scheduled IDs after the corresponding durable state change succeeds.
 
 If a platform keeps a stale notification despite cancellation, capture the OS/version and file an issue with reproduction steps.
 
@@ -84,6 +86,8 @@ If a platform keeps a stale notification despite cancellation, capture the OS/ve
 Return to the app. Countora reconciles running timers at startup and when the application resumes.
 
 The live process uses a monotonic runtime clock, while persisted recovery uses UTC deadlines. A full process restart after a device clock edit necessarily interprets the saved UTC deadline using the device's current wall clock.
+
+Reconciliation persists an advanced/completed timer state before applying dependent notification schedule changes. If local persistence fails, Countora reports the save problem and does not intentionally change those schedules for an unsaved reconciled state.
 
 ## Interval sequence skipped one or more steps after suspension
 
@@ -102,6 +106,8 @@ Countora rejects backups when they are:
 
 Import validation happens before current local data is replaced.
 
+After validation/confirmation, the imported state is staged and reconciled before Countora attempts to persist the replacement. Existing notification schedules are not replaced until that persistence succeeds. If the staged import cannot be saved, Countora restores the previous in-memory state, leaves the previous schedules untouched, and reports import failure instead of reporting success.
+
 If a backup is from a future Countora version, update Countora rather than manually editing its schema number.
 
 ## Local state was corrupted
@@ -113,6 +119,8 @@ Restore from a previously exported Countora backup if available.
 ## Saving shows an error banner
 
 Countora keeps the in-memory operation visible but reports that local persistence failed. Avoid closing the app until the storage problem is resolved because the most recent change may not survive process termination.
+
+State-dependent notification schedule changes are intentionally kept behind successful persistence. A failed save therefore does not intentionally create/cancel a notification for the unsaved state change.
 
 Check available device storage and platform storage permissions/health, then retry the action.
 
