@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/formatters.dart';
+import '../core/l10n.dart';
 import 'settings_page.dart';
 import 'timer_card.dart';
 import 'timer_controller.dart';
@@ -27,7 +30,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!controller.settings.onboardingSeen && mounted) {
-        _showOnboarding();
+        unawaited(_showOnboarding());
       }
     });
   }
@@ -40,6 +43,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 920;
 
@@ -54,44 +58,44 @@ class _HomePageState extends State<HomePage> {
 
     final scaffold = Scaffold(
       appBar: AppBar(
-        title: const Text('Countora'),
+        title: Text(strings.appName),
         actions: [
           if (_destinationIndex == 0 && controller.timers.isNotEmpty)
             PopupMenuButton<_HomeAction>(
-              tooltip: 'Timer actions',
-              onSelected: _handleHomeAction,
+              tooltip: strings.timerActions,
+              onSelected: (action) => unawaited(_handleHomeAction(action)),
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: _HomeAction.pauseAll,
                   enabled: controller.runningCount > 0,
-                  child: const ListTile(
+                  child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.pause_circle_outline),
-                    title: Text('Pause all running'),
+                    leading: const Icon(Icons.pause_circle_outline),
+                    title: Text(strings.pauseAllRunning),
                   ),
                 ),
                 PopupMenuItem(
                   value: _HomeAction.resumeAll,
                   enabled: controller.pausedCount > 0,
-                  child: const ListTile(
+                  child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.play_circle_outline),
-                    title: Text('Resume all paused'),
+                    leading: const Icon(Icons.play_circle_outline),
+                    title: Text(strings.resumeAllPaused),
                   ),
                 ),
                 PopupMenuItem(
                   value: _HomeAction.removeCompleted,
                   enabled: controller.completedCount > 0,
-                  child: const ListTile(
+                  child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.cleaning_services_outlined),
-                    title: Text('Remove completed'),
+                    leading: const Icon(Icons.cleaning_services_outlined),
+                    title: Text(strings.removeCompleted),
                   ),
                 ),
               ],
             ),
           IconButton(
-            tooltip: 'Settings',
+            tooltip: strings.settings,
             onPressed: _openSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -105,20 +109,20 @@ class _HomePageState extends State<HomePage> {
               selectedIndex: _destinationIndex,
               onDestinationSelected: _selectDestination,
               labelType: NavigationRailLabelType.all,
-              destinations: const [
+              destinations: [
                 NavigationRailDestination(
-                  icon: Icon(Icons.timer_outlined),
-                  selectedIcon: Icon(Icons.timer),
-                  label: Text('Timers'),
+                  icon: const Icon(Icons.timer_outlined),
+                  selectedIcon: const Icon(Icons.timer),
+                  label: Text(strings.timers),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.bookmark_border),
-                  selectedIcon: Icon(Icons.bookmark),
-                  label: Text('Presets'),
+                  icon: const Icon(Icons.bookmark_border),
+                  selectedIcon: const Icon(Icons.bookmark),
+                  label: Text(strings.presets),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.history),
-                  label: Text('History'),
+                  icon: const Icon(Icons.history),
+                  label: Text(strings.history),
                 ),
               ],
             ),
@@ -130,29 +134,32 @@ class _HomePageState extends State<HomePage> {
           : NavigationBar(
               selectedIndex: _destinationIndex,
               onDestinationSelected: _selectDestination,
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.timer_outlined),
-                  selectedIcon: Icon(Icons.timer),
-                  label: 'Timers',
+                  icon: const Icon(Icons.timer_outlined),
+                  selectedIcon: const Icon(Icons.timer),
+                  label: strings.timers,
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.bookmark_border),
-                  selectedIcon: Icon(Icons.bookmark),
-                  label: 'Presets',
+                  icon: const Icon(Icons.bookmark_border),
+                  selectedIcon: const Icon(Icons.bookmark),
+                  label: strings.presets,
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.history),
-                  label: 'History',
+                  icon: const Icon(Icons.history),
+                  label: strings.history,
                 ),
               ],
             ),
       floatingActionButton: _destinationIndex == 2
           ? null
           : FloatingActionButton.extended(
-              onPressed: () => _create(preset: _destinationIndex == 1),
+              onPressed: () =>
+                  unawaited(_create(preset: _destinationIndex == 1)),
               icon: const Icon(Icons.add),
-              label: Text(_destinationIndex == 1 ? 'Preset' : 'Timer'),
+              label: Text(
+                _destinationIndex == 1 ? strings.preset : strings.timer,
+              ),
             ),
     );
 
@@ -161,9 +168,9 @@ class _HomePageState extends State<HomePage> {
       child: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
           const SingleActivator(LogicalKeyboardKey.keyN, control: true):
-              () => _create(preset: _destinationIndex == 1),
+              () => unawaited(_create(preset: _destinationIndex == 1)),
           const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
-              () => _create(preset: _destinationIndex == 1),
+              () => unawaited(_create(preset: _destinationIndex == 1)),
           const SingleActivator(LogicalKeyboardKey.keyF, control: true):
               _focusSearch,
           const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
@@ -194,9 +201,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SettingsPage(controller: controller),
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => SettingsPage(controller: controller),
+        ),
       ),
     );
   }
@@ -205,13 +214,10 @@ class _HomePageState extends State<HomePage> {
     switch (action) {
       case _HomeAction.pauseAll:
         await controller.pauseAllRunning();
-        break;
       case _HomeAction.resumeAll:
         await controller.resumeAllPaused();
-        break;
       case _HomeAction.removeCompleted:
         await controller.removeCompletedTimers();
-        break;
     }
   }
 
@@ -238,21 +244,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showOnboarding() async {
+    final strings = context.l10n;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.timer_outlined, size: 44),
-        title: const Text('Welcome to Countora'),
-        content: const Text(
-          'Run multiple countdowns, save reusable presets, build interval '
-          'sequences, and keep everything local to your device. On desktop, '
-          'use Ctrl/Cmd+N for a new timer and Ctrl/Cmd+F to search.',
-        ),
+        title: Text(strings.welcomeTitle),
+        content: Text('${strings.welcomeBody} ${strings.newTimerShortcutHint}'),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Get started'),
+            child: Text(strings.getStarted),
           ),
         ],
       ),
@@ -272,6 +275,7 @@ class _TimersView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     final timers = controller.visibleTimers;
     final hasActiveFilter = controller.searchQuery.trim().isNotEmpty ||
         controller.groupFilter.isNotEmpty;
@@ -286,13 +290,13 @@ class _TimersView extends StatelessWidget {
               children: [
                 SearchBar(
                   focusNode: searchFocusNode,
-                  hintText: 'Search timers, groups, or intervals',
+                  hintText: strings.searchTimersHint,
                   leading: const Icon(Icons.search),
                   trailing: controller.searchQuery.isEmpty
                       ? null
                       : <Widget>[
                           IconButton(
-                            tooltip: 'Clear search',
+                            tooltip: strings.clearSearch,
                             onPressed: () => controller.setSearchQuery(''),
                             icon: const Icon(Icons.close),
                           ),
@@ -305,17 +309,17 @@ class _TimersView extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     _CountChip(
-                      label: 'Running',
+                      label: strings.running,
                       count: controller.runningCount,
                       icon: Icons.play_arrow,
                     ),
                     _CountChip(
-                      label: 'Paused',
+                      label: strings.paused,
                       count: controller.pausedCount,
                       icon: Icons.pause,
                     ),
                     _CountChip(
-                      label: 'Done',
+                      label: strings.done,
                       count: controller.completedCount,
                       icon: Icons.check,
                     ),
@@ -328,7 +332,7 @@ class _TimersView extends StatelessWidget {
                     child: Row(
                       children: [
                         ChoiceChip(
-                          label: const Text('All'),
+                          label: Text(strings.all),
                           selected: controller.groupFilter.isEmpty,
                           onSelected: (_) => controller.setGroupFilter(''),
                         ),
@@ -355,7 +359,7 @@ class _TimersView extends StatelessWidget {
                     actions: <Widget>[
                       TextButton(
                         onPressed: controller.clearError,
-                        child: const Text('Dismiss'),
+                        child: Text(strings.dismiss),
                       ),
                     ],
                   ),
@@ -371,10 +375,12 @@ class _TimersView extends StatelessWidget {
               icon: hasActiveFilter
                   ? Icons.search_off_outlined
                   : Icons.timer_outlined,
-              title: hasActiveFilter ? 'No matching countdowns' : 'No countdowns yet',
+              title: hasActiveFilter
+                  ? strings.noMatchingCountdowns
+                  : strings.noCountdownsYet,
               message: hasActiveFilter
-                  ? 'Change the search or group filter to see more timers.'
-                  : 'Create a timer or start one from a reusable preset.',
+                  ? strings.noMatchingCountdownsMessage
+                  : strings.noCountdownsMessage,
               action: hasActiveFilter
                   ? OutlinedButton.icon(
                       onPressed: () {
@@ -382,7 +388,7 @@ class _TimersView extends StatelessWidget {
                         controller.setGroupFilter('');
                       },
                       icon: const Icon(Icons.filter_alt_off_outlined),
-                      label: const Text('Clear filters'),
+                      label: Text(strings.clearFilters),
                     )
                   : null,
             ),
@@ -428,14 +434,15 @@ class _PresetsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     final presets = [...controller.presets]
       ..sort((a, b) => b.useCount.compareTo(a.useCount));
 
     if (presets.isEmpty) {
-      return const _EmptyState(
+      return _EmptyState(
         icon: Icons.bookmark_border,
-        title: 'No presets yet',
-        message: 'Save a timer as a preset or create one directly.',
+        title: strings.noPresetsYet,
+        message: strings.noPresetsMessage,
       );
     }
 
@@ -459,14 +466,16 @@ class _PresetsView extends StatelessWidget {
               [
                 if (preset.group.isNotEmpty) preset.group,
                 humanizeDuration(duration),
-                if (preset.steps.length > 1) '${preset.steps.length} intervals',
-                '${preset.useCount} uses',
+                if (preset.steps.length > 1)
+                  '${preset.steps.length} ${strings.intervals}',
+                '${preset.useCount} ${strings.uses}',
               ].join(' • '),
             ),
-            onTap: () => controller.startPreset(preset.id),
+            onTap: () => unawaited(controller.startPreset(preset.id)),
             trailing: IconButton(
-              tooltip: 'Delete preset',
-              onPressed: () => _confirmDeletePreset(context, preset.id),
+              tooltip: strings.deletePreset,
+              onPressed: () =>
+                  unawaited(_confirmDeletePreset(context, preset.id)),
               icon: const Icon(Icons.delete_outline),
             ),
           ),
@@ -479,19 +488,20 @@ class _PresetsView extends StatelessWidget {
     BuildContext context,
     String presetId,
   ) async {
+    final strings = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete preset?'),
-        content: const Text('Existing timers created from it will stay.'),
+        title: Text(strings.deletePresetTitle),
+        content: Text(strings.deletePresetMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
@@ -509,11 +519,12 @@ class _HistoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
     if (controller.history.isEmpty) {
-      return const _EmptyState(
+      return _EmptyState(
         icon: Icons.history,
-        title: 'History is empty',
-        message: 'Completed timers will appear here.',
+        title: strings.historyEmpty,
+        message: strings.historyEmptyMessage,
       );
     }
 
@@ -538,8 +549,8 @@ class _HistoryView extends StatelessWidget {
             ].join(' • '),
           ),
           trailing: IconButton(
-            tooltip: 'Run again',
-            onPressed: () => controller.startFromHistory(item),
+            tooltip: strings.runAgain,
+            onPressed: () => unawaited(controller.startFromHistory(item)),
             icon: const Icon(Icons.replay),
           ),
         );
