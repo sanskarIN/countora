@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Countora mark</title>
+  <desc id="desc">A rounded purple tile with a white countdown ring forming the letter C and a bright timer hand.</desc>
+  <rect width="512" height="512" rx="112" fill="#6750A4"/>
+  <path d="M351 143c-27-21-60-33-95-33-81 0-146 65-146 146s65 146 146 146c35 0 68-12 95-33" fill="none" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="24" fill="#FFFFFF"/>
+  <path d="M256 256V169" stroke="#FFDD57" stroke-width="28" stroke-linecap="round"/>
+  <path d="M219 76h74" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+</svg>

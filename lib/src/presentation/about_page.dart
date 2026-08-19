@@ -2,80 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_links.dart';
+import '../core/app_strings.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('About Countora')),
+      appBar: AppBar(title: Text(strings.aboutCountora)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           const Icon(Icons.timer_outlined, size: 72),
           const SizedBox(height: 16),
           Text(
-            'Countora',
+            strings.appName,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 6),
-          const Text(
-            'A local-first multi-countdown timer for focused work, study, '
-            'cooking, routines, and interval workflows.',
+          Text(
+            strings.aboutDescription,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          const Center(
+          Center(
             child: Chip(
-              avatar: Icon(Icons.favorite_outline),
-              label: Text('Made by the Sanskar'),
+              avatar: const Icon(Icons.favorite_outline),
+              label: Text(strings.madeBySanskar),
             ),
           ),
           const SizedBox(height: 24),
           _LinkTile(
             icon: Icons.code,
-            title: 'Source repository',
+            title: strings.sourceRepository,
             subtitle: AppLinks.repository,
             uri: Uri.parse(AppLinks.repository),
           ),
           _LinkTile(
             icon: Icons.coffee_outlined,
-            title: 'Buy Me a Coffee',
-            subtitle: 'Support Countora development',
+            title: strings.buyMeACoffee,
+            subtitle: strings.supportDevelopment,
             uri: Uri.parse(AppLinks.buyMeACoffee),
           ),
           _LinkTile(
             icon: Icons.mail_outline,
-            title: 'Business',
+            title: strings.business,
             subtitle: AppLinks.businessEmail,
             uri: Uri(scheme: 'mailto', path: AppLinks.businessEmail),
           ),
           _LinkTile(
             icon: Icons.mail_outline,
-            title: 'Business (secondary)',
+            title: strings.businessSecondary,
             subtitle: AppLinks.secondaryBusinessEmail,
             uri: Uri(scheme: 'mailto', path: AppLinks.secondaryBusinessEmail),
           ),
           _LinkTile(
             icon: Icons.support_agent,
-            title: 'Support',
+            title: strings.support,
             subtitle: AppLinks.supportEmail,
             uri: Uri(scheme: 'mailto', path: AppLinks.supportEmail),
           ),
           const SizedBox(height: 16),
-          const ListTile(
-            leading: Icon(Icons.license_outlined),
-            title: Text('License'),
-            subtitle: Text('MIT License'),
+          ListTile(
+            leading: const Icon(Icons.license_outlined),
+            title: Text(strings.license),
+            subtitle: Text(strings.mitLicense),
           ),
-          const ListTile(
-            leading: Icon(Icons.privacy_tip_outlined),
-            title: Text('Privacy'),
-            subtitle: Text(
-              'Timer data is stored locally. Countora does not require an account.',
-            ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(strings.privacy),
+            subtitle: Text(strings.privacyDescription),
           ),
         ],
       ),
@@ -98,6 +98,7 @@ class _LinkTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
@@ -107,7 +108,7 @@ class _LinkTile extends StatelessWidget {
         final launched = await launchUrl(uri);
         if (!launched && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open $subtitle')),
+            SnackBar(content: Text(strings.couldNotOpen(subtitle))),
           );
         }
       },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/app_strings.dart';
 import 'core/app_theme.dart';
 import 'presentation/home_page.dart';
 import 'presentation/timer_controller.dart';
@@ -16,7 +17,9 @@ class CountoraApp extends StatelessWidget {
       builder: (context, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Countora',
+          onGenerateTitle: (context) => AppStrings.of(context).appName,
+          localizationsDelegates: const [AppStringsDelegate()],
+          supportedLocales: const <Locale>[Locale('en')],
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: controller.settings.themeMode,
