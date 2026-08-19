@@ -39,9 +39,29 @@ The current SharedPreferences document approach is appropriate only because the 
 
 Do not increase entity/backup caps casually. If real measurements show serialization or query costs becoming material, replace the `TimerStore` implementation with a transactional embedded database rather than making the current document unbounded.
 
+The persistence codec is also the backup parser, so encode/decode cost is worth measuring at a representative high-cardinality state. Countora includes a standalone benchmark harness at `tool/benchmark_state_codec.dart`.
+
+After dependency resolution, run:
+
+```bash
+dart run tool/benchmark_state_codec.dart
+```
+
+Or choose a bounded iteration count:
+
+```bash
+dart run tool/benchmark_state_codec.dart --iterations 500
+```
+
+The harness builds a deterministic representative state containing 300 timers, 200 presets, 500 history entries, and four intervals per timer/preset. It verifies every decode round trip and emits machine-readable JSON with fixture size plus encode/decode minimum, p50, p95, and maximum microseconds.
+
+The script intentionally does **not** fail on a wall-clock threshold. Host speed, build mode, thermal state, virtualization, SDK version, and background load make a universal CI timing threshold misleading. Archive measurements with the environment metadata instead.
+
 ## Notification behavior
 
 Notification scheduling is event-driven: create/resume/add-time/restart/reconcile/settings changes. It is not performed on every display tick.
+
+Web and Linux currently avoid future background notification scheduling because that capability is unavailable through Countora's current notification adapter there. This prevents repeated unsupported platform calls from becoming timer-action overhead or failures.
 
 ## Profiling checklist
 
@@ -64,6 +84,17 @@ Record:
 - serialization/import time
 - notification scheduling time on Android
 
+For codec measurements, also record:
+
+- exact Countora commit
+- Flutter/Dart version
+- operating system and architecture
+- debug/profile/release context if relevant
+- CPU/device model
+- iteration count
+- encoded fixture size
+- p50/p95 encode and decode times
+
 ## Benchmark policy
 
-Do not add a fragile wall-clock threshold to normal CI without a controlled benchmark runner. Deterministic correctness tests protect bounds today; performance numbers should be gathered on explicit representative hardware and documented with device/Flutter/build-mode details.
+Do not add a fragile wall-clock threshold to normal CI without a controlled benchmark runner. Deterministic correctness tests protect bounds today; the benchmark harness provides repeatable measurement input, while performance claims must still be gathered on explicit representative hardware and documented with device/Flutter/build-mode details.
