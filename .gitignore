@@ -8,6 +8,10 @@ coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# Generated localization source
+lib/l10n/app_localizations.dart
+lib/l10n/app_localizations_*.dart
+
 # Generated platform runners
 # Generate with: dart run tool/bootstrap_platforms.dart
 android/
