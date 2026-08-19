@@ -111,10 +111,16 @@ jobs:
         run: flutter build linux --release
       - name: Archive Linux release
         run: tar -C build/linux/x64/release/bundle -czf build/countora-linux-x64.tar.gz .
+      - name: Create Linux checksum
+        run: |
+          cd build
+          sha256sum countora-linux-x64.tar.gz > countora-linux-x64.tar.gz.sha256
       - name: Publish Linux artifact
         uses: softprops/action-gh-release@v2
         with:
-          files: build/countora-linux-x64.tar.gz
+          files: |
+            build/countora-linux-x64.tar.gz
+            build/countora-linux-x64.tar.gz.sha256
           fail_on_unmatched_files: true
 
   windows:
