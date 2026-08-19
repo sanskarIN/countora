@@ -21,10 +21,15 @@ class CountoraStateCodec {
   static const int maxIntervalSeconds = 365 * 24 * 60 * 60;
   static const int maxRemainingSeconds = 10 * 365 * 24 * 60 * 60;
 
-  String encode(CountoraState state) => jsonEncode(state.toJson());
+  String encode(CountoraState state) => jsonEncode(_encodedMap(state));
 
   String encodePretty(CountoraState state) =>
-      const JsonEncoder.withIndent('  ').convert(state.toJson());
+      const JsonEncoder.withIndent('  ').convert(_encodedMap(state));
+
+  Map<String, Object?> _encodedMap(CountoraState state) => <String, Object?>{
+        'schemaVersion': currentSchemaVersion,
+        ...state.toJson(),
+      };
 
   CountoraState decode(String raw) {
     if (raw.trim().isEmpty) {
