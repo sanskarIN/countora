@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:countora/src/data/state_codec.dart';
 import 'package:countora/src/domain/models.dart';
@@ -59,7 +60,7 @@ void main(List<String> args) {
 
   // Machine-readable output makes it easy to archive measurements without
   // turning host-dependent timings into a fragile CI pass/fail threshold.
-  print(const JsonEncoder.withIndent('  ').convert(report));
+  stdout.writeln(const JsonEncoder.withIndent('  ').convert(report));
 }
 
 int _readIterations(List<String> args) {
