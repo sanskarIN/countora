@@ -34,13 +34,13 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
 - Central scheduled-notification capability policy shared by Settings and the notification adapter.
-- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, notification-cleanup, home-error-surface, Settings-reactivity, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
 - Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
 - Deterministic localization-source audit enforced by repository audit, normal CI, and tagged release CI before generated localization code is created.
-- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, and issue-template configuration.
+- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, important UI regressions, and issue-template configuration.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
 - Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
@@ -62,11 +62,14 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Direct pause, bulk pause, timer removal, timer scheduling, and notification-setting changes keep notification side effects behind successful local persistence.
 - Notification permission is requested at most once per controller session.
 - Disabling notifications cancels active schedules; enabling them reschedules running timers after settings persistence succeeds.
+- Multi-step notification cancellation now continues through the full bounded notification-ID range even when one plugin cancellation fails.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
 - Future scheduled-notification capability now fails closed: Android, iOS, macOS, and Windows are explicitly enabled while Web, Linux, Fuchsia, and unapproved future targets are not assumed capable.
 - Settings disables completion-notification, sound, vibration, and quiet-mode controls when scheduled background completion is unavailable and explains that in-app completion cues still work.
 - Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup through validated idempotent patch helpers.
 - Settings backup/import/reset UI is safer and more explicit.
+- Settings now listens directly to controller changes while its route is open and surfaces recoverable controller persistence errors without requiring navigation back to Home.
+- Recoverable controller errors are displayed above the shared Home destination content, so Presets and History operations receive the same visible feedback as Timers.
 - Clipboard backup export now surfaces a localized failure message instead of allowing a platform-channel exception to escape.
 - Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
 - Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
@@ -83,6 +86,9 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Prevented unsupported or unknown notification targets from being treated as future-scheduling capable by default.
 - Prevented nested structured-log maps with non-`String` generic types from bypassing recursive sensitive-key redaction through stringification.
 - Prevented timer/preset creation from exceeding the persistence collection limits and producing restart-time truncation surprises.
+- Prevented a single notification-plugin cancellation exception from abandoning cleanup of later interval notification IDs.
+- Prevented Presets/History controller failures from being hidden because the error banner existed only inside the Timers destination.
+- Prevented the pushed Settings route from displaying stale controller values or hiding save failures until navigation returned to Home.
 
 ### Security
 
