@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, notification synchronization, cross-platform capability decisions, native runner patching, packaging metadata, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, cross-platform capability decisions, browser permission boundaries, native runner patching, packaging metadata, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -76,6 +76,8 @@ The logger regression deliberately uses synthetic credential-like strings. It mu
 
 `test/runtime_notification_policy_test.dart` verifies that Countora preserves a runtime notification callback at/after its delivery deadline while still cancelling callbacks that are genuinely early. This protects Linux/Web/portable-Windows completion delivery from an exact-deadline race with controller reconciliation.
 
+`test/web_notification_permission_test.dart` protects the browser user-activation boundary: non-Web targets never invoke the browser request, Web user actions delegate exactly once to the permission request, and denial is returned as a safe boolean rather than escaping as a timer failure. The production `LocalNotificationService.requestPermissions()` intentionally does not ask Web for permission; the explicit Settings **Allow** button owns that user-gesture path.
+
 ### Native runner patch tests
 
 `test/platform_patches_test.dart` verifies generated native transforms:
@@ -109,13 +111,13 @@ For example, package `0.2.0+2` requires MSIX `0.2.0.2`.
 
 `test/home_error_banner_test.dart` verifies recoverable controller failures remain visible and dismissible after navigating away from the Timers destination, including the Presets surface.
 
-`test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, clipboard-backup failure feedback, runtime-notification controls, and fail-closed notification controls on unsupported targets.
+`test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, clipboard-backup failure feedback, runtime-notification controls, and fail-closed notification controls on unsupported targets. Web-only rendering of the browser permission action must additionally be exercised in a real/Web widget target because `kIsWeb` cannot be toggled in a normal VM widget test.
 
 `test/settings_reactivity_test.dart` verifies the pushed Settings route listens to controller changes and surfaces controller persistence failures without requiring navigation back to Home.
 
 `test/keyboard_shortcuts_test.dart` covers the primary desktop keyboard shortcuts.
 
-`test/localization_test.dart` verifies English localization generation/delegate behavior, including distinct focus-mode entry/exit semantics and the scheduled-vs-runtime notification explanatory copy.
+`test/localization_test.dart` verifies English localization generation/delegate behavior, including distinct focus-mode entry/exit semantics, scheduled-vs-runtime notification explanatory copy, and browser-permission copy.
 
 ### Integration journey
 
@@ -257,12 +259,14 @@ Any failure blocks its CI job. A release must not be described as verified until
 
 Automated Dart/widget/build-smoke/Linux integration tests cannot fully prove OS/browser notification behavior. Before a stable release, manually verify on supported targets where applicable:
 
-- notification permission prompts;
+- native notification permission prompts;
+- Web Settings **Browser notification permission → Allow** prompt from a direct user interaction;
+- Web permission denial and subsequent timer behavior;
 - completion notification delivery while Countora is foregrounded;
 - completion notification delivery while app is backgrounded on scheduled-delivery targets;
 - iOS foreground notification presentation after generated AppDelegate patching;
 - Linux runtime notification delivery while Countora remains active;
-- Web notification permission and runtime delivery in representative browsers;
+- Web runtime delivery in representative browsers after permission grant;
 - portable Windows runtime notification delivery;
 - installed package-identity Windows scheduling/cancellation;
 - Linux/Web/portable-Windows reconciliation after process/page/runtime interruption;
