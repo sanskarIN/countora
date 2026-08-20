@@ -63,6 +63,7 @@ void main() {
     'lib/src/data/web_notification_permission.dart',
     'test/app_logger_test.dart',
     'test/backup_inspection_test.dart',
+    'test/bootstrap_platforms_test.dart',
     'test/dependency_lock_audit_test.dart',
     'test/home_error_banner_test.dart',
     'test/localization_audit_test.dart',
