@@ -36,7 +36,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Package-identity-aware scheduled Windows notification mode
 - [x] Runtime local-notification fallback on Linux, Web, and portable Windows
 - [x] Runtime deadline-race protection so due callbacks survive controller reconciliation
-- [x] Web notification-permission request path
+- [x] Direct user-gesture Web notification-permission boundary in Settings
+- [x] Automatic scheduling/reconciliation paths never trigger Web permission prompts
 - [x] Unsupported future targets fail closed
 - [x] Generated Android notification configuration hardening
 - [x] Generated Android AGP floor enforcement for the notification dependency
@@ -71,6 +72,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Dark/light/system themes and reduced motion
 - [x] Notification controls available on all six supported Countora platform families where local notifications are available
 - [x] Linux/Web/portable-Windows UI distinguishes runtime delivery from guaranteed future background scheduling
+- [x] Web Settings exposes explicit browser notification permission action
 - [x] Android/iOS/macOS/Linux/Windows/Web notification presentation configuration
 
 ### Automated quality
@@ -83,6 +85,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Persistence/notification consistency regression tests
 - [x] Notification cleanup continuation regression tests
 - [x] Runtime notification deadline-policy regression tests
+- [x] Web user-gesture notification-permission boundary tests
 - [x] Cross-platform notification capability-tier tests
 - [x] Portable-vs-packaged Windows notification mode tests
 - [x] Cross-platform notification presentation-detail tests
@@ -100,7 +103,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Focus-mode semantics widget regression
 - [x] Primary integration journey source
 - [x] Dedicated Linux/Xvfb integration CI job source
-- [x] Localization tests
+- [x] Localization tests including browser-permission copy
 - [x] Deterministic localization-source audit before generated localization code
 - [x] Localization-source audit enforced in repository audit, normal CI, and tagged release CI
 - [x] Deterministic state-codec performance benchmark harness
@@ -133,7 +136,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [ ] Verify installed package-identity Windows/MSIX scheduling and cancellation behavior
 - [ ] Choose and validate a production MSIX signing or Microsoft Store distribution strategy before publishing packaged Windows artifacts
 - [ ] Verify Linux desktop notification delivery while Countora remains active and reconciliation after process suspension/restart
-- [ ] Verify Web browser notification permission, runtime completion notification delivery, and reconciliation after page suspension/reload in representative browsers
+- [ ] Verify the Web Settings **Allow** action, permission denial/grant, runtime completion notification delivery, and page suspension/reload in representative browsers
 - [ ] Record clearly that Linux/Web/portable-Windows runtime fallbacks cannot guarantee the same future delivery as scheduled targets after the runtime is gone
 - [ ] Complete manual accessibility review with a real screen reader, keyboard-only navigation, reduced motion, and large text
 - [ ] Capture real application screenshots from verified builds
