@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +9,7 @@ import '../core/external_link_launcher.dart';
 import '../core/l10n.dart';
 import '../core/platform_capabilities.dart';
 import '../data/state_codec.dart';
+import '../data/web_notification_permission.dart';
 import '../domain/models.dart';
 import 'about_page.dart';
 import 'timer_controller.dart';
@@ -104,6 +106,18 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const Divider(height: 32),
                 _sectionTitle(context, strings.notificationsCues),
+                if (kIsWeb)
+                  ListTile(
+                    leading: const Icon(Icons.notifications_active_outlined),
+                    title: Text(strings.browserNotificationPermission),
+                    subtitle: Text(strings.browserNotificationPermissionHelp),
+                    trailing: FilledButton.tonal(
+                      onPressed: () => unawaited(
+                        _requestBrowserNotificationPermission(context),
+                      ),
+                      child: Text(strings.allow),
+                    ),
+                  ),
                 SwitchListTile(
                   title: Text(strings.completionNotifications),
                   subtitle: Text(
@@ -262,6 +276,24 @@ class SettingsPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+
+  Future<void> _requestBrowserNotificationPermission(
+    BuildContext context,
+  ) async {
+    final strings = context.l10n;
+    final granted = await requestWebNotificationPermissionFromUserGesture();
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? strings.browserNotificationPermissionGranted
+              : strings.browserNotificationPermissionNotGranted,
+        ),
+      ),
     );
   }
 
