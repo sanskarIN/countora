@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, notification synchronization, platform capability decisions, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, platform capability decisions, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -21,7 +21,7 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 - malformed field-type rejection
 - duplicate-ID handling
 - invalid interval recovery
-- configured name/group/use-count bounds
+- configured identifier/name/group/use-count bounds
 
 `test/state_codec_fuzz_test.dart` adds deterministic malformed-input/fuzz-style regression coverage around the backup trust boundary.
 
@@ -38,6 +38,8 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 
 `test/timer_controller_test.dart` and `test/timer_controller_workflows_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, and history reuse.
 
+`test/timer_controller_limits_test.dart` verifies that live timer/preset creation respects the same collection caps as persistence decoding and that a full timer collection does not increment preset usage without creating a timer.
+
 `test/timer_controller_resilience_test.dart` specifically covers recoverable infrastructure failures, including:
 
 - save failures surfaced without escaping normal UI-facing operations
@@ -48,6 +50,12 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 - failed backup-import persistence restoring the previous in-memory state
 - local-store clear failure preserving current in-memory state
 
+### Security/diagnostic tests
+
+`test/app_logger_test.dart` verifies structured diagnostic sanitization across nested generic maps and iterables, sensitive-key normalization, enum conversion, and bounded arbitrary scalar text.
+
+The logger regression deliberately uses synthetic credential-like strings. It must never contain real secrets or user backups.
+
 ### Platform-boundary tests
 
 `test/external_link_launcher_test.dart` verifies that successful, declined, and throwing URL-launch operations are converted into a safe boolean result instead of allowing platform failures to escape into the widget tree.
@@ -55,6 +63,8 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 `test/platform_capabilities_test.dart` verifies Countora's explicit future-notification policy: Web and Linux are unsupported by the current scheduled-notification adapter while Android, iOS, macOS, and Windows use their native adapter paths.
 
 `test/platform_patches_test.dart` verifies generated Android runner transforms for required notification permissions/receivers, desugaring, multidex, idempotence, and explicit template-drift failure.
+
+`test/notification_cleanup_test.dart` verifies that a failure cancelling one derived interval notification does not prevent cleanup attempts for the remaining bounded notification IDs.
 
 ### Widget tests
 
@@ -76,7 +86,7 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 4. save it as a preset
 5. start another timer from that preset
 
-CI has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, generates Countora's platform runners, and executes the integration suite against the Linux desktop target in a virtual display.
+CI has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, validates committed localization references, generates Countora's platform runners/localization source, and executes the integration suite against the Linux desktop target in a virtual display.
 
 ## Performance measurement
 
@@ -98,7 +108,13 @@ The harness verifies every encode/decode round trip and emits JSON with fixture 
 
 ## Standard local quality suite
 
-Generate localization first:
+Validate committed localization references before generated source can hide a stale ARB/reference mismatch:
+
+```bash
+dart run tool/check_localization_source.dart
+```
+
+Generate localization:
 
 ```bash
 flutter gen-l10n
@@ -151,22 +167,24 @@ The main Flutter quality job performs:
 
 1. checkout
 2. Flutter setup
-3. deterministic platform-runner generation
-4. dependency resolution
-5. localization generation
-6. formatting verification
-7. `flutter analyze`
-8. `flutter test`
-9. local Markdown-link verification
-10. Web release build
+3. deterministic localization-source/reference validation
+4. deterministic platform-runner generation
+5. dependency resolution
+6. localization generation
+7. formatting verification
+8. `flutter analyze`
+9. `flutter test`
+10. local Markdown-link verification
+11. Web release build
 
 The Linux integration job performs:
 
 1. checkout and Flutter setup
 2. installation of GTK/Linux build dependencies and Xvfb
-3. deterministic platform-runner generation
-4. dependency resolution and localization generation
-5. the full `integration_test` directory against `-d linux`
+3. deterministic localization-source/reference validation
+4. deterministic platform-runner generation
+5. dependency resolution and localization generation
+6. the full `integration_test` directory against `-d linux`
 
 Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful.
 
@@ -177,6 +195,7 @@ Automated Dart/widget/Linux integration tests cannot fully prove OS notification
 - notification permission prompts
 - completion notification delivery while app is backgrounded
 - sound/vibration/quiet-mode behavior
+- cleanup/replacement of multi-step notification schedules
 - reboot/rescheduling behavior on Android
 - exact-alarm denied fallback behavior
 - pause/resume after suspension
