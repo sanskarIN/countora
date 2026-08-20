@@ -71,9 +71,12 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Primary integration journey source
 - [x] Dedicated Linux/Xvfb integration CI job source
 - [x] Localization tests
+- [x] Deterministic localization-source audit before generated localization code
+- [x] Localization-source audit enforced in repository audit, normal CI, and tagged release CI
 - [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
 - [x] Required-file/version/secret repository audit tooling
+- [x] Required-file contract protects critical docs, audit/release tooling, workflows, integration source, and issue-template configuration
 - [x] Release-only committed dependency-lock audit and regression coverage
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
