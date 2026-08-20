@@ -63,8 +63,10 @@ Unless they demonstrate a real Countora security boundary failure:
 - Versioned and bounded backup decoding.
 - Future backup schemas fail closed.
 - Malformed field types are converted to controlled format errors.
-- State-size/entity/duration/name/group caps.
+- State-size/entity/identifier/duration/name/group caps.
+- Controller creation paths enforce the same timer/preset collection caps as decoded persistence.
 - Structured diagnostics redact sensitive key categories and log error types rather than raw backup/user content.
+- Structured-log sanitization recursively handles nested maps/iterables, including generic platform maps, and bounds arbitrary scalar text before JSON encoding.
 - `.env`, keystores, signing files, and generated credentials are ignored.
 - Dependency Review blocks newly introduced moderate-or-higher dependency vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
