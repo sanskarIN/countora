@@ -22,7 +22,7 @@ Countora uses three delivery modes:
 | Windows portable ZIP | Supported | `runtimeOnly` | Displays Windows notifications while Countora is active. Portable builds deliberately avoid future scheduling because reliable notification cancellation/history requires Windows package identity. |
 | Windows MSIX | Supported packaging path | `scheduledBackground` | The MSIX build sets `COUNTORA_WINDOWS_PACKAGED=true`, enabling future Windows scheduling with package identity. Production signing remains a release-environment responsibility. |
 | Linux | Supported | `runtimeOnly` | Uses Linux desktop notifications while the Countora process remains active; timer state reconciles correctly after resume/restart. |
-| Web | Supported | `runtimeOnly` | Uses the browser Notifications API while the page/runtime remains active. Browsers do not provide Countora with guaranteed future scheduled delivery after the page/runtime is gone. |
+| Web | Supported | `runtimeOnly` | Uses the browser Notifications API while the page/runtime remains active. Permission is requested only from the explicit Settings button; browsers do not provide Countora with guaranteed future scheduled delivery after the page/runtime is gone. |
 | Fuchsia | Not an intentional Countora target | `unavailable` | Fails closed instead of assuming unsupported behavior. |
 
 A future platform must be explicitly classified and tested. Unknown native targets must never be assumed notification-capable.
@@ -91,23 +91,26 @@ On Linux, Web, and portable Windows builds:
 - Countora explains that future background scheduling is unavailable for that runtime/distribution mode;
 - in-app state and visual completion cues continue to reconcile after resume/restart.
 
+On Web specifically, Settings also exposes **Browser notification permission → Allow**. That button is the only path that asks the browser for notification permission. Automatic timer scheduling, startup, persistence, and reconciliation never trigger the Web prompt.
+
 Unsupported targets still fail closed.
 
 ## Permission behavior
 
-The controller requests notification permission at most once per controller session before notification delivery is first needed.
+The controller requests native notification permission at most once per controller session before native notification delivery is first needed.
 
-The production adapter handles:
+The production adapter automatically handles:
 
 - Android notification permission and exact-alarm access;
 - iOS notification permission;
 - macOS notification permission;
-- Web notification permission through `WebFlutterLocalNotificationsPlugin`;
 - Linux/Windows paths that do not use the same explicit permission-prompt API.
 
-Permission/plugin errors are contained so they do not crash timer operations.
+Web is intentionally different. Browsers require notification permission to originate directly from user activation. `lib/src/data/web_notification_permission.dart` isolates that boundary, and `SettingsPage` invokes it directly from the **Allow** button. `LocalNotificationService.requestPermissions()` deliberately does not request Web permission, preventing startup/reconciliation/timer callbacks from causing an invalid automatic browser prompt.
 
-Web permission prompts are governed by browser user-activation rules. Countora requests permission as part of user-driven timer/notification workflows, but representative browsers must still be verified because the browser ultimately decides whether a prompt is allowed.
+If the browser denies permission, Countora keeps timer state, history, reconciliation, and in-app visual completion cues working; only browser notification delivery is unavailable until browser/user policy changes.
+
+Permission/plugin errors are contained so they do not crash timer operations. Representative browsers still require manual verification because browser policy ultimately decides whether notification permission and delivery are allowed.
 
 ## Persistence ordering
 
@@ -176,18 +179,19 @@ Before making a platform-specific public delivery claim, test a release candidat
 2. timer completion while Countora is foregrounded;
 3. timer completion while Countora is backgrounded/suspended where the target supports scheduled delivery;
 4. Linux/Web/portable-Windows runtime fallback behavior;
-5. sound on/off;
-6. vibration behavior where the OS/browser exposes it;
-7. quiet mode;
-8. pause/resume schedule replacement;
-9. add-time/restart schedule replacement;
-10. multi-step interval scheduling/runtime fallback;
-11. app-resume reconciliation after one or more elapsed intervals;
-12. notification-disable cancellation behavior;
-13. Android exact-alarm denial fallback;
-14. reboot/app-update rescheduling where applicable;
-15. packaged Windows scheduling/cancellation and portable Windows runtime fallback;
-16. iOS foreground presentation after generated AppDelegate patching.
+5. Web **Allow** permission action, denial, re-entry, and representative browser behavior;
+6. sound on/off;
+7. vibration behavior where the OS/browser exposes it;
+8. quiet mode;
+9. pause/resume schedule replacement;
+10. add-time/restart schedule replacement;
+11. multi-step interval scheduling/runtime fallback;
+12. app-resume reconciliation after one or more elapsed intervals;
+13. notification-disable cancellation behavior;
+14. Android exact-alarm denial fallback;
+15. reboot/app-update rescheduling where applicable;
+16. packaged Windows scheduling/cancellation and portable Windows runtime fallback;
+17. iOS foreground presentation after generated AppDelegate patching.
 
 Countora cannot override OS focus/do-not-disturb policy, browser lifecycle rules, battery restrictions, vendor background restrictions, signing limitations, or notification-server capabilities.
 
@@ -200,6 +204,7 @@ Relevant tests include:
 - `test/notification_details_test.dart`
 - `test/notification_cleanup_test.dart`
 - `test/runtime_notification_policy_test.dart`
+- `test/web_notification_permission_test.dart`
 - `test/timer_controller_test.dart`
 - `test/timer_controller_workflows_test.dart`
 - `test/timer_controller_resilience_test.dart`
@@ -207,4 +212,4 @@ Relevant tests include:
 - `test/platform_patches_test.dart`
 - `test/version_audit_test.dart`
 
-These tests protect capability decisions, adapter configuration, runner patching, version synchronization, ordering rules, Settings presentation, and failure containment. They do not replace real operating-system/browser verification.
+These tests protect capability decisions, permission boundaries, adapter configuration, runner patching, version synchronization, ordering rules, Settings presentation, and failure containment. They do not replace real operating-system/browser verification.
