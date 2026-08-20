@@ -23,11 +23,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
 
       - name: Verify required repository files
         run: dart run tool/check_required_files.dart
