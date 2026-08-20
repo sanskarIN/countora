@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap distinguishes implemented source work from release verification. A checked implementation item does not imply that every native build, browser behavior, notification path, signing path, or device behavior has already been observed as passing.
+This roadmap distinguishes implemented source work from release verification. A checked implementation item does not imply that every native build, browser behavior, notification path, package format, signing path, or device behavior has already been observed as passing.
 
 ## 0.1 — Foundation
 
@@ -32,12 +32,17 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Android exact-to-inexact scheduling fallback
 - [x] Bounded notification cleanup continues after per-ID plugin failures
 - [x] Explicit notification delivery tiers instead of a binary supported/unsupported flag
-- [x] Scheduled future notifications on Android, iOS, macOS, and Windows
-- [x] Runtime local-notification fallback on Linux and Web
+- [x] Scheduled future notifications on Android, iOS, and macOS
+- [x] Package-identity-aware scheduled Windows notification mode
+- [x] Runtime local-notification fallback on Linux, Web, and portable Windows
+- [x] Runtime deadline-race protection so due callbacks survive controller reconciliation
 - [x] Web notification-permission request path
 - [x] Unsupported future targets fail closed
 - [x] Generated Android notification configuration hardening
-- [x] Validated/idempotent generated Android patch helpers
+- [x] Generated Android AGP floor enforcement for the notification dependency
+- [x] Generated iOS notification-center delegate setup
+- [x] Validated/idempotent native runner patch helpers
+- [x] Windows MSIX package-version synchronization audit
 
 ### Product workflows
 
@@ -64,8 +69,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Settings listens to live controller changes and surfaces persistence failures
 - [x] Responsive phone/tablet/desktop/Web navigation
 - [x] Dark/light/system themes and reduced motion
-- [x] Notification controls available on all six supported Countora targets where local notifications are available
-- [x] Linux/Web UI clearly distinguishes runtime delivery from guaranteed future background scheduling
+- [x] Notification controls available on all six supported Countora platform families where local notifications are available
+- [x] Linux/Web/portable-Windows UI distinguishes runtime delivery from guaranteed future background scheduling
 - [x] Android/iOS/macOS/Linux/Windows/Web notification presentation configuration
 
 ### Automated quality
@@ -77,7 +82,9 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Controller collection-cap regression tests
 - [x] Persistence/notification consistency regression tests
 - [x] Notification cleanup continuation regression tests
+- [x] Runtime notification deadline-policy regression tests
 - [x] Cross-platform notification capability-tier tests
+- [x] Portable-vs-packaged Windows notification mode tests
 - [x] Cross-platform notification presentation-detail tests
 - [x] Notification initialization coverage for all six adapters
 - [x] Recursive diagnostic-redaction regression tests
@@ -85,7 +92,9 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Settings reactivity/save-error regression test
 - [x] Linux runtime-notification Settings regression coverage
 - [x] Unsupported-target fail-closed Settings regression coverage
-- [x] Platform patch regression tests
+- [x] Android manifest/Gradle/AGP platform patch regression tests
+- [x] iOS AppDelegate notification patch regression tests
+- [x] Windows MSIX version-sync regression tests
 - [x] External-link failure regression tests
 - [x] Primary widget journey tests
 - [x] Focus-mode semantics widget regression
@@ -101,26 +110,31 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Release-only committed dependency-lock audit and regression coverage
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
-- [x] Non-tagged native platform-smoke workflow source for Android, Linux, Windows, macOS, and unsigned iOS
+- [x] Non-tagged platform-smoke workflow source for Android, Linux, portable Windows, Windows MSIX, macOS, and unsigned iOS
+- [x] Windows smoke job checks Flutter/MSIX version synchronization
 - [x] Main CI Web release build source
 - [x] Multi-platform tagged release workflow source
+- [x] Tagged Windows release job verifies MSIX package-identity creation without implying production signing
 - [x] Tagged-release SHA-256 artifact checksum generation
 
 ### Still required before final 0.2 release
 
 - [ ] Observe a successful main CI run for localization audit, formatting, analyze, tests, docs links, Web release build, and Linux integration journey
-- [ ] Observe successful `Platform smoke` jobs for Android, Linux, Windows, macOS, and unsigned iOS
+- [ ] Observe successful `Platform smoke` jobs for Android, Linux, portable Windows, Windows MSIX packaging, macOS, and unsigned iOS
 - [ ] Fix every concrete CI/compiler/test issue discovered by real Flutter toolchain runs
 - [ ] Run the integration journey on a configured local/release Flutter target and record the result
 - [ ] Run the state-codec benchmark on representative hardware and record environment/results
 - [ ] Generate dependencies with a real supported Flutter SDK, review the resolved versions, and commit the resulting application `pubspec.lock`
 - [ ] Verify `dart run tool/check_dependency_lock.dart` passes from the committed release-candidate checkout
-- [ ] Verify Android notification permission/completion behavior on a real device/emulator
-- [ ] Verify iOS and macOS notification behavior on supported Apple environments
-- [ ] Verify Windows toast scheduling/cancellation on a representative packaged or release-like environment
+- [ ] Verify Android notification permission/completion behavior on a real device/emulator, including exact-alarm denial fallback
+- [ ] Verify iOS foreground/background notification behavior on a supported signed Apple environment
+- [ ] Verify macOS notification behavior on a representative release-like environment
+- [ ] Verify portable Windows runtime notification behavior
+- [ ] Verify installed package-identity Windows/MSIX scheduling and cancellation behavior
+- [ ] Choose and validate a production MSIX signing or Microsoft Store distribution strategy before publishing packaged Windows artifacts
 - [ ] Verify Linux desktop notification delivery while Countora remains active and reconciliation after process suspension/restart
 - [ ] Verify Web browser notification permission, runtime completion notification delivery, and reconciliation after page suspension/reload in representative browsers
-- [ ] Record clearly that Linux/Web cannot guarantee future notification delivery after the Countora process/page is terminated
+- [ ] Record clearly that Linux/Web/portable-Windows runtime fallbacks cannot guarantee the same future delivery as scheduled targets after the runtime is gone
 - [ ] Complete manual accessibility review with a real screen reader, keyboard-only navigation, reduced motion, and large text
 - [ ] Capture real application screenshots from verified builds
 - [ ] Run the final clean-checkout documentation/repository/release audit and record its successful output
@@ -130,7 +144,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [ ] Validate Android production signing and Play distribution path
 - [ ] Validate iOS signing/archive distribution path
 - [ ] Validate macOS signing/notarization path
-- [ ] Validate Windows distribution/signing approach
+- [ ] Validate Windows MSIX signing/store distribution approach
+- [ ] Validate portable Windows distribution expectations
 - [ ] Validate Linux packaging/distribution approach
 - [ ] Validate Web deployment/hosting headers and browser-permission behavior
 - [ ] Final dependency/security audit
