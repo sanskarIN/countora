@@ -52,6 +52,26 @@ VersionAuditResult auditVersionMetadata({
     );
   }
 
+  if (RegExp(r'^msix_config:\s*$', multiLine: true).hasMatch(pubspec)) {
+    final msixVersion = RegExp(
+      r'^\s*msix_version:\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s*$',
+      multiLine: true,
+    ).firstMatch(pubspec)?.group(1);
+    final expectedMsixVersion = '$packageVersion.$packageBuild';
+    if (msixVersion == null) {
+      errors.add(
+        'msix_config requires msix_version=$expectedMsixVersion so Windows '
+        'packaging stays synchronized with the Flutter package version.',
+      );
+    } else if (msixVersion != expectedMsixVersion) {
+      errors.add(
+        'MSIX version mismatch: msix_version=$msixVersion, '
+        'expected=$expectedMsixVersion for pubspec '
+        '$packageVersion+$packageBuild.',
+      );
+    }
+  }
+
   final escapedPackageVersion = RegExp.escape(packageVersion);
   final releaseHeading = RegExp(
     '^## \\[$escapedPackageVersion\\] - (.+)\\s*\$',
