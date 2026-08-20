@@ -59,7 +59,7 @@ void main() {
     expect(controller.settings.reducedMotion, isTrue);
   });
 
-  testWidgets('unsupported platform disables scheduled notification controls', (
+  testWidgets('Linux keeps runtime notification controls available', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
@@ -77,23 +77,48 @@ void main() {
     expect(completionTile, findsOneWidget);
     expect(
       find.text(
-        'Scheduled background completion notifications are not available on '
-        'this platform. In-app countdown state and visual completion cues still '
-        'work.',
+        'Future background scheduling is not available on this platform. '
+        'Countora can still deliver local completion notifications while its '
+        'runtime remains active, and in-app state plus visual completion cues '
+        'reconcile when you return.',
       ),
       findsOneWidget,
     );
 
     final completionSwitch = tester.widget<SwitchListTile>(completionTile);
     expect(completionSwitch.value, isFalse);
-    expect(completionSwitch.onChanged, isNull);
+    expect(completionSwitch.onChanged, isNotNull);
+
+    await tester.tap(completionTile);
+    await tester.pump();
+    expect(controller.settings.notificationsEnabled, isTrue);
 
     for (final label in <String>['Sound', 'Vibration', 'Quiet mode']) {
       final tile = tester.widget<SwitchListTile>(
         find.widgetWithText(SwitchListTile, label),
       );
-      expect(tile.onChanged, isNull);
+      expect(tile.onChanged, isNotNull);
     }
+  });
+
+  testWidgets('unknown native target still fails notification controls closed', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
+    controller = await _buildController();
+
+    await tester.pumpWidget(CountoraApp(controller: controller));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    final completionTile = find.widgetWithText(
+      SwitchListTile,
+      'Completion notifications',
+    );
+    final completionSwitch = tester.widget<SwitchListTile>(completionTile);
+    expect(completionSwitch.value, isFalse);
+    expect(completionSwitch.onChanged, isNull);
   });
 
   testWidgets('backup export reports clipboard platform failures', (tester) async {
