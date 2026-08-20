@@ -44,6 +44,25 @@ final action = context.l10n.openFocusMode;
     expect(result.errors.single, contains('lib/example.dart'));
   });
 
+  test('rejects names reserved by generated localization APIs', () {
+    final result = auditLocalizationSources(
+      arb: const <String, Object?>{
+        ...completeArb,
+        'of': 'of',
+      },
+      dartSources: const <String, String>{},
+    );
+
+    expect(result.isValid, isFalse);
+    expect(
+      result.errors,
+      contains(
+        'Localization message "of" collides with a generated '
+        'AppLocalizations API member.',
+      ),
+    );
+  });
+
   test('reports invalid locale and blank messages', () {
     final arb = <String, Object?>{
       ...completeArb,
