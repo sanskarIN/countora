@@ -102,31 +102,47 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
+      body: Column(
         children: [
-          if (wide)
-            NavigationRail(
-              selectedIndex: _destinationIndex,
-              onDestinationSelected: _selectDestination,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                NavigationRailDestination(
-                  icon: const Icon(Icons.timer_outlined),
-                  selectedIcon: const Icon(Icons.timer),
-                  label: Text(strings.timers),
-                ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.bookmark_border),
-                  selectedIcon: const Icon(Icons.bookmark),
-                  label: Text(strings.presets),
-                ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.history),
-                  label: Text(strings.history),
+          if (controller.lastError != null)
+            MaterialBanner(
+              content: Text(controller.lastError!),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: controller.clearError,
+                  child: Text(strings.dismiss),
                 ),
               ],
             ),
-          Expanded(child: content),
+          Expanded(
+            child: Row(
+              children: [
+                if (wide)
+                  NavigationRail(
+                    selectedIndex: _destinationIndex,
+                    onDestinationSelected: _selectDestination,
+                    labelType: NavigationRailLabelType.all,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.timer_outlined),
+                        selectedIcon: const Icon(Icons.timer),
+                        label: Text(strings.timers),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.bookmark_border),
+                        selectedIcon: const Icon(Icons.bookmark),
+                        label: Text(strings.presets),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.history),
+                        label: Text(strings.history),
+                      ),
+                    ],
+                  ),
+                Expanded(child: content),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: wide
@@ -350,18 +366,6 @@ class _TimersView extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
-                ],
-                if (controller.lastError != null) ...[
-                  const SizedBox(height: 12),
-                  MaterialBanner(
-                    content: Text(controller.lastError!),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: controller.clearError,
-                        child: Text(strings.dismiss),
-                      ),
-                    ],
                   ),
                 ],
               ],
