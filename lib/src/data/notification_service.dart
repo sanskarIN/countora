@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../core/app_logger.dart';
 import '../core/platform_capabilities.dart';
 import '../domain/models.dart';
+import 'notification_cleanup.dart';
 import 'state_codec.dart';
 
 abstract interface class NotificationService {
@@ -222,22 +223,18 @@ class LocalNotificationService implements NotificationService {
   @override
   Future<void> cancelTimer(String timerId) async {
     if (!_ready) return;
-    for (var index = 0;
-        index < CountoraStateCodec.maxIntervalsPerTimer;
-        index += 1) {
-      try {
-        await _plugin.cancel(id: _notificationId(timerId, index));
-      } on Object catch (error) {
-        // A failure for one derived notification ID must not prevent cleanup of
-        // later interval IDs. Keep attempting the bounded remainder and record
-        // only structural diagnostics (never timer/user content).
+    await runBoundedNotificationCleanup(
+      count: CountoraStateCodec.maxIntervalsPerTimer,
+      cancel: (index) =>
+          _plugin.cancel(id: _notificationId(timerId, index)),
+      onError: (index, error) {
         _logger.warning(
           'cancel_failed',
           error: error,
           fields: <String, Object?>{'stepIndex': index},
         );
-      }
-    }
+      },
+    );
   }
 
   int _notificationId(String timerId, int stepIndex) {
