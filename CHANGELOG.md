@@ -33,16 +33,18 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Structured diagnostics with recursive sensitive-key redaction across nested maps/iterables.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
-- Central scheduled-notification capability policy shared by Settings and the notification adapter.
-- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, notification-cleanup, home-error-surface, Settings-reactivity, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
+- Cross-platform notification delivery tiers: scheduled background delivery on Android/iOS/macOS/Windows, runtime local-notification fallback on Linux/Web, and fail-closed handling for unsupported future targets.
+- Cross-platform notification presentation details for Android, iOS, macOS, Linux, Windows, and Web.
+- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, notification-cleanup, notification-presentation, home-error-surface, Settings-reactivity, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
 - Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
 - Deterministic localization-source audit enforced by repository audit, normal CI, and tagged release CI before generated localization code is created.
-- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, important UI regressions, and issue-template configuration.
+- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, important UI regressions, cross-platform notification regressions, and issue-template configuration.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
+- Dedicated non-tagged platform-smoke workflow compiling Android, Linux, Windows, macOS, and unsigned iOS targets on their appropriate GitHub-hosted runners.
 - Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
 - SHA-256 checksum files for tagged Android/Web, Linux, Windows, macOS, and unsigned iOS artifacts.
 
@@ -61,11 +63,13 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Timer reconciliation persists completed/advanced state before changing associated platform schedules.
 - Direct pause, bulk pause, timer removal, timer scheduling, and notification-setting changes keep notification side effects behind successful local persistence.
 - Notification permission is requested at most once per controller session.
-- Disabling notifications cancels active schedules; enabling them reschedules running timers after settings persistence succeeds.
+- Web notification permission is now requested through the web implementation when notification delivery is first needed.
+- Disabling notifications cancels active platform schedules/runtime timers; enabling them reschedules running timers after settings persistence succeeds.
 - Multi-step notification cancellation now continues through the full bounded notification-ID range even when one plugin cancellation fails.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
-- Future scheduled-notification capability now fails closed: Android, iOS, macOS, and Windows are explicitly enabled while Web, Linux, Fuchsia, and unapproved future targets are not assumed capable.
-- Settings disables completion-notification, sound, vibration, and quiet-mode controls when scheduled background completion is unavailable and explains that in-app completion cues still work.
+- Linux and Web are now first-class Countora targets for local completion notifications while their runtime remains active instead of having notification controls disabled outright.
+- Future scheduled-notification capability remains explicit: Android, iOS, macOS, and Windows use native future scheduling; Linux/Web use runtime fallbacks; unsupported future targets fail closed.
+- Settings keeps notification controls available on Linux/Web and explains their runtime-only delivery limitation rather than presenting those platforms as unsupported.
 - Generated Android runner configuration now includes notification receivers, permissions, desugaring, and multidex setup through validated idempotent patch helpers.
 - Settings backup/import/reset UI is safer and more explicit.
 - Settings now listens directly to controller changes while its route is open and surfaces recoverable controller persistence errors without requiring navigation back to Home.
@@ -74,7 +78,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
 - Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
 - Main UI strings are externalized for future translations.
-- CI now generates localization source, formats `integration_test/`, validates committed localization references before generation, and runs the primary Linux integration journey in a virtual display.
+- CI now generates localization source, formats `integration_test/`, validates committed localization references before generation, builds Web, runs the primary Linux integration journey, and has a separate cross-platform build-smoke workflow for native targets.
 - Tagged release quality gates now require a reviewed committed dependency lock and deterministic localization-source audit before `flutter pub get`/`flutter gen-l10n`, in addition to repository/version/secret/test/integration/documentation/build checks.
 
 ### Fixed
@@ -105,7 +109,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 
 - Do not tag the final 0.2.0 release until actual Flutter analyze/test/build/integration runs have been observed as successful.
 - Generate dependency resolution with a real Flutter SDK, review it, and commit the resulting application `pubspec.lock`; the tagged release workflow now fails before `flutter pub get` when that reviewed lock is absent.
-- Native notification behavior must be verified on supported real platforms/devices.
+- Observe successful cross-platform smoke builds for Android, Linux, Windows, macOS, and unsigned iOS, plus the main Web build.
+- Native/browser notification behavior must be verified on representative supported targets, including Linux/Web runtime fallback behavior.
 - Signed mobile/desktop distribution remains a release-environment responsibility.
 - Real screenshots must come from an actual verified build; mockups are not presented as product captures.
 
