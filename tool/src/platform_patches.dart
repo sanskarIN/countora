@@ -111,6 +111,51 @@ String patchAndroidGradle(String source) {
   return text;
 }
 
+/// Applies the notification-center delegate required by
+/// flutter_local_notifications for foreground iOS presentation.
+String patchIosAppDelegate(String source) {
+  var text = source;
+
+  if (!text.contains('import UIKit')) {
+    throw const FormatException(
+      'ios/Runner/AppDelegate.swift does not contain the expected UIKit import.',
+    );
+  }
+  if (!text.contains('GeneratedPluginRegistrant.register(with: self)')) {
+    throw const FormatException(
+      'ios/Runner/AppDelegate.swift does not contain the expected plugin '
+      'registration marker.',
+    );
+  }
+
+  if (!text.contains('import UserNotifications')) {
+    text = text.replaceFirst(
+      'import UIKit',
+      'import UIKit\nimport UserNotifications',
+    );
+  }
+
+  const delegateLine =
+      'UNUserNotificationCenter.current().delegate = self as? '
+      'UNUserNotificationCenterDelegate';
+  if (!text.contains(delegateLine)) {
+    text = text.replaceFirst(
+      '    GeneratedPluginRegistrant.register(with: self)',
+      '    $delegateLine\n'
+      '    GeneratedPluginRegistrant.register(with: self)',
+    );
+  }
+
+  if (!text.contains('import UserNotifications') ||
+      !text.contains(delegateLine)) {
+    throw const FormatException(
+      'Failed to apply required iOS notification-center delegate setup.',
+    );
+  }
+
+  return text;
+}
+
 String _insertAfterRequiredMarker(
   String source, {
   required String marker,
