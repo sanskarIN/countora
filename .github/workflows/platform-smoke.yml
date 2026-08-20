@@ -79,9 +79,9 @@ jobs:
         run: flutter build linux --debug
 
   windows:
-    name: Windows build smoke
+    name: Windows portable and MSIX smoke
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -104,8 +104,11 @@ jobs:
       - name: Generate localization source
         run: flutter gen-l10n
 
-      - name: Build Windows debug application
+      - name: Build portable Windows debug application
         run: flutter build windows --debug
+
+      - name: Build package-identity Windows MSIX smoke artifact
+        run: dart run msix:create --debug
 
   apple:
     name: macOS and iOS build smoke
