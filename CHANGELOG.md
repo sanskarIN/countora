@@ -21,7 +21,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 ### Added
 
 - Schema-aware state codec with legacy migration and future-schema rejection.
-- Backup size, entity-count, duration, name, group, and interval-step limits.
+- Backup size, entity-count, identifier, duration, name, group, and interval-step limits.
 - Safe import preview before replacement of current local data.
 - Full local-data reset and history-only clearing.
 - Timer duplication, timer rename/group move, save-as-preset, and history replay.
@@ -52,6 +52,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Persistence schema ownership now lives exclusively at the `CountoraStateCodec` boundary instead of leaking into domain-state serialization.
 - Corrupted persisted state recovers to an empty safe state instead of blocking startup.
 - Import rejects malformed types rather than allowing low-level type-cast failures.
+- Imported timer/preset/history identifiers are limited to 128 characters; oversized identifiers are discarded instead of truncated to avoid accidental collisions or altered relationships.
 - Backup import now reconciles staged state and requires successful persistence before replacing platform notification schedules; a failed import save restores the prior in-memory state and surfaces failure.
 - Timer ticker execution is guarded against overlapping asynchronous ticks.
 - Interval catch-up anchors later steps to prior deadlines to reduce drift after suspension.
@@ -81,7 +82,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 
 ### Security
 
-- Added bounded validation for untrusted imported JSON.
+- Added bounded validation for untrusted imported JSON, including explicit identifier length limits.
 - Added dependency-review failure threshold of moderate severity.
 - Added redacting structured diagnostics.
 - Added CodeQL analysis for GitHub Actions workflow source.
