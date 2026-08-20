@@ -10,7 +10,7 @@ GitHub Actions installs the repository-approved Flutter version through:
 .github/actions/setup-flutter/action.yml
 ```
 
-The current approved toolchain is Flutter `3.44.7` on the stable channel.
+The current approved toolchain is Flutter `3.47.1` on the stable channel.
 
 All Countora validation, platform-smoke, repository-audit, dependency-lock, and tagged-release workflows should use this shared action instead of selecting a moving `stable` version independently. When the approved Flutter version changes, update the shared action in one reviewed commit and let the normal validation matrix prove compatibility.
 
@@ -48,7 +48,7 @@ Review the resulting `pubspec.lock` diff before committing it.
 
 The workflow runs when its dependency inputs change and can also be started manually. It:
 
-1. checks out `main`;
+1. checks out the workflow revision;
 2. installs the shared pinned Flutter toolchain;
 3. validates localization references;
 4. generates and patches all Flutter platform runners;
@@ -58,13 +58,13 @@ The workflow runs when its dependency inputs change and can also be started manu
 8. verifies formatting;
 9. runs `flutter analyze`;
 10. runs the Flutter unit/widget test suite;
-11. runs repository, version, secret, and documentation checks;
+11. runs repository, toolchain, version, secret, and documentation checks;
 12. verifies patch whitespace hygiene;
 13. uploads the verified lockfile as a short-lived workflow artifact;
-14. commits only `pubspec.lock` when it actually changed;
+14. commits only `pubspec.lock` on trusted non-pull-request runs when it actually changed;
 15. uses `sanskarin@outlook.in` as the automated Git commit email.
 
-The artifact exists as a recovery path if repository branch rules prevent the workflow from pushing directly. An uploaded artifact is not automatically approved source; review it before committing it manually.
+On pull requests, the workflow is verification-only: it does not push to the contributor branch. The artifact exists as a recovery path if repository branch rules prevent a trusted workflow from pushing directly. An uploaded artifact is not automatically approved source; review it before committing it manually.
 
 ## Release enforcement
 
