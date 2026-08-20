@@ -74,6 +74,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
 - [x] Required-file/version/secret repository audit tooling
+- [x] Release-only committed dependency-lock audit and regression coverage
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
 - [x] Multi-platform tagged release workflow source
@@ -85,7 +86,8 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [ ] Fix every concrete CI/compiler/test issue discovered by a real Flutter toolchain run
 - [ ] Run the integration journey on a configured local/release Flutter target and record the result
 - [ ] Run the state-codec benchmark on representative hardware and record environment/results
-- [ ] Generate dependencies with a real Flutter SDK and review/commit the application `pubspec.lock` if appropriate for the release policy
+- [ ] Generate dependencies with a real supported Flutter SDK, review the resolved versions, and commit the resulting application `pubspec.lock`
+- [ ] Verify `dart run tool/check_dependency_lock.dart` passes from the committed release-candidate checkout
 - [ ] Verify Android notification permission/completion behavior on a real device/emulator
 - [ ] Verify at least one desktop native build from the release workflow
 - [ ] Verify Windows/macOS/iOS notification behavior on supported real environments before making platform-specific delivery claims
