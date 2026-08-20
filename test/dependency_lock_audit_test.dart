@@ -47,7 +47,7 @@ void main() {
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors, contains(contains('packages section')));
+    expect(result.errors.single, contains('packages section'));
   });
 
   test('rejects a lockfile without an sdks section', () {
@@ -57,6 +57,6 @@ void main() {
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors, contains(contains('sdks section')));
+    expect(result.errors.single, contains('sdks section'));
   });
 }
