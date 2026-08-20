@@ -38,7 +38,18 @@ void main() {
 
   test('restores exact bytes instead of normalizing text content', () {
     final readme = File('${tempDirectory.path}${Platform.pathSeparator}README.md');
-    final originalBytes = <int>[0x43, 0x6f, 0x75, 0x6e, 0x74, 0x6f, 0x72, 0x61, 0x0d, 0x0a];
+    final originalBytes = <int>[
+      0x43,
+      0x6f,
+      0x75,
+      0x6e,
+      0x74,
+      0x6f,
+      0x72,
+      0x61,
+      0x0d,
+      0x0a,
+    ];
     readme.writeAsBytesSync(originalBytes);
 
     final snapshots = snapshotRootFiles(
@@ -52,9 +63,31 @@ void main() {
     expect(readme.readAsBytesSync(), originalBytes);
   });
 
+  test('accepts harmless dotted repository-relative filenames', () {
+    final dotted = File('${tempDirectory.path}${Platform.pathSeparator}release..notes')
+      ..writeAsStringSync('safe\n');
+
+    final snapshots = snapshotRootFiles(
+      tempDirectory,
+      const <String>['release..notes'],
+    );
+    dotted.writeAsStringSync('changed\n');
+
+    restoreRootFiles(tempDirectory, snapshots);
+
+    expect(dotted.readAsStringSync(), 'safe\n');
+  });
+
   test('rejects traversal and absolute paths', () {
     expect(
       () => snapshotRootFiles(tempDirectory, const <String>['../outside']),
+      throwsArgumentError,
+    );
+    expect(
+      () => snapshotRootFiles(
+        tempDirectory,
+        const <String>['nested/../outside'],
+      ),
       throwsArgumentError,
     );
     expect(
