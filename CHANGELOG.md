@@ -35,10 +35,11 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Generated Flutter localization architecture with English ARB resources.
 - Cross-platform notification delivery tiers: scheduled background delivery on Android/iOS/macOS and package-identity Windows, runtime local-notification fallback on Linux/Web/portable Windows, and fail-closed handling for unsupported future targets.
 - Cross-platform notification presentation details for Android, iOS, macOS, Linux, Windows, and Web.
+- Explicit Web **Browser notification permission → Allow** Settings action so browser permission is requested directly from user activation instead of an automatic timer/reconciliation path.
 - Windows MSIX package-identity build configuration with synchronized four-part package version metadata.
 - Generated iOS notification-center delegate patch for foreground local-notification presentation.
 - Generated Android AGP floor validation in addition to manifest/desugaring/multidex notification hardening.
-- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, notification-cleanup, runtime-deadline, notification-presentation, home-error-surface, Settings-reactivity, widget, localization, external-link, platform-capability, platform-patch, version/MSIX, dependency-lock, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, notification-cleanup, runtime-deadline, Web-permission, notification-presentation, home-error-surface, Settings-reactivity, widget, localization, external-link, platform-capability, platform-patch, version/MSIX, dependency-lock, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
@@ -65,8 +66,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Interval catch-up anchors later steps to prior deadlines to reduce drift after suspension.
 - Timer reconciliation persists completed/advanced state before changing associated platform schedules.
 - Direct pause, bulk pause, timer removal, timer scheduling, and notification-setting changes keep notification side effects behind successful local persistence.
-- Notification permission is requested at most once per controller session.
-- Web notification permission is now requested through the web implementation when notification delivery is first needed.
+- Native notification permission is requested at most once per controller session where that automatic native path applies.
+- Web notification permission is no longer requested automatically by `LocalNotificationService.requestPermissions()`; the explicit Settings button owns the browser user-gesture boundary.
 - Disabling notifications cancels active platform schedules/runtime timers; enabling them reschedules running timers after settings persistence succeeds.
 - Multi-step notification cancellation now continues through the full bounded notification-ID range even when one plugin cancellation fails.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
@@ -96,6 +97,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Prevented unsupported or unknown notification targets from being treated as future-scheduling capable by default.
 - Prevented portable Windows builds from claiming scheduled notification semantics that depend on Windows package identity.
 - Prevented a due runtime completion notification callback from being cancelled by controller reconciliation at the exact deadline.
+- Prevented automatic/startup/reconciliation paths from attempting the Web permission prompt outside a direct browser user interaction.
 - Prevented nested structured-log maps with non-`String` generic types from bypassing recursive sensitive-key redaction through stringification.
 - Prevented timer/preset creation from exceeding the persistence collection limits and producing restart-time truncation surprises.
 - Prevented a single notification-plugin cancellation exception from abandoning cleanup of later interval notification IDs.
@@ -108,6 +110,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Expanded structured-log sanitization for nested maps/iterables and common credential/session/API/private-key key names.
 - Added package-aware Windows notification policy so unpackaged builds do not rely on package-identity-only cancellation behavior.
 - Added MSIX version synchronization and kept production certificate/store signing external to source control.
+- Kept Web notification permission behind a direct, explicit user action rather than silently prompting from automatic timer lifecycle code.
 - Added dependency-review failure threshold of moderate severity.
 - Added redacting structured diagnostics.
 - Added CodeQL analysis for GitHub Actions workflow source.
@@ -120,7 +123,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Do not tag the final 0.2.0 release until actual Flutter analyze/test/build/integration runs have been observed as successful.
 - Generate dependency resolution with a real Flutter SDK, review it, and commit the resulting application `pubspec.lock`; the tagged release workflow fails before `flutter pub get` when that reviewed lock is absent.
 - Observe successful cross-platform smoke builds for Android, Linux, portable Windows, Windows MSIX packaging, macOS, and unsigned iOS, plus the main Web build.
-- Native/browser notification behavior must be verified on representative supported targets, including Linux/Web/portable-Windows runtime fallback and package-identity Windows scheduled behavior.
+- Native/browser notification behavior must be verified on representative supported targets, including Web direct permission-button behavior, Linux/Web/portable-Windows runtime fallback, and package-identity Windows scheduled behavior.
 - Production MSIX signing or Microsoft Store distribution must be configured before promoting the packaged Windows build publicly.
 - Signed mobile/desktop distribution remains a release-environment responsibility.
 - Real screenshots must come from actual verified builds; mockups are not presented as product captures.
