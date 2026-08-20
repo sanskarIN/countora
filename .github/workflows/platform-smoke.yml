@@ -23,11 +23,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
 
       - name: Verify localization source references
         run: dart run tool/check_localization_source.dart
@@ -52,11 +49,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
 
       - name: Install Linux build dependencies
         run: |
@@ -86,11 +80,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
 
       - name: Verify version and MSIX metadata
         run: dart run tool/check_version_sync.dart
@@ -121,11 +112,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
 
       - name: Verify localization source references
         run: dart run tool/check_localization_source.dart
