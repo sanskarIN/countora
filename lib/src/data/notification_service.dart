@@ -20,6 +20,17 @@ abstract interface class NotificationService {
   Future<void> cancelTimer(String timerId);
 }
 
+/// Optional notification capability used on platforms that can display local
+/// notifications but cannot register future scheduled delivery.
+abstract interface class ImmediateCompletionNotificationService {
+  Future<void> showTimerCompletion(
+    CountdownTimer timer, {
+    required bool soundEnabled,
+    required bool vibrationEnabled,
+    required bool quietMode,
+  });
+}
+
 InitializationSettings countoraNotificationInitializationSettings() {
   final darwinSettings = DarwinInitializationSettings(
     requestAlertPermission: false,
@@ -77,7 +88,39 @@ AndroidNotificationDetails countoraAndroidNotificationDetails({
   );
 }
 
-class LocalNotificationService implements NotificationService {
+NotificationDetails countoraNotificationDetails({
+  required bool soundEnabled,
+  required bool vibrationEnabled,
+  required bool quietMode,
+}) {
+  final playSound = soundEnabled && !quietMode;
+  return NotificationDetails(
+    android: countoraAndroidNotificationDetails(
+      soundEnabled: soundEnabled,
+      vibrationEnabled: vibrationEnabled,
+      quietMode: quietMode,
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: playSound,
+    ),
+    macOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: playSound,
+    ),
+    linux: LinuxNotificationDetails(
+      urgency: LinuxNotificationUrgency.normal,
+      suppressSound: !playSound,
+    ),
+    windows: WindowsNotificationDetails(
+      audio: playSound ? null : WindowsNotificationAudio.silent(),
+    ),
+    web: WebNotificationDetails(isSilent: !playSound),
+  );
+}
+
+class LocalNotificationService
+    implements NotificationService, ImmediateCompletionNotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static const _logger = AppLogger('notifications');
@@ -102,9 +145,16 @@ class LocalNotificationService implements NotificationService {
 
   @override
   Future<void> requestPermissions() async {
-    if (!_ready || !supportsScheduledNotifications()) return;
+    if (!_ready || !supportsLocalNotifications()) return;
 
     try {
+      final web = _plugin.resolvePlatformSpecificImplementation<
+          WebFlutterLocalNotificationsPlugin>();
+      if (web != null &&
+          web.permissionStatus != WebNotificationPermission.granted) {
+        await web.requestNotificationsPermission();
+      }
+
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       await android?.requestNotificationsPermission();
@@ -153,20 +203,10 @@ class LocalNotificationService implements NotificationService {
 
       if (!scheduledAt!.isAfter(DateTime.now().toUtc())) continue;
 
-      final details = NotificationDetails(
-        android: countoraAndroidNotificationDetails(
-          soundEnabled: soundEnabled,
-          vibrationEnabled: vibrationEnabled,
-          quietMode: quietMode,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentSound: soundEnabled && !quietMode,
-        ),
-        macOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentSound: soundEnabled && !quietMode,
-        ),
+      final details = countoraNotificationDetails(
+        soundEnabled: soundEnabled,
+        vibrationEnabled: vibrationEnabled,
+        quietMode: quietMode,
       );
 
       final id = _notificationId(timer.id, index);
@@ -217,6 +257,32 @@ class LocalNotificationService implements NotificationService {
           );
         }
       }
+    }
+  }
+
+  @override
+  Future<void> showTimerCompletion(
+    CountdownTimer timer, {
+    required bool soundEnabled,
+    required bool vibrationEnabled,
+    required bool quietMode,
+  }) async {
+    if (!_ready || !supportsLocalNotifications()) return;
+
+    try {
+      await _plugin.show(
+        id: _notificationId(timer.id, timer.currentStepIndex),
+        title: '${timer.name} finished',
+        body: 'Your countdown is complete.',
+        notificationDetails: countoraNotificationDetails(
+          soundEnabled: soundEnabled,
+          vibrationEnabled: vibrationEnabled,
+          quietMode: quietMode,
+        ),
+        payload: timer.id,
+      );
+    } on Object catch (error) {
+      _logger.warning('immediate_completion_failed', error: error);
     }
   }
 
