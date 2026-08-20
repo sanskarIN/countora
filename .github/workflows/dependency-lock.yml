@@ -73,6 +73,14 @@ jobs:
       - name: Verify patch hygiene
         run: git diff --check
 
+      - name: Retain verified lockfile artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: countora-pubspec-lock-${{ github.run_id }}
+          path: pubspec.lock
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Commit reviewed lockfile when changed
         shell: bash
         run: |
