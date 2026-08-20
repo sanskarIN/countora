@@ -70,7 +70,7 @@ class AppLogger {
 
 /// Returns JSON-encodable diagnostic fields with sensitive values removed.
 ///
-/// This helper accepts nested maps regardless of their generic key/value types.
+/// This helper accepts nested maps regardless of their concrete key/value types.
 /// That matters at logging boundaries because plugin/platform data can arrive as
 /// `Map<Object?, Object?>`; stringifying such a map would bypass key-based
 /// redaction of nested credentials.
@@ -84,7 +84,7 @@ Map<String, Object?> sanitizeLogFields(Map<String, Object?> source) {
 }
 
 Object? _sanitizeLogValue(Object? value) {
-  if (value is Map) {
+  if (value is Map<Object?, Object?>) {
     final normalized = <String, Object?>{};
     for (final entry in value.entries) {
       normalized['${entry.key}'] = entry.value;
@@ -92,10 +92,8 @@ Object? _sanitizeLogValue(Object? value) {
     return sanitizeLogFields(normalized);
   }
 
-  if (value is Iterable) {
-    return value
-        .map(_sanitizeLogValue)
-        .toList(growable: false);
+  if (value is Iterable<Object?>) {
+    return value.map(_sanitizeLogValue).toList(growable: false);
   }
 
   return _safeLogScalar(value);
