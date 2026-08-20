@@ -33,6 +33,7 @@ msix_config:
   msix_version: 0.2.0.2
   output_path: build/windows/msix
   output_name: countora-windows-x64
+  windows_build_args: "--dart-define=COUNTORA_WINDOWS_PACKAGED=true"
   install_certificate: false
 
 flutter:
