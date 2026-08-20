@@ -24,6 +24,7 @@ Future<void> main() async {
 
   _patchAndroidManifest();
   _patchAndroidGradle();
+  _patchAndroidSettingsGradle();
   _patchIosAppDelegate();
 
   stdout.writeln(
@@ -52,6 +53,19 @@ void _patchAndroidGradle() {
 
   final patched = patchAndroidGradle(kotlin.readAsStringSync());
   kotlin.writeAsStringSync(patched);
+}
+
+void _patchAndroidSettingsGradle() {
+  final settings = File('android/settings.gradle.kts');
+  if (!settings.existsSync()) {
+    throw StateError(
+      'android/settings.gradle.kts was not generated. '
+      'The Flutter Android runner template may have changed.',
+    );
+  }
+
+  final patched = patchAndroidSettingsGradle(settings.readAsStringSync());
+  settings.writeAsStringSync(patched);
 }
 
 void _patchIosAppDelegate() {
