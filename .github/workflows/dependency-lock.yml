@@ -8,26 +8,29 @@ on:
       - pubspec.yaml
       - .github/actions/setup-flutter/action.yml
       - .github/workflows/dependency-lock.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - pubspec.yaml
+      - .github/actions/setup-flutter/action.yml
+      - .github/workflows/dependency-lock.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: dependency-lock-${{ github.ref }}
+  group: dependency-lock-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   refresh-lock:
-    name: Refresh reviewed application lockfile
-    if: github.ref == 'refs/heads/main'
+    name: Verify application dependency lock
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          ref: main
 
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
@@ -61,6 +64,9 @@ jobs:
       - name: Verify required repository files
         run: dart run tool/check_required_files.dart
 
+      - name: Verify shared Flutter toolchain
+        run: dart run tool/check_toolchain.dart
+
       - name: Verify version metadata
         run: dart run tool/check_version_sync.dart
 
@@ -82,6 +88,7 @@ jobs:
           retention-days: 7
 
       - name: Commit reviewed lockfile when changed
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           git add pubspec.lock
