@@ -1,0 +1,140 @@
+name: Platform smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android build smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+
+  linux:
+    name: Linux build smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Build Linux debug application
+        run: flutter build linux --debug
+
+  windows:
+    name: Windows build smoke
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Build Windows debug application
+        run: flutter build windows --debug
+
+  apple:
+    name: macOS and iOS build smoke
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Build macOS debug application
+        run: flutter build macos --debug
+
+      - name: Compile unsigned iOS debug application
+        run: flutter build ios --debug --no-codesign
