@@ -47,48 +47,53 @@ class _NoopNotifications implements NotificationService {
 }
 
 void main() {
-  testWidgets('Settings reacts to controller changes and displays save errors',
-      (tester) async {
-    final store = _FailingSettingsStore(
-      const CountoraState(
-        settings: CountoraSettings(
-          onboardingSeen: true,
-          notificationsEnabled: false,
+  testWidgets(
+    'Settings reacts to controller changes and displays save errors',
+    (tester) async {
+      final store = _FailingSettingsStore(
+        const CountoraState(
+          settings: CountoraSettings(
+            onboardingSeen: true,
+            notificationsEnabled: false,
+          ),
         ),
-      ),
-    );
-    final controller = TimerController(
-      store: store,
-      notifications: _NoopNotifications(),
-      nowUtc: () => DateTime.utc(2026, 8, 20),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
+      );
+      final controller = TimerController(
+        store: store,
+        notifications: _NoopNotifications(),
+        nowUtc: () => DateTime.utc(2026, 8, 20),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
 
-    await tester.pumpWidget(CountoraApp(controller: controller));
-    await tester.pump();
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(CountoraApp(controller: controller));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
 
-    final reducedMotion = find.widgetWithText(SwitchListTile, 'Reduced motion');
-    expect(tester.widget<SwitchListTile>(reducedMotion).value, isFalse);
+      final reducedMotion = find.widgetWithText(
+        SwitchListTile,
+        'Reduced motion',
+      );
+      expect(tester.widget<SwitchListTile>(reducedMotion).value, isFalse);
 
-    await controller.updateSettings(
-      controller.settings.copyWith(reducedMotion: true),
-    );
-    await tester.pump();
-    expect(tester.widget<SwitchListTile>(reducedMotion).value, isTrue);
+      await controller.updateSettings(
+        controller.settings.copyWith(reducedMotion: true),
+      );
+      await tester.pump();
+      expect(tester.widget<SwitchListTile>(reducedMotion).value, isTrue);
 
-    store.failSave = true;
-    await controller.updateSettings(
-      controller.settings.copyWith(compactCards: true),
-    );
-    await tester.pump();
+      store.failSave = true;
+      await controller.updateSettings(
+        controller.settings.copyWith(compactCards: true),
+      );
+      await tester.pump();
 
-    expect(find.byType(MaterialBanner), findsOneWidget);
-    expect(
-      find.text('Countora could not save local changes. Please try again.'),
-      findsOneWidget,
-    );
-  });
+      expect(find.byType(MaterialBanner), findsOneWidget);
+      expect(
+        find.text('Countora could not save local changes. Please try again.'),
+        findsOneWidget,
+      );
+    },
+  );
 }
