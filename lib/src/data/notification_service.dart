@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -18,17 +20,6 @@ abstract interface class NotificationService {
     required bool quietMode,
   });
   Future<void> cancelTimer(String timerId);
-}
-
-/// Optional notification capability used on platforms that can display local
-/// notifications but cannot register future scheduled delivery.
-abstract interface class ImmediateCompletionNotificationService {
-  Future<void> showTimerCompletion(
-    CountdownTimer timer, {
-    required bool soundEnabled,
-    required bool vibrationEnabled,
-    required bool quietMode,
-  });
 }
 
 InitializationSettings countoraNotificationInitializationSettings() {
@@ -119,12 +110,12 @@ NotificationDetails countoraNotificationDetails({
   );
 }
 
-class LocalNotificationService
-    implements NotificationService, ImmediateCompletionNotificationService {
+class LocalNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static const _logger = AppLogger('notifications');
 
+  final Map<String, Timer> _runtimeTimers = <String, Timer>{};
   bool _ready = false;
 
   @override
@@ -181,11 +172,19 @@ class LocalNotificationService
     required bool vibrationEnabled,
     required bool quietMode,
   }) async {
-    if (!_ready ||
-        !supportsScheduledNotifications() ||
-        timer.status != CountdownStatus.running) {
+    if (!_ready || timer.status != CountdownStatus.running) return;
+
+    if (usesRuntimeNotificationFallback()) {
+      _scheduleRuntimeFallback(
+        timer,
+        soundEnabled: soundEnabled,
+        vibrationEnabled: vibrationEnabled,
+        quietMode: quietMode,
+      );
       return;
     }
+
+    if (!supportsScheduledNotifications()) return;
 
     await cancelTimer(timer.id);
 
@@ -260,9 +259,48 @@ class LocalNotificationService
     }
   }
 
-  @override
-  Future<void> showTimerCompletion(
+  void _scheduleRuntimeFallback(
     CountdownTimer timer, {
+    required bool soundEnabled,
+    required bool vibrationEnabled,
+    required bool quietMode,
+  }) {
+    _runtimeTimers.remove(timer.id)?.cancel();
+    final scheduledAt = timer.endsAtUtc;
+    if (scheduledAt == null) return;
+
+    final delay = scheduledAt.difference(DateTime.now().toUtc());
+    final step = timer.currentStep;
+    if (delay <= Duration.zero) {
+      unawaited(
+        _showRuntimeNotification(
+          timer: timer,
+          step: step,
+          soundEnabled: soundEnabled,
+          vibrationEnabled: vibrationEnabled,
+          quietMode: quietMode,
+        ),
+      );
+      return;
+    }
+
+    _runtimeTimers[timer.id] = Timer(delay, () {
+      _runtimeTimers.remove(timer.id);
+      unawaited(
+        _showRuntimeNotification(
+          timer: timer,
+          step: step,
+          soundEnabled: soundEnabled,
+          vibrationEnabled: vibrationEnabled,
+          quietMode: quietMode,
+        ),
+      );
+    });
+  }
+
+  Future<void> _showRuntimeNotification({
+    required CountdownTimer timer,
+    required IntervalStep step,
     required bool soundEnabled,
     required bool vibrationEnabled,
     required bool quietMode,
@@ -272,8 +310,12 @@ class LocalNotificationService
     try {
       await _plugin.show(
         id: _notificationId(timer.id, timer.currentStepIndex),
-        title: '${timer.name} finished',
-        body: 'Your countdown is complete.',
+        title: timer.isSequence
+            ? '${timer.name}: ${step.label}'
+            : '${timer.name} finished',
+        body: timer.isSequence
+            ? 'Interval complete.'
+            : 'Your countdown is complete.',
         notificationDetails: countoraNotificationDetails(
           soundEnabled: soundEnabled,
           vibrationEnabled: vibrationEnabled,
@@ -282,12 +324,13 @@ class LocalNotificationService
         payload: timer.id,
       );
     } on Object catch (error) {
-      _logger.warning('immediate_completion_failed', error: error);
+      _logger.warning('runtime_notification_failed', error: error);
     }
   }
 
   @override
   Future<void> cancelTimer(String timerId) async {
+    _runtimeTimers.remove(timerId)?.cancel();
     if (!_ready) return;
     await runBoundedNotificationCleanup(
       count: CountoraStateCodec.maxIntervalsPerTimer,
