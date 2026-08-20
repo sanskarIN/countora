@@ -23,6 +23,7 @@ void main() {
     'docs/architecture.md',
     'docs/setup.md',
     'docs/development.md',
+    'docs/dependency-management.md',
     'docs/testing.md',
     'docs/release.md',
     'docs/troubleshooting.md',
