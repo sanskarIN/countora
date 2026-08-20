@@ -25,8 +25,10 @@ void main() {
     );
     expect(
       strings.completionNotificationsUnavailable,
-      'Scheduled background completion notifications are not available on this '
-      'platform. In-app countdown state and visual completion cues still work.',
+      'Future background scheduling is not available on this platform. '
+      'Countora can still deliver local completion notifications while its '
+      'runtime remains active, and in-app state plus visual completion cues '
+      'reconcile when you return.',
     );
   });
 
