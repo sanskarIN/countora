@@ -21,14 +21,16 @@ This roadmap distinguishes implemented source work from release verification. A 
 
 - [x] Schema-aware backup codec and migration boundary
 - [x] Codec-owned persistence schema version
-- [x] Bounded untrusted backup validation
+- [x] Bounded untrusted backup validation, including explicit imported identifier limits
 - [x] Corrupted local-state recovery
+- [x] Controller timer/preset creation aligned with persisted collection limits
 - [x] Monotonic in-process runtime clock
 - [x] App-resume timer reconciliation
 - [x] Interval catch-up without accumulated wake-up drift
 - [x] Persistence-first notification side effects for timer mutations/reconciliation
 - [x] Failed-import rollback before platform notification replacement
 - [x] Notification exact-to-inexact fallback
+- [x] Bounded notification cleanup continues after per-ID plugin failures
 - [x] Unsupported Web/Linux future-notification scheduling guard
 - [x] Generated Android notification configuration hardening
 - [x] Validated/idempotent generated Android patch helpers
@@ -52,8 +54,10 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Main accessibility semantics improvements
 - [x] Correct focus-mode entry/exit semantics copy
 - [x] English generated-localization architecture
-- [x] Structured redacting diagnostics
+- [x] Structured redacting diagnostics with recursive nested-map/iterable sanitization
 - [x] Guarded URL-launch and clipboard failure handling
+- [x] Recoverable controller errors visible across Timers, Presets, and History
+- [x] Settings listens to live controller changes and surfaces persistence failures
 - [x] Responsive phone/desktop navigation
 - [x] Dark/light/system themes and reduced motion
 
@@ -63,7 +67,12 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Local persistence recovery tests
 - [x] Stable clock tests
 - [x] Expanded controller workflow tests
+- [x] Controller collection-cap regression tests
 - [x] Persistence/notification consistency regression tests
+- [x] Notification cleanup continuation regression tests
+- [x] Recursive diagnostic-redaction regression tests
+- [x] Global Home error-surface regression test
+- [x] Settings reactivity/save-error regression test
 - [x] Platform patch regression tests
 - [x] External-link failure regression tests
 - [x] Primary widget journey tests
@@ -76,7 +85,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
 - [x] Required-file/version/secret repository audit tooling
-- [x] Required-file contract protects critical docs, audit/release tooling, workflows, integration source, and issue-template configuration
+- [x] Required-file contract protects critical docs, audit/release tooling, workflows, important regression tests, integration source, branding, and issue-template configuration
 - [x] Release-only committed dependency-lock audit and regression coverage
 - [x] Dependency Review threshold
 - [x] CodeQL workflow scan
