@@ -6,12 +6,12 @@ RootFileSnapshots snapshotRootFiles(
   Directory root,
   Iterable<String> relativePaths,
 ) {
-  return <String, List<int>?>{
-    for (final path in relativePaths)
-      path: _fileAt(root, path).existsSync()
-          ? _fileAt(root, path).readAsBytesSync()
-          : null,
-  };
+  final snapshots = <String, List<int>?>{};
+  for (final path in relativePaths) {
+    final file = _fileAt(root, path);
+    snapshots[path] = file.existsSync() ? file.readAsBytesSync() : null;
+  }
+  return snapshots;
 }
 
 void restoreRootFiles(Directory root, RootFileSnapshots snapshots) {
@@ -31,7 +31,10 @@ void restoreRootFiles(Directory root, RootFileSnapshots snapshots) {
 }
 
 File _fileAt(Directory root, String relativePath) {
-  if (relativePath.isEmpty || relativePath.startsWith('/') || relativePath.contains('..')) {
+  final segments = relativePath.split(RegExp(r'[\\/]'));
+  if (relativePath.isEmpty ||
+      File(relativePath).isAbsolute ||
+      segments.contains('..')) {
     throw ArgumentError.value(
       relativePath,
       'relativePath',
