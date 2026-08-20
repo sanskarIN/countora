@@ -7,6 +7,15 @@ name: countora
 version: 0.2.0+2
 ''';
 
+const _pubspecWithMsix = '''
+name: countora
+version: 0.2.0+2
+
+msix_config:
+  display_name: Countora
+  msix_version: 0.2.0.2
+''';
+
 const _metadata = '''
 abstract final class AppMetadata {
   static const version = '0.2.0';
@@ -29,6 +38,38 @@ void main() {
     expect(result.isValid, isTrue);
     expect(result.packageVersion, '0.2.0');
     expect(result.buildNumber, '2');
+  });
+
+  test('accepts synchronized Windows MSIX metadata', () {
+    final result = auditVersionMetadata(
+      pubspec: _pubspecWithMsix,
+      metadata: _metadata,
+      changelog: _changelog,
+    );
+
+    expect(result.isValid, isTrue);
+  });
+
+  test('rejects an MSIX version that drifts from package build metadata', () {
+    final result = auditVersionMetadata(
+      pubspec: _pubspecWithMsix.replaceFirst('0.2.0.2', '0.2.0.3'),
+      metadata: _metadata,
+      changelog: _changelog,
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.errors.single, contains('MSIX version mismatch'));
+  });
+
+  test('requires msix_version whenever MSIX configuration is present', () {
+    final result = auditVersionMetadata(
+      pubspec: _pubspecWithMsix.replaceFirst('  msix_version: 0.2.0.2\n', ''),
+      metadata: _metadata,
+      changelog: _changelog,
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.errors.single, contains('msix_version=0.2.0.2'));
   });
 
   test('rejects AppMetadata drift', () {
