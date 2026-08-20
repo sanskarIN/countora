@@ -24,9 +24,10 @@ Future<void> main() async {
 
   _patchAndroidManifest();
   _patchAndroidGradle();
+  _patchIosAppDelegate();
 
   stdout.writeln(
-    'Countora platform runners generated and Android notifications configured.',
+    'Countora platform runners generated and native notification setup applied.',
   );
 }
 
@@ -51,4 +52,17 @@ void _patchAndroidGradle() {
 
   final patched = patchAndroidGradle(kotlin.readAsStringSync());
   kotlin.writeAsStringSync(patched);
+}
+
+void _patchIosAppDelegate() {
+  final appDelegate = File('ios/Runner/AppDelegate.swift');
+  if (!appDelegate.existsSync()) {
+    throw StateError(
+      'ios/Runner/AppDelegate.swift was not generated. '
+      'The Flutter iOS runner template may have changed.',
+    );
+  }
+
+  final patched = patchIosAppDelegate(appDelegate.readAsStringSync());
+  appDelegate.writeAsStringSync(patched);
 }
