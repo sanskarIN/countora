@@ -47,46 +47,48 @@ class _NoopNotifications implements NotificationService {
 }
 
 void main() {
-  testWidgets('controller errors remain visible on the Presets destination',
-      (tester) async {
-    final store = _FailingMemoryStore(
-      const CountoraState(
-        settings: CountoraSettings(onboardingSeen: true),
-      ),
-    );
-    final controller = TimerController(
-      store: store,
-      notifications: _NoopNotifications(),
-      nowUtc: () => DateTime.utc(2026, 8, 20),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
+  testWidgets(
+    'controller errors remain visible on the Presets destination',
+    (tester) async {
+      final store = _FailingMemoryStore(
+        const CountoraState(
+          settings: CountoraSettings(onboardingSeen: true),
+        ),
+      );
+      final controller = TimerController(
+        store: store,
+        notifications: _NoopNotifications(),
+        nowUtc: () => DateTime.utc(2026, 8, 20),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
 
-    await tester.pumpWidget(CountoraApp(controller: controller));
-    await tester.pump();
+      await tester.pumpWidget(CountoraApp(controller: controller));
+      await tester.pump();
 
-    await tester.tap(find.text('Presets'));
-    await tester.pump();
+      await tester.tap(find.text('Presets'));
+      await tester.pump();
 
-    store.failSave = true;
-    await controller.addPreset(
-      name: 'Unsaved preset',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-    );
-    await tester.pump();
+      store.failSave = true;
+      await controller.addPreset(
+        name: 'Unsaved preset',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Timer', durationSeconds: 60),
+        ],
+      );
+      await tester.pump();
 
-    expect(find.byType(MaterialBanner), findsOneWidget);
-    expect(
-      find.text('Countora could not save local changes. Please try again.'),
-      findsOneWidget,
-    );
+      expect(find.byType(MaterialBanner), findsOneWidget);
+      expect(
+        find.text('Countora could not save local changes. Please try again.'),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.text('Dismiss'));
-    await tester.pump();
+      await tester.tap(find.text('Dismiss'));
+      await tester.pump();
 
-    expect(find.byType(MaterialBanner), findsNothing);
-  });
+      expect(find.byType(MaterialBanner), findsNothing);
+    },
+  );
 }
