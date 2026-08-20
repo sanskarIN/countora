@@ -110,6 +110,17 @@ NotificationDetails countoraNotificationDetails({
   );
 }
 
+/// Returns whether a runtime-only notification callback that is being replaced
+/// or cancelled has already reached its delivery deadline and therefore must be
+/// allowed to finish. This protects the completion callback from racing the
+/// controller's state-reconciliation cleanup at the exact same deadline.
+bool shouldPreserveDueRuntimeNotification({
+  required DateTime scheduledAtUtc,
+  required DateTime nowUtc,
+}) {
+  return !nowUtc.toUtc().isBefore(scheduledAtUtc.toUtc());
+}
+
 class LocalNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -305,7 +316,10 @@ class LocalNotificationService implements NotificationService {
     final entry = _runtimeTimers.remove(timerId);
     if (entry == null) return;
 
-    final isDue = !DateTime.now().toUtc().isBefore(entry.scheduledAtUtc);
+    final isDue = shouldPreserveDueRuntimeNotification(
+      scheduledAtUtc: entry.scheduledAtUtc,
+      nowUtc: DateTime.now().toUtc(),
+    );
     if (preserveIfDue && isDue) {
       // A controller reconciliation can race the Dart Timer at the exact
       // deadline. Leave a due callback alive so completion delivery is not
