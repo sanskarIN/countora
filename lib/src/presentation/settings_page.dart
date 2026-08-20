@@ -28,6 +28,7 @@ class SettingsPage extends StatelessWidget {
   Widget _buildSettings(BuildContext context) {
     final strings = context.l10n;
     final settings = controller.settings;
+    final localNotificationsSupported = supportsLocalNotifications();
     final scheduledNotificationsSupported = supportsScheduledNotifications();
 
     return Scaffold(
@@ -110,9 +111,9 @@ class SettingsPage extends StatelessWidget {
                         ? strings.completionNotificationsHelp
                         : strings.completionNotificationsUnavailable,
                   ),
-                  value: scheduledNotificationsSupported &&
+                  value: localNotificationsSupported &&
                       settings.notificationsEnabled,
-                  onChanged: scheduledNotificationsSupported
+                  onChanged: localNotificationsSupported
                       ? (value) => unawaited(
                             controller.updateSettings(
                               settings.copyWith(notificationsEnabled: value),
@@ -123,7 +124,7 @@ class SettingsPage extends StatelessWidget {
                 SwitchListTile(
                   title: Text(strings.sound),
                   value: settings.soundEnabled,
-                  onChanged: scheduledNotificationsSupported &&
+                  onChanged: localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
                             controller.updateSettings(
@@ -135,7 +136,7 @@ class SettingsPage extends StatelessWidget {
                 SwitchListTile(
                   title: Text(strings.vibration),
                   value: settings.vibrationEnabled,
-                  onChanged: scheduledNotificationsSupported &&
+                  onChanged: localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
                             controller.updateSettings(
@@ -148,7 +149,7 @@ class SettingsPage extends StatelessWidget {
                   title: Text(strings.quietMode),
                   subtitle: Text(strings.quietModeHelp),
                   value: settings.quietMode,
-                  onChanged: scheduledNotificationsSupported &&
+                  onChanged: localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
                             controller.updateSettings(
