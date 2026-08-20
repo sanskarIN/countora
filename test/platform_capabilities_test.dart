@@ -3,29 +3,52 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('web never reports future scheduled notification support', () {
+  test('web supports runtime notifications but not future scheduling', () {
     for (final platform in TargetPlatform.values) {
+      expect(
+        notificationDeliveryMode(isWeb: true, platform: platform),
+        NotificationDeliveryMode.runtimeOnly,
+      );
+      expect(
+        supportsLocalNotifications(isWeb: true, platform: platform),
+        isTrue,
+      );
       expect(
         supportsScheduledNotifications(isWeb: true, platform: platform),
         isFalse,
       );
-    }
-  });
-
-  test('unsupported native targets fail closed', () {
-    for (final platform in <TargetPlatform>[
-      TargetPlatform.linux,
-      TargetPlatform.fuchsia,
-    ]) {
       expect(
-        supportsScheduledNotifications(isWeb: false, platform: platform),
-        isFalse,
-        reason: '$platform is not a supported scheduled-notification target',
+        usesRuntimeNotificationFallback(isWeb: true, platform: platform),
+        isTrue,
       );
     }
   });
 
-  test('supported native targets report future scheduling capability', () {
+  test('Linux uses runtime completion notification fallback', () {
+    expect(
+      notificationDeliveryMode(
+        isWeb: false,
+        platform: TargetPlatform.linux,
+      ),
+      NotificationDeliveryMode.runtimeOnly,
+    );
+    expect(
+      supportsLocalNotifications(
+        isWeb: false,
+        platform: TargetPlatform.linux,
+      ),
+      isTrue,
+    );
+    expect(
+      supportsScheduledNotifications(
+        isWeb: false,
+        platform: TargetPlatform.linux,
+      ),
+      isFalse,
+    );
+  });
+
+  test('Android Apple and Windows support scheduled background delivery', () {
     for (final platform in <TargetPlatform>[
       TargetPlatform.android,
       TargetPlatform.iOS,
@@ -33,10 +56,46 @@ void main() {
       TargetPlatform.windows,
     ]) {
       expect(
+        notificationDeliveryMode(isWeb: false, platform: platform),
+        NotificationDeliveryMode.scheduledBackground,
+        reason: '$platform should use future native notification scheduling',
+      );
+      expect(
+        supportsLocalNotifications(isWeb: false, platform: platform),
+        isTrue,
+      );
+      expect(
         supportsScheduledNotifications(isWeb: false, platform: platform),
         isTrue,
-        reason: '$platform should use the native notification adapter',
+      );
+      expect(
+        usesRuntimeNotificationFallback(isWeb: false, platform: platform),
+        isFalse,
       );
     }
+  });
+
+  test('unknown unsupported native targets fail closed', () {
+    expect(
+      notificationDeliveryMode(
+        isWeb: false,
+        platform: TargetPlatform.fuchsia,
+      ),
+      NotificationDeliveryMode.unavailable,
+    );
+    expect(
+      supportsLocalNotifications(
+        isWeb: false,
+        platform: TargetPlatform.fuchsia,
+      ),
+      isFalse,
+    );
+    expect(
+      supportsScheduledNotifications(
+        isWeb: false,
+        platform: TargetPlatform.fuchsia,
+      ),
+      isFalse,
+    );
   });
 }
