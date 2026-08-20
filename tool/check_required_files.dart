@@ -83,6 +83,7 @@ void main() {
     '.github/pull_request_template.md',
     '.github/dependabot.yml',
     '.github/FUNDING.yml',
+    '.github/actions/setup-flutter/action.yml',
     '.github/workflows/ci.yml',
     '.github/workflows/dependency-lock.yml',
     '.github/workflows/platform-smoke.yml',
