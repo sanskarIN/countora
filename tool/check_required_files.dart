@@ -64,6 +64,7 @@ void main() {
     'test/notification_cleanup_test.dart',
     'test/notification_details_test.dart',
     'test/notification_initialization_test.dart',
+    'test/runtime_notification_policy_test.dart',
     'test/platform_capabilities_test.dart',
     'test/platform_patches_test.dart',
     'test/external_link_launcher_test.dart',
