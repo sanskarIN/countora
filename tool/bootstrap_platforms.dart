@@ -2,24 +2,42 @@ import 'dart:io';
 
 import 'src/platform_patches.dart';
 
+const _rootFilesToPreserve = <String>[
+  '.gitignore',
+  'README.md',
+  'analysis_options.yaml',
+  'l10n.yaml',
+  'pubspec.lock',
+  'pubspec.yaml',
+];
+
 Future<void> main() async {
   final flutter = Platform.isWindows ? 'flutter.bat' : 'flutter';
+  final rootSnapshots = _snapshotRootFiles();
 
-  final create = await Process.run(
-    flutter,
-    <String>[
-      'create',
-      '.',
-      '--project-name=countora',
-      '--org=dev.sanskar',
-      '--platforms=android,ios,web,windows,macos,linux',
-    ],
-    runInShell: true,
-  );
+  late final ProcessResult create;
+  try {
+    create = await Process.run(
+      flutter,
+      <String>[
+        'create',
+        '.',
+        '--project-name=countora',
+        '--org=dev.sanskar',
+        '--platforms=android,ios,web,windows,macos,linux',
+        '--no-pub',
+      ],
+      runInShell: true,
+    );
+  } finally {
+    _restoreRootFiles(rootSnapshots);
+  }
+
   stdout.write(create.stdout);
   stderr.write(create.stderr);
   if (create.exitCode != 0) {
-    exit(create.exitCode);
+    exitCode = create.exitCode;
+    return;
   }
 
   _patchAndroidManifest();
@@ -30,6 +48,27 @@ Future<void> main() async {
   stdout.writeln(
     'Countora platform runners generated and native notification setup applied.',
   );
+}
+
+Map<String, List<int>?> _snapshotRootFiles() {
+  return <String, List<int>?>{
+    for (final path in _rootFilesToPreserve)
+      path: File(path).existsSync() ? File(path).readAsBytesSync() : null,
+  };
+}
+
+void _restoreRootFiles(Map<String, List<int>?> snapshots) {
+  for (final entry in snapshots.entries) {
+    final file = File(entry.key);
+    final bytes = entry.value;
+    if (bytes == null) {
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      continue;
+    }
+    file.writeAsBytesSync(bytes, flush: true);
+  }
 }
 
 void _patchAndroidManifest() {
