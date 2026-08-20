@@ -151,13 +151,10 @@ class LocalNotificationService implements NotificationService {
     if (!_ready || !supportsLocalNotifications()) return;
 
     try {
-      final web = _plugin.resolvePlatformSpecificImplementation<
-          WebFlutterLocalNotificationsPlugin>();
-      if (web != null &&
-          web.permissionStatus != WebNotificationPermission.granted) {
-        await web.requestNotificationsPermission();
-      }
-
+      // Web permission is intentionally not requested here. Browsers require
+      // permission prompts to originate directly from user activation, so the
+      // Web Settings action uses requestWebNotificationPermissionFromUserGesture
+      // instead of this automatic scheduling/reconciliation path.
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       await android?.requestNotificationsPermission();
