@@ -1,0 +1,95 @@
+name: Dependency lock refresh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - pubspec.yaml
+      - .github/workflows/dependency-lock.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependency-lock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh-lock:
+    name: Refresh reviewed application lockfile
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Install pinned Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
+          cache: true
+
+      - name: Record toolchain
+        run: flutter --version
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate platform runners
+        run: dart run tool/bootstrap_platforms.dart
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Verify generated dependency lock
+        run: dart run tool/check_dependency_lock.dart
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Verify formatting
+        run: >-
+          dart format --output=none --set-exit-if-changed
+          lib test integration_test tool
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Verify required repository files
+        run: dart run tool/check_required_files.dart
+
+      - name: Verify version metadata
+        run: dart run tool/check_version_sync.dart
+
+      - name: Scan tracked source for obvious secrets
+        run: dart run tool/check_secrets.dart
+
+      - name: Check local documentation links
+        run: dart run tool/check_markdown_links.dart
+
+      - name: Verify patch hygiene
+        run: git diff --check
+
+      - name: Commit reviewed lockfile when changed
+        shell: bash
+        run: |
+          git add pubspec.lock
+          if git diff --cached --quiet; then
+            echo "pubspec.lock is already current."
+            exit 0
+          fi
+
+          git config user.name "Sanskar"
+          git config user.email "sanskarin@outlook.in"
+          git commit -m "build: refresh dependency lock"
+          git pull --rebase origin main
+          git push origin HEAD:main
