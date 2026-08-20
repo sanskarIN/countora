@@ -85,4 +85,49 @@ android {
       );
     });
   });
+
+  group('patchIosAppDelegate', () {
+    const source = '''
+import Flutter
+import UIKit
+
+@main
+@objc class AppDelegate: FlutterAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
+''';
+
+    test('adds UserNotifications import and notification-center delegate', () {
+      final patched = patchIosAppDelegate(source);
+
+      expect(patched, contains('import UserNotifications'));
+      expect(
+        patched,
+        contains(
+          'UNUserNotificationCenter.current().delegate = self as? '
+          'UNUserNotificationCenterDelegate',
+        ),
+      );
+    });
+
+    test('is idempotent', () {
+      final once = patchIosAppDelegate(source);
+      final twice = patchIosAppDelegate(once);
+
+      expect(twice, once);
+    });
+
+    test('rejects an unexpected generated iOS template', () {
+      expect(
+        () => patchIosAppDelegate('import Flutter\nimport UIKit\n'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+  });
 }
