@@ -86,6 +86,47 @@ android {
     });
   });
 
+  group('patchAndroidSettingsGradle', () {
+    const olderTemplate = '''
+plugins {
+    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+    id("com.android.application") version "8.9.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+}
+''';
+
+    test('raises older generated AGP to the notification minimum', () {
+      final patched = patchAndroidSettingsGradle(olderTemplate);
+
+      expect(
+        patched,
+        contains('id("com.android.application") version "8.11.1" apply false'),
+      );
+    });
+
+    test('keeps a newer generated AGP version', () {
+      const newerTemplate = '''
+plugins {
+    id("com.android.application") version "9.1.0" apply false
+}
+''';
+      expect(patchAndroidSettingsGradle(newerTemplate), newerTemplate);
+    });
+
+    test('is idempotent after raising the AGP version', () {
+      final once = patchAndroidSettingsGradle(olderTemplate);
+      final twice = patchAndroidSettingsGradle(once);
+      expect(twice, once);
+    });
+
+    test('rejects an unexpected settings template', () {
+      expect(
+        () => patchAndroidSettingsGradle('plugins { }'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+  });
+
   group('patchIosAppDelegate', () {
     const source = '''
 import Flutter
