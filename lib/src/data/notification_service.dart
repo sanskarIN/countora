@@ -228,12 +228,14 @@ class LocalNotificationService implements NotificationService {
       try {
         await _plugin.cancel(id: _notificationId(timerId, index));
       } on Object catch (error) {
+        // A failure for one derived notification ID must not prevent cleanup of
+        // later interval IDs. Keep attempting the bounded remainder and record
+        // only structural diagnostics (never timer/user content).
         _logger.warning(
           'cancel_failed',
           error: error,
           fields: <String, Object?>{'stepIndex': index},
         );
-        break;
       }
     }
   }
