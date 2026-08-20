@@ -24,6 +24,16 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  msix: ^3.18.0
+
+msix_config:
+  display_name: Countora
+  publisher_display_name: Sanskar
+  identity_name: dev.sanskar.countora
+  msix_version: 0.2.0.2
+  output_path: build/windows/msix
+  output_name: countora-windows-x64
+  install_certificate: false
 
 flutter:
   generate: true
