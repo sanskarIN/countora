@@ -116,6 +116,8 @@ class TimerController extends ChangeNotifier {
     bool startImmediately = true,
   }) async {
     _clearError();
+    if (!_ensureTimerCapacity()) return;
+
     final safeName = _validatedName(name);
     final safeGroup = _validatedGroup(group);
     final safeSteps = _validatedSteps(steps);
@@ -175,6 +177,9 @@ class TimerController extends ChangeNotifier {
     required String group,
     required List<IntervalStep> steps,
   }) async {
+    _clearError();
+    if (!_ensurePresetCapacity()) return;
+
     final preset = TimerPreset(
       id: _newId(),
       name: _validatedName(name),
@@ -189,6 +194,8 @@ class TimerController extends ChangeNotifier {
   Future<void> startPreset(String presetId) async {
     final index = _presets.indexWhere((preset) => preset.id == presetId);
     if (index < 0) return;
+    if (!_ensureTimerCapacity()) return;
+
     final preset = _presets[index];
     await addTimer(
       name: preset.name,
@@ -748,6 +755,22 @@ class TimerController extends ChangeNotifier {
     final index = _timers.indexWhere((timer) => timer.id == updated.id);
     if (index < 0) return;
     _timers = <CountdownTimer>[..._timers]..[index] = updated;
+  }
+
+  bool _ensureTimerCapacity() {
+    if (_timers.length < CountoraStateCodec.maxTimers) return true;
+    _lastError =
+        'Countora supports up to ${CountoraStateCodec.maxTimers} timers.';
+    notifyListeners();
+    return false;
+  }
+
+  bool _ensurePresetCapacity() {
+    if (_presets.length < CountoraStateCodec.maxPresets) return true;
+    _lastError =
+        'Countora supports up to ${CountoraStateCodec.maxPresets} presets.';
+    notifyListeners();
+    return false;
   }
 
   String _validatedName(String value) {
