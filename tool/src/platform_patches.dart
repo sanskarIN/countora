@@ -111,6 +111,37 @@ String patchAndroidGradle(String source) {
   return text;
 }
 
+/// Ensures the generated Android Plugin DSL uses an AGP version compatible
+/// with Countora's notification dependency.
+String patchAndroidSettingsGradle(String source) {
+  const minimumAgp = '8.11.1';
+  final pattern = RegExp(
+    r'id\("com\.android\.application"\)\s+version\s+"([0-9]+\.[0-9]+\.[0-9]+)"\s+apply false',
+  );
+  final match = pattern.firstMatch(source);
+  if (match == null) {
+    throw const FormatException(
+      'android/settings.gradle.kts does not contain the expected '
+      'com.android.application Plugin DSL declaration.',
+    );
+  }
+
+  final generatedAgp = match.group(1)!;
+  if (_compareNumericVersions(generatedAgp, minimumAgp) >= 0) {
+    return source;
+  }
+
+  final original = match.group(0)!;
+  final patched = original.replaceFirst(generatedAgp, minimumAgp);
+  final result = source.replaceRange(match.start, match.end, patched);
+  if (!result.contains('version "$minimumAgp"')) {
+    throw const FormatException(
+      'Failed to apply the minimum Android Gradle Plugin version.',
+    );
+  }
+  return result;
+}
+
 /// Applies the notification-center delegate required by
 /// flutter_local_notifications for foreground iOS presentation.
 String patchIosAppDelegate(String source) {
@@ -154,6 +185,21 @@ String patchIosAppDelegate(String source) {
   }
 
   return text;
+}
+
+int _compareNumericVersions(String left, String right) {
+  final leftParts = left.split('.').map(int.parse).toList(growable: false);
+  final rightParts = right.split('.').map(int.parse).toList(growable: false);
+  final length = leftParts.length > rightParts.length
+      ? leftParts.length
+      : rightParts.length;
+  for (var index = 0; index < length; index += 1) {
+    final leftValue = index < leftParts.length ? leftParts[index] : 0;
+    final rightValue = index < rightParts.length ? rightParts[index] : 0;
+    final comparison = leftValue.compareTo(rightValue);
+    if (comparison != 0) return comparison;
+  }
+  return 0;
 }
 
 String _insertAfterRequiredMarker(
