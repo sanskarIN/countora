@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'src/platform_patches.dart';
+import 'src/root_file_guard.dart';
 
 const _rootFilesToPreserve = <String>[
   '.gitignore',
@@ -13,7 +14,10 @@ const _rootFilesToPreserve = <String>[
 
 Future<void> main() async {
   final flutter = Platform.isWindows ? 'flutter.bat' : 'flutter';
-  final rootSnapshots = _snapshotRootFiles();
+  final rootSnapshots = snapshotRootFiles(
+    Directory.current,
+    _rootFilesToPreserve,
+  );
 
   late final ProcessResult create;
   try {
@@ -30,7 +34,7 @@ Future<void> main() async {
       runInShell: true,
     );
   } finally {
-    _restoreRootFiles(rootSnapshots);
+    restoreRootFiles(Directory.current, rootSnapshots);
   }
 
   stdout.write(create.stdout);
@@ -48,27 +52,6 @@ Future<void> main() async {
   stdout.writeln(
     'Countora platform runners generated and native notification setup applied.',
   );
-}
-
-Map<String, List<int>?> _snapshotRootFiles() {
-  return <String, List<int>?>{
-    for (final path in _rootFilesToPreserve)
-      path: File(path).existsSync() ? File(path).readAsBytesSync() : null,
-  };
-}
-
-void _restoreRootFiles(Map<String, List<int>?> snapshots) {
-  for (final entry in snapshots.entries) {
-    final file = File(entry.key);
-    final bytes = entry.value;
-    if (bytes == null) {
-      if (file.existsSync()) {
-        file.deleteSync();
-      }
-      continue;
-    }
-    file.writeAsBytesSync(bytes, flush: true);
-  }
 }
 
 void _patchAndroidManifest() {
