@@ -162,5 +162,49 @@ void main() {
       expect(decoded.presets.single.group.length, 40);
       expect(decoded.presets.single.useCount, 0);
     });
+
+    test('drops oversized imported identifiers without truncating them', () {
+      final longId = List<String>.filled(
+        CountoraStateCodec.maxIdLength + 1,
+        'i',
+        growable: false,
+      ).join();
+      final decoded = codec.decode('''
+{
+  "schemaVersion": 1,
+  "timers": [
+    {
+      "id": "$longId",
+      "name": "Timer",
+      "steps": [{"label":"Timer","durationSeconds":60}],
+      "status": "paused",
+      "remainingWhenPausedSeconds": 60
+    }
+  ],
+  "presets": [
+    {
+      "id": "$longId",
+      "name": "Preset",
+      "steps": [{"label":"Timer","durationSeconds":60}],
+      "useCount": 0
+    }
+  ],
+  "history": [
+    {
+      "timerId": "$longId",
+      "name": "History",
+      "group": "",
+      "completedAtUtc": "2026-08-20T00:00:00Z",
+      "totalDurationSeconds": 60
+    }
+  ],
+  "settings": {}
+}
+''');
+
+      expect(decoded.timers, isEmpty);
+      expect(decoded.presets, isEmpty);
+      expect(decoded.history, isEmpty);
+    });
   });
 }
