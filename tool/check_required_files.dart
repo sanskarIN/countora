@@ -19,6 +19,7 @@ void main() {
     'analysis_options.yaml',
     'pubspec.yaml',
     'l10n.yaml',
+    'assets/branding/countora-mark.svg',
     'docs/architecture.md',
     'docs/setup.md',
     'docs/development.md',
