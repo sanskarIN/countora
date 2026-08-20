@@ -1,7 +1,7 @@
 # Countora development handoff
 
 Updated: 2026-08-20
-Current milestone: Phase 6 release-candidate verification; static source, test, documentation, repository-governance, input-boundary, and release-workflow hardening are substantially complete
+Current milestone: Phase 6 release-candidate verification; static source, test, documentation, repository-governance, input-boundary, notification-cleanup, diagnostics, error-surface, and release-workflow hardening are substantially complete
 Target release: 0.2.0+2
 Repository: https://github.com/sanskarIN/countora
 Source model: public / open source / MIT
@@ -60,7 +60,9 @@ Implemented reliability work includes:
 - persistence-first ordering for timer state mutations before notification side effects;
 - persistence-first timer reconciliation before schedule changes;
 - failed-import rollback before replacing platform notification schedules;
-- regression coverage for persistence/notification consistency boundaries.
+- live timer/preset collection creation capped at the same limits enforced by decoded persistence;
+- preset start blocked cleanly when the timer collection is already at capacity;
+- regression coverage for persistence/notification consistency and collection-capacity boundaries.
 
 ### Local state, backup, migration, and corruption recovery
 
@@ -107,7 +109,9 @@ Implemented notification work includes:
 - stable Android notification channels per cue profile so channel behavior does not drift with timer identity;
 - generated Android manifest/Gradle hardening for notification receivers, exact-alarm permission, desugaring, and multidex;
 - validated/idempotent Android generated-runner patch helpers that fail if expected Flutter template anchors disappear;
-- regression tests for scheduled-notification capability, unsupported targets/settings state, Apple permission behavior, Android channel profiles, and generated runner patches.
+- bounded multi-step notification cleanup that continues attempting later derived notification IDs if one plugin cancellation throws;
+- a pure notification-cleanup helper so continuation-after-error behavior is testable without a real notification plugin;
+- regression tests for scheduled-notification capability, unsupported targets/settings state, Apple permission behavior, Android channel profiles, generated runner patches, and cleanup continuation.
 
 ### UI, responsive design, accessibility, and desktop usability
 
@@ -120,7 +124,9 @@ Implemented source includes:
 - responsive phone/tablet/desktop/web navigation;
 - clear empty and filtered-empty states;
 - one-click clear-filter behavior;
-- visible controller error banner with dismiss action;
+- controller error banner with dismiss action at the shared Home level, so failures remain visible on Timers, Presets, and History;
+- Settings route directly listening to controller changes while it is open;
+- Settings-local controller error banner for persistence failures without forcing navigation back to Home;
 - keyboard-accessible standard Flutter controls/focus behavior;
 - `Ctrl/Cmd+N` for creating a timer/preset;
 - `Ctrl/Cmd+F` for returning to timers and focusing search;
@@ -159,7 +165,11 @@ Implemented safeguards include:
 - bounded validation of imported JSON;
 - explicit schema/version trust boundary;
 - explicit imported identifier length bounds in addition to backup/entity/text/duration bounds;
+- controller creation paths enforcing the same timer/preset collection caps as persistence decoding;
 - structured JSON diagnostics with sensitive-key redaction;
+- recursive structured-log sanitization across nested maps and iterables, including generic platform/plugin maps;
+- sensitive diagnostic key normalization for password/passcode/PIN/token/secret/authorization/credential/API-key/private-key/cookie/session/email/phone/backup/payload/timer-name/username categories;
+- bounded arbitrary diagnostic scalar text before JSON encoding;
 - diagnostic events that avoid timer names, raw backup payloads, credentials, authentication data, and other unnecessary user content;
 - guarded external URL launching with user-safe failure feedback;
 - guarded clipboard backup export with localized failure feedback;
@@ -177,6 +187,7 @@ Implemented performance/reliability support includes:
 
 - absolute deadlines rather than persistent per-second writes;
 - bounded persisted/imported collection sizes;
+- controller-side capacity enforcement to avoid restart-time state truncation surprises;
 - interval catch-up rather than replaying every missed UI tick;
 - deterministic state-codec benchmark harness;
 - machine-readable latency summaries;
@@ -186,7 +197,7 @@ Benchmark execution on representative hardware remains a release-evidence task.
 
 ## Automated test and regression source now present
 
-The repository includes coverage for the major domain, data, controller, UI, platform-boundary, and tooling areas, including:
+The repository includes coverage for the major domain, data, controller, UI, platform-boundary, security, and tooling areas.
 
 ### State and persistence
 
@@ -200,12 +211,13 @@ The repository includes coverage for the major domain, data, controller, UI, pla
   - malformed interval recovery;
   - name/group/use-count and other bounds;
   - oversized imported identifier removal without truncation.
+- `test/state_codec_fuzz_test.dart`
+  - deterministic malformed-input/fuzz-style trust-boundary coverage.
 - `test/local_store_test.dart`
   - persistence/restore;
   - corrupted JSON recovery;
   - invalid persisted-field recovery;
   - clear operation.
-- state-codec malformed-input/property-style cases added during later hardening.
 - privacy-safe backup inspection regression tests.
 
 ### Timing and controller workflows
@@ -222,8 +234,25 @@ The repository includes coverage for the major domain, data, controller, UI, pla
   - future-schema import preservation;
   - full-data reset;
   - history replay.
+- `test/timer_controller_limits_test.dart`
+  - no timer beyond `CountoraStateCodec.maxTimers`;
+  - no preset beyond `CountoraStateCodec.maxPresets`;
+  - full timer capacity does not increment preset usage;
+  - rejected capacity operations do not issue persistence writes.
 - controller resilience/persistence-first regression tests;
 - timer pause/deadline boundary regression tests.
+
+### Security/diagnostic tests
+
+- `test/app_logger_test.dart`
+  - recursive redaction at nested map depth;
+  - generic `Map<Object?, Object?>` handling;
+  - maps inside iterables;
+  - sensitive-key punctuation/case normalization;
+  - enum conversion;
+  - bounded arbitrary scalar text.
+
+Synthetic credential-like strings are used only as test fixtures; real secrets/user backups must never be added to regressions.
 
 ### UI/accessibility/localization
 
@@ -233,22 +262,35 @@ The repository includes coverage for the major domain, data, controller, UI, pla
   - filtered empty state;
   - card resume;
   - history replay.
+- `test/home_error_banner_test.dart`
+  - recoverable controller failure remains visible on Presets;
+  - shared Home banner remains dismissible.
+- `test/settings_page_test.dart`
+  - Settings sections;
+  - reduced-motion persistence;
+  - destructive reset confirmation;
+  - clipboard-backup failure feedback.
+- `test/settings_reactivity_test.dart`
+  - Settings reflects controller changes while the route is open;
+  - Settings surfaces controller save failures locally.
 - focus-mode semantics regression coverage;
 - Settings/platform-capability behavior coverage;
 - `test/localization_test.dart`;
 - localization source audit tests;
-- external-link failure tests.
+- external-link failure tests;
+- desktop keyboard shortcut tests.
 
 ### Platform/repository/release tooling
 
 - platform-capability policy tests;
 - generated Android platform-patch tests;
+- `test/notification_cleanup_test.dart` covering cleanup continuation after an individual derived-ID cancellation error;
 - backup inspection tests;
 - version/tag/changelog audit tests;
 - release-changelog exact-heading and unreleased-tag rejection tests;
-- dependency-lock audit tests added on 2026-08-20;
+- dependency-lock audit tests;
 - deterministic required-file/version/secret/localization/link repository tooling;
-- required-file contract now protects critical docs, repository audit/release workflows, backup/localization/version audit helpers and tests, integration journey source, issue templates, and issue-template configuration.
+- required-file contract protecting critical docs, repository audit/release workflows, backup/localization/version/diagnostic tooling, important reliability regressions, integration journey source, editable branding source, issue templates, and issue-template configuration.
 
 ### End-to-end source
 
@@ -287,7 +329,7 @@ CI source includes a dedicated Linux/Xvfb integration job. Actual execution succ
 The repository also contains:
 
 - deterministic repository audit workflow;
-- repository audit now verifies required files, version metadata, localization source references, obvious tracked secrets, and local documentation links;
+- repository audit verifying required files, version metadata, localization source references, obvious tracked secrets, and local documentation links;
 - dependency-review workflow;
 - CodeQL workflow for supported GitHub Actions source;
 - Dependabot configuration;
@@ -313,48 +355,24 @@ The release quality job performs required-file/version/dependency-lock/localizat
 
 ## Release-safety work completed on 2026-08-20
 
-A remaining static release gap was identified: because `pubspec.lock` is not yet committed, a tagged release could otherwise run `flutter pub get` and resolve fresh dependency metadata inside CI. That would not prove that the exact release dependency graph had been generated with the supported SDK, reviewed, and committed.
+### Committed dependency-lock gate
 
-This continuation added a release-only committed dependency-lock gate without fabricating a lockfile and without blocking ordinary development while runtime verification is unavailable.
+A static release gap existed because `pubspec.lock` is not yet committed. A tagged release could otherwise resolve fresh dependency metadata inside CI without proving that the exact release dependency graph had been generated with the supported SDK, reviewed, and committed.
 
-### Added dependency-lock audit logic
+Created:
 
-Created `tool/src/dependency_lock_audit.dart`.
+- `tool/src/dependency_lock_audit.dart`;
+- `tool/check_dependency_lock.dart`;
+- `test/dependency_lock_audit_test.dart`.
 
-It rejects:
+The audit rejects:
 
 - missing `pubspec.lock`;
 - empty `pubspec.lock`;
 - a lockfile without a top-level `packages:` section;
 - a lockfile without a top-level `sdks:` section.
 
-The audit intentionally validates release evidence/presence/shape; it does not pretend to resolve dependencies itself.
-
-### Added dependency-lock regression tests
-
-Created `test/dependency_lock_audit_test.dart` covering:
-
-- valid lockfile shape;
-- missing lockfile;
-- empty lockfile;
-- missing `packages:` section;
-- missing `sdks:` section.
-
-### Added executable repository check
-
-Created `tool/check_dependency_lock.dart`.
-
-The command:
-
-- reads the committed `pubspec.lock`;
-- invokes the pure audit;
-- prints every failure to stderr;
-- exits non-zero on failure;
-- reports success only after the file passes the basic generated-lock structure check.
-
-### Hardened tagged release ordering
-
-Updated `.github/workflows/release.yml` so the tagged release quality job runs:
+`.github/workflows/release.yml` now runs:
 
 ```text
 dart run tool/check_dependency_lock.dart
@@ -362,74 +380,138 @@ dart run tool/check_dependency_lock.dart
 
 **before** its own `flutter pub get` step.
 
-This means a release tag cannot silently create the missing lockfile during CI and then treat that newly generated dependency graph as reviewed release source.
+No fabricated lockfile was added.
 
-### Hardened deterministic localization checks
+### Deterministic localization gates
 
-The existing `tool/check_localization_source.dart` audit was promoted from optional/manual tooling into the automated quality chain:
+`tool/check_localization_source.dart` is enforced by:
 
-- `.github/workflows/repository-audit.yml` now runs it;
-- the primary `.github/workflows/ci.yml` Flutter job now runs it before platform/dependency/localization generation;
-- the Linux integration CI job runs it before generated localization code;
-- the tagged `.github/workflows/release.yml` quality job runs it before `flutter gen-l10n`.
+- `.github/workflows/repository-audit.yml`;
+- the primary `.github/workflows/ci.yml` Flutter job;
+- the Linux integration CI job;
+- the tagged `.github/workflows/release.yml` quality job.
 
-This makes committed ARB/reference drift detectable independently of generated localization output.
+The checks run before generated localization code where applicable, making committed ARB/reference drift detectable independently of `flutter gen-l10n` output.
 
-### Expanded the required repository contract
+### Expanded required repository contract
 
-`tool/check_required_files.dart` now protects additional critical files, including:
+`tool/check_required_files.dart` protects critical files including:
 
-- backup/branding/CLI/notification documentation;
-- dependency-lock/localization/link/required-file/secret/version check commands;
-- backup/dependency/localization/platform/version audit helpers;
-- related regression tests;
+- governance/configuration files;
+- editable Countora brand SVG;
+- architecture/setup/development/testing/release/troubleshooting/accessibility/performance/GitHub/backup/branding/CLI/notification docs;
+- ADRs;
+- dependency-lock/localization/link/required-file/secret/version checks;
+- backup/dependency/localization/platform/version helpers;
+- diagnostics source;
+- notification cleanup/service source;
+- critical regression tests including logger, controller limits, notification cleanup, Home error surface, Settings reactivity, platform boundaries, and release audit;
 - primary integration journey source;
-- documentation issue template and issue-template configuration;
-- repository audit workflow itself;
-- CI/security/CodeQL/release workflows.
+- issue templates/configuration;
+- repository audit, CI, security, CodeQL, and release workflows.
 
-The required-file audit still deliberately does **not** require `pubspec.lock` during ordinary development; the release-only lock audit enforces that release evidence separately.
+The required-file audit intentionally still does **not** require `pubspec.lock` during ordinary development. The release-only lock audit enforces that release evidence separately.
 
 ### Bounded imported identifiers
 
-A source-level trust-boundary review found that imported timer, preset, and history identifiers were only indirectly bounded by the 2 MiB total backup limit.
-
-The codec now defines:
-
-```text
-CountoraStateCodec.maxIdLength = 128
-```
+`CountoraStateCodec.maxIdLength` is now `128`.
 
 Behavior:
 
-- empty timer/preset IDs continue to be dropped;
+- empty timer/preset IDs are dropped;
 - timer/preset IDs longer than 128 characters are dropped;
 - history entries whose `timerId` is empty or longer than 128 characters are dropped;
 - identifiers are not truncated, avoiding accidental collisions/relationship changes;
 - regression coverage verifies oversized timer/preset/history identifiers are removed;
-- `docs/backup-format.md` documents the bound and rationale;
-- `CHANGELOG.md` records the security hardening.
+- `docs/backup-format.md` documents the bound and rationale.
 
-### Synchronized repository contracts/documentation
+### Recursive diagnostic redaction hardening
+
+A source-level review found that nested maps with non-`String` static generic types could previously fall through to scalar stringification instead of recursive key redaction.
+
+`lib/src/core/app_logger.dart` now:
+
+- exposes pure `sanitizeLogFields` logic;
+- recursively sanitizes `Map<Object?, Object?>` values;
+- recursively sanitizes `Iterable<Object?>` values;
+- normalizes nested map keys to strings before applying key-based redaction;
+- recognizes additional credential/session/API/private-key categories;
+- keeps safe numeric/bool/null values intact;
+- converts enums to names;
+- bounds arbitrary scalar diagnostic text to 200 characters plus an ellipsis;
+- remains compatible with the repository's `strict-raw-types: true` analyzer configuration by avoiding raw `Map`/`Iterable` type checks.
+
+`test/app_logger_test.dart` covers this behavior.
+
+`SECURITY.md` documents the recursive diagnostic defense.
+
+### Controller collection-cap consistency
+
+The codec already bounded persisted/imported timer/preset collections, but live creation paths could previously exceed those limits before a restart/import boundary.
+
+`TimerController` now:
+
+- refuses timer creation at `CountoraStateCodec.maxTimers`;
+- refuses preset creation at `CountoraStateCodec.maxPresets`;
+- surfaces a recoverable controller error instead of throwing for the capacity condition;
+- checks timer capacity before starting a preset and incrementing its use count.
+
+`test/timer_controller_limits_test.dart` covers the boundary and verifies rejected capacity operations do not persist.
+
+### Notification cleanup continuation
+
+A multi-step timer can have multiple derived notification IDs. Previously, an exception cancelling one ID could stop cleanup and leave later step notifications scheduled.
+
+Added:
+
+- `lib/src/data/notification_cleanup.dart`;
+- `test/notification_cleanup_test.dart`.
+
+`LocalNotificationService.cancelTimer` now runs through the tested bounded helper so every possible interval notification ID is attempted. Individual plugin errors are logged structurally with only the step index/error type and do not terminate the remaining cleanup loop.
+
+### Global recoverable-error visibility
+
+Previously the controller `lastError` banner lived inside the Timers destination. An operation originating from Presets or History could therefore fail while the user remained on a different destination without visible feedback.
+
+`HomePage` now renders the controller `MaterialBanner` above the shared destination/navigation content.
+
+`test/home_error_banner_test.dart` verifies a failing preset save remains visible while Presets is selected and that the banner can be dismissed.
+
+### Settings route reactivity/error visibility
+
+`SettingsPage` previously read controller state as a plain pushed `StatelessWidget` without directly listening to controller notifications. A controller update while the route remained open could therefore leave displayed controls stale, and save failures could remain visible only behind the route on Home.
+
+Settings now:
+
+- uses `ListenableBuilder(listenable: controller, ...)`;
+- rebuilds against current controller/settings state;
+- displays the controller error banner locally;
+- keeps the existing Settings sections and capability behavior unchanged.
+
+`test/settings_reactivity_test.dart` verifies both live value updates and a failed save banner while Settings remains open.
+
+### Documentation synchronized
 
 Updated during this continuation:
 
-- `tool/check_required_files.dart`;
+- `CHANGELOG.md`;
+- `ROADMAP.md`;
+- `SECURITY.md`;
+- `docs/testing.md`;
 - `docs/release.md`;
 - `docs/cli-tools.md`;
 - `docs/backup-format.md`;
-- `CHANGELOG.md`;
-- `ROADMAP.md`;
 - `.github/workflows/repository-audit.yml`;
 - `.github/workflows/ci.yml`;
 - `.github/workflows/release.yml`;
-- this `what_changed.md` handoff.
+- `tool/check_required_files.dart`;
+- this handoff.
 
-No fabricated `pubspec.lock`, screenshots, release artifacts, or passing runtime results were added.
+No fabricated `pubspec.lock`, screenshots, release artifacts, benchmark results, native verification, analyzer results, or passing CI status were added.
 
-## Other hardening completed since the previous handoff was last written
+## Other major hardening already present
 
-Important completed work includes:
+Important earlier completed work includes:
 
 - persistence-first timer reconciliation and import behavior;
 - centralized/fail-closed notification capability policy;
@@ -469,6 +551,9 @@ The repository currently contains and maintains the master-prompt documentation 
 - `.editorconfig`;
 - `.gitattributes`;
 - `.env.example`;
+- `analysis_options.yaml`;
+- `pubspec.yaml`;
+- `l10n.yaml`;
 - `docs/architecture.md`;
 - `docs/setup.md`;
 - `docs/development.md`;
@@ -481,10 +566,11 @@ The repository currently contains and maintains the master-prompt documentation 
 - `docs/backup-format.md`;
 - `docs/notification-support.md`;
 - `docs/cli-tools.md`;
-- branding documentation;
+- `docs/branding.md`;
+- `assets/branding/countora-mark.svg`;
 - architecture decision records under `docs/adr/`.
 
-README already includes the product identity/value proposition, feature overview, platform matrix, tech stack, quick start, setup/testing/build instructions, architecture overview, security/privacy, contribution/license/support information, Buy Me a Coffee badge/link, and **Made by the Sanskar** credit.
+README includes the product identity/value proposition, feature overview, platform matrix, tech stack, quick start, setup/testing/build instructions, architecture overview, security/privacy, contribution/license/support information, Buy Me a Coffee badge/link, and **Made by the Sanskar** credit.
 
 Real screenshots remain intentionally absent until captured from an actual verified runnable release candidate; fake screenshots/mockups are not presented as product captures.
 
@@ -494,26 +580,27 @@ Real screenshots remain intentionally absent until captured from an actual verif
 
 - Repository is `sanskarIN/countora` and remains public.
 - Default branch is `main`.
-- The authenticated connection has repository write/admin capability.
-- Source, test, documentation, workflow, and tooling files referenced above were inspected after writes.
-- `pubspec.yaml` currently declares `0.2.0+2` with Dart `>=3.10.0 <4.0.0` and Flutter `>=3.38.1`.
-- `pubspec.lock` is currently absent; this is deliberately recorded as a release blocker instead of being fabricated.
-- No open repository Issues were returned during this continuation.
-- Repository code search returned no TODO/FIXME/XXX/HACK result during this continuation, including after the latest hardening.
-- Basic searches for direct `Text('...')`/`Text("...")` user-facing literals returned no results during the final localization scan.
-- The release workflow checks for the committed dependency lock before dependency resolution.
-- Repository audit, normal CI, Linux integration CI, and release quality CI now enforce deterministic localization-source validation before generation where applicable.
-- The release workflow source contains Android/Web/Linux/Windows/macOS/unsigned-iOS artifact jobs and checksum generation.
-- The changelog, roadmap, backup docs, release docs, CLI tools docs, and this handoff describe the latest static policies.
-- The latest commit-status lookup returned no exposed status entries for the direct-push checkpoint; therefore no green status is inferred.
-- Earlier continuity work explicitly checked the requested commit identity and recorded `Sanskar <sanskarin@outlook.in>` for author/committer metadata where exposed.
+- The authenticated GitHub connection has repository write/admin capability.
+- Source, test, documentation, workflow, and tooling files referenced above were inspected around the relevant writes.
+- `pubspec.yaml` declares `0.2.0+2` with Dart `>=3.10.0 <4.0.0` and Flutter `>=3.38.1`.
+- `pubspec.lock` remains absent and is deliberately recorded as a release blocker instead of fabricated.
+- Earlier repository issue lookup returned no open Issues during this continuation.
+- Earlier code search returned no TODO/FIXME/XXX/HACK result during this continuation.
+- Earlier direct `Text('...')`/`Text("...")` localization-oriented searches returned no result during the static localization scan.
+- Tagged release CI checks for the committed dependency lock before dependency resolution.
+- Repository audit, normal CI, Linux integration CI, and release quality CI enforce deterministic localization-source validation before generation where applicable.
+- Tagged release workflow source contains Android/Web/Linux/Windows/macOS/unsigned-iOS artifact jobs and checksum generation.
+- The required-file contract now includes the new Home/Settings error regressions and notification/diagnostic/controller-capacity regressions.
+- The latest pre-handoff combined-status lookup for commit `787ab4086e0c9c8ea981d51d49988e051a042a83` returned no status entries; therefore no green CI status is inferred.
+- Commit history confirms many granular direct commits for this continuation.
+- Earlier continuity work explicitly checked the requested commit identity and recorded `Sanskar <sanskarin@outlook.in>` where exposed by connector metadata.
 
 ### Not truthfully verified in this chat environment
 
-This execution environment does not expose a working Flutter/Dart SDK. The GitHub workflow/status lookups available during this continuation did not provide an observable completed run for these direct-push commits. Therefore the following are **not claimed as passing**:
+This execution environment does not expose a working Flutter/Dart SDK. Available GitHub status/workflow lookups did not expose a completed successful run for these direct-push commits. Therefore the following are **not claimed as passing**:
 
 - `dart run tool/check_required_files.dart` in a real Dart/Flutter checkout;
-- `dart run tool/check_version_sync.dart` in a real Dart/Flutter checkout;
+- `dart run tool/check_version_sync.dart`;
 - `dart run tool/check_dependency_lock.dart` against a generated committed lockfile;
 - `dart run tool/check_secrets.dart`;
 - `dart run tool/check_localization_source.dart`;
@@ -534,6 +621,8 @@ This execution environment does not expose a working Flutter/Dart SDK. The GitHu
 - production signing/notarization/store distribution;
 - real application screenshot capture.
 
+Manual formatting adjustments were made to newly added widget regression source where obvious, but this is **not** a substitute for an actual `dart format --set-exit-if-changed` run.
+
 No result above should be marked green until it is actually executed and observed.
 
 ## Current known limitations and release blockers
@@ -544,7 +633,7 @@ No result above should be marked green until it is actually executed and observe
 4. Main CI must be observed successfully passing localization audit, formatting, analyze, tests, documentation checks, Web release build, and Linux integration journey.
 5. Every concrete analyzer/compiler/test/workflow failure discovered by the real Flutter toolchain must be fixed and regression-covered where appropriate.
 6. The state-codec benchmark should be run on representative hardware and the environment/results recorded without turning one machine's number into a universal threshold.
-7. Android completion notifications, permission denial, exact-alarm fallback, and cue combinations require real device/emulator verification.
+7. Android completion notifications, permission denial, exact-alarm fallback, cue combinations, and multi-step cleanup behavior require real device/emulator verification.
 8. Windows/macOS/iOS notification behavior requires supported native environments before platform-specific delivery claims are promoted.
 9. At least one desktop native release build should be observed from the release workflow before claiming desktop release verification.
 10. Manual accessibility review remains required with a real screen reader, keyboard-only navigation, large/scaled text, and reduced motion.
@@ -553,6 +642,13 @@ No result above should be marked green until it is actually executed and observe
 13. English is the only shipped locale for 0.2.0.
 14. Signed distribution artifacts must not be implied by the unsigned CI compilation artifacts.
 15. Final 0.2.0 changelog date/tag must remain unreleased until all required verification evidence exists.
+16. A future runtime pass should specifically exercise the newly added controller-capacity, diagnostic sanitizer, notification cleanup, Home error-banner, and Settings reactivity tests under the repository's strict analyzer/formatter configuration.
+
+## Potential follow-up reliability observation
+
+During static review, one controller behavior was deliberately **not** changed without runtime verification: after a preset successfully passes the timer-capacity check, a later local-store save failure during timer creation leaves the controller's existing recoverable save-failure semantics in effect. Changing those persistence rollback semantics broadly would touch established resilience behavior and deserves a real Flutter test run rather than a speculative large-file rewrite in this environment.
+
+Do not confuse this observation with a confirmed release defect. The current deterministic capacity issue itself is fixed; broader save-failure rollback semantics should be evaluated only with the real test suite and explicit desired behavior.
 
 ## Next exact tasks
 
@@ -575,15 +671,21 @@ These are now primarily execution/environment verification tasks rather than mis
    - `dart format --output=none --set-exit-if-changed lib test integration_test tool`;
    - `flutter analyze`;
    - `flutter test`.
-4. Run the primary integration journey on Linux or another configured supported target; on headless Linux use Xvfb as documented.
-5. Run `tool/benchmark_state_codec.dart` on representative hardware and record SDK/runtime/hardware context with the result.
-6. Observe the actual GitHub Actions runs for the release-candidate commit and fix every concrete failure.
-7. Verify Android notification lifecycle behavior on a real device/emulator, including permission denial and exact-to-inexact fallback.
-8. Observe native release builds, including at least one desktop target, and then validate additional Windows/macOS/iOS behavior on appropriate environments.
-9. Perform manual accessibility review with screen reader, keyboard-only navigation, scaled text, dark/light/system theme, and reduced motion.
-10. Capture real screenshots from the verified release candidate and add them under the documented screenshots path/README references.
-11. Run the final clean-checkout repository/release audit.
-12. Only after all release blockers are cleared:
+4. Pay special attention to newly added tests:
+   - `test/app_logger_test.dart`;
+   - `test/timer_controller_limits_test.dart`;
+   - `test/notification_cleanup_test.dart`;
+   - `test/home_error_banner_test.dart`;
+   - `test/settings_reactivity_test.dart`.
+5. Run the primary integration journey on Linux or another configured supported target; on headless Linux use Xvfb as documented.
+6. Run `tool/benchmark_state_codec.dart` on representative hardware and record SDK/runtime/hardware context with the result.
+7. Observe the actual GitHub Actions runs for the release-candidate commit and fix every concrete failure.
+8. Verify Android notification lifecycle behavior on a real device/emulator, including permission denial, exact-to-inexact fallback, cue combinations, and cleanup/replacement of interval schedules.
+9. Observe native release builds, including at least one desktop target, and then validate additional Windows/macOS/iOS behavior on appropriate environments.
+10. Perform manual accessibility review with screen reader, keyboard-only navigation, scaled text, dark/light/system theme, and reduced motion.
+11. Capture real screenshots from the verified release candidate and add them under the documented screenshots path/README references.
+12. Run the final clean-checkout repository/release audit.
+13. Only after all release blockers are cleared:
     - convert the `0.2.0` changelog heading from release candidate to a real date;
     - update this handoff with observed verification evidence;
     - create/push `v0.2.0` through the approved release process;
@@ -596,13 +698,44 @@ These are now primarily execution/environment verification tasks rather than mis
 - Unknown future schemas are rejected rather than interpreted optimistically.
 - Valid imported state is staged/validated before replacement.
 - Imported timer/preset/history identifiers above the current 128-character bound are discarded rather than truncated.
-- A failed persistence step must not be followed by platform schedule changes that imply unsaved state succeeded.
+- Live timer/preset creation is constrained to the same collection maxima as the persistence trust boundary.
+- A failed persistence step must not be followed by platform notification changes that imply unsaved state succeeded.
 - Existing 0.1-era local data should be exercised during final release-candidate migration testing using fictional/controlled fixtures and a real Flutter runtime.
 - A release must never weaken import bounds merely to accept malformed backup data.
 
 ## Recent meaningful commits
 
-### 2026-08-20 — final static audit, release, and input-boundary hardening
+### 2026-08-20 — latest reliability/security/UI continuation
+
+- `3412f3d` security: recursively sanitize structured log fields
+- `4aef0b5` test: cover recursive diagnostic redaction
+- `5771141` test: exercise nested maps below safe keys
+- `5bd7eef` chore: protect diagnostic redaction regression
+- `dd09931` fix: enforce controller collection capacity limits
+- `51523fb` test: cover controller collection capacity limits
+- `6e47c3f` docs: record controller and logging hardening
+- `36710b7` docs: document recursive diagnostic redaction
+- `b6d00ad` chore: require controller capacity regression
+- `2847812` fix: keep diagnostic sanitizer strict-type clean
+- `091ee88` fix: continue notification cleanup after cancellation errors
+- `62c8e4f` refactor: extract bounded notification cleanup loop
+- `0dec6aa` test: keep notification cleanup going after errors
+- `6ef6dc3` refactor: use tested notification cleanup helper
+- `86a4731` chore: protect notification cleanup regression
+- `721c49f` docs: synchronize current quality and regression checks
+- `fa7ba05` fix: show controller errors across home destinations
+- `8bbff2b` test: show controller errors outside timer tab
+- `b1fa3a2` fix: make settings reactive and surface controller errors
+- `dda23be` test: keep settings reactive and surface save failures
+- `3338d17` style: format home error banner regression
+- `5f1ee89` style: format settings reactivity regression
+- `b3e661a` chore: protect home and settings error regressions
+- `48a66d9` docs: cover global error and settings regressions
+- `0374b80` docs: record notification and error-surface hardening
+- `787ab40` docs: mark latest static reliability work complete
+- current commit: docs: sync latest Countora reliability handoff
+
+### 2026-08-20 — release/audit/input-boundary hardening earlier in this continuation
 
 - `3589772` build: add dependency lock audit
 - `da09f64` test: cover dependency lock audit
@@ -626,7 +759,8 @@ These are now primarily execution/environment verification tasks rather than mis
 - `547d8ff` test: reject oversized imported identifiers
 - `4b13816` docs: document imported identifier bounds
 - `cbfda8a` docs: record imported identifier hardening
-- current commit: docs: sync final static hardening handoff
+- `f7217ac` docs: sync final static hardening handoff
+- `731b6c3` chore: protect editable Countora brand source
 
 ### Late 2026-08-19 — release/version and platform reliability hardening
 
@@ -729,19 +863,23 @@ These are now primarily execution/environment verification tasks rather than mis
 - schema-aware validated backups and legacy migration safety;
 - explicit imported identifier bounds;
 - privacy-safe backup inspection tooling;
+- timer/preset collection-cap consistency;
 - timer duplicate/edit/save-as-preset workflows;
 - history replay;
 - bulk pause/resume/remove-completed actions;
 - enhanced interval editor labels/validation/reordering;
 - richer full-screen focus mode;
 - desktop keyboard shortcuts;
-- structured redacting diagnostics;
+- recursive structured diagnostic redaction;
 - monotonic runtime clock and app-resume reconciliation;
 - fail-closed notification scheduling capability policy;
+- notification-cleanup continuation after individual cancellation failures;
+- shared Home controller error surface;
+- reactive Settings route with local save-error feedback;
 - English generated-localization resource architecture;
 - deterministic localization-source audit enforced before generated localization code in repository/CI/release gates;
 - deterministic state-codec benchmark harness;
-- expanded domain/controller/widget/persistence/platform/tooling/integration regression coverage;
+- expanded domain/controller/widget/persistence/security/platform/tooling/integration regression coverage;
 - expanded repository required-file/version/secret/localization/link checks;
 - release-only committed dependency-lock audit;
 - CodeQL Actions scanning;
@@ -754,6 +892,7 @@ These are now primarily execution/environment verification tasks rather than mis
 
 - persistence validates and bounds untrusted local/imported JSON;
 - oversized imported timer/preset/history identifiers are discarded instead of retained/truncated;
+- live timer/preset creation obeys the same collection caps as persisted/imported state;
 - durable state is persisted before associated platform notification side effects;
 - failed imports restore prior in-memory state rather than reporting a false successful replacement;
 - timer reconciliation handles suspended/elapsed sequences more safely;
@@ -761,10 +900,14 @@ These are now primarily execution/environment verification tasks rather than mis
 - notification permission requests are de-duplicated/deferred appropriately;
 - Android scheduling falls back from exact to inexact where required;
 - Android notification channels are stable per cue profile;
+- multi-step notification cleanup attempts the full bounded ID range despite individual cancellation failures;
 - unsupported notification targets fail closed and Settings explains the limitation;
 - generated Android runner patching validates template assumptions;
+- structured diagnostics recursively sanitize nested generic maps/iterables and bound arbitrary scalar text;
 - design tokens centralize UI constants;
 - Settings import/reset/export/external-link failure handling is safer;
+- Settings reacts directly to controller changes and displays save failures while open;
+- controller errors are visible across all Home destinations;
 - main UI strings are externalized;
 - CI formats integration tests, validates localization references before generation, and contains a dedicated Linux/Xvfb journey;
 - tagged releases require synchronized version metadata, finalized changelog entry, matching tag, reviewed committed dependency lock, deterministic localization/repository audits, tests/build gates, and artifact checksums.
@@ -773,7 +916,7 @@ These are now primarily execution/environment verification tasks rather than mis
 
 - bounded backup size/schema/type/identifier validation;
 - corrupted local-state recovery;
-- sensitive structured-log redaction;
+- recursive sensitive structured-log redaction;
 - guarded external/platform failure boundaries;
 - moderate-or-higher Dependency Review threshold;
 - CodeQL workflow scan;
