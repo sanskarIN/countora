@@ -92,6 +92,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify version and MSIX metadata
+        run: dart run tool/check_version_sync.dart
+
       - name: Verify localization source references
         run: dart run tool/check_localization_source.dart
 
