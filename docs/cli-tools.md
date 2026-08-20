@@ -60,6 +60,21 @@ dart run tool/check_version_sync.dart
 
 Use this before release tagging and after any version/build-number change.
 
+## `tool/check_dependency_lock.dart`
+
+Purpose: require a reviewed application dependency lock before a release tag is allowed to proceed.
+
+Run after generating dependency resolution with the supported Flutter SDK:
+
+```bash
+flutter pub get
+dart run tool/check_dependency_lock.dart
+```
+
+The command fails when `pubspec.lock` is missing, empty, or lacks the expected top-level `packages`/`sdks` lockfile sections. Its pure logic lives in `tool/src/dependency_lock_audit.dart` and is covered by `test/dependency_lock_audit_test.dart`.
+
+The tagged release workflow runs this command before its own `flutter pub get`, preventing release CI from silently replacing a missing reviewed lock with newly resolved dependency metadata.
+
 ## `tool/check_secrets.dart`
 
 Purpose: scan tracked repository source for obvious secret patterns as a deterministic local baseline.
@@ -155,6 +170,12 @@ Builds the privacy-safe structural backup summary used by `inspect_backup.dart`.
 
 Regression coverage: `test/backup_inspection_test.dart`.
 
+### `dependency_lock_audit.dart`
+
+Validates the release lockfile presence and basic generated-lock structure without resolving dependencies or modifying repository files.
+
+Regression coverage: `test/dependency_lock_audit_test.dart`.
+
 ### `localization_audit.dart`
 
 Implements deterministic ARB/reference checks without file-system/global state.
@@ -198,7 +219,7 @@ flutter test integration_test -d linux -r github
 
 ## Release sequence
 
-The complete release process is intentionally stricter than this tool catalog. Follow [`release.md`](release.md), observe actual GitHub Actions results, and perform required native/device checks before publishing platform-specific claims.
+The complete release process is intentionally stricter than this tool catalog. It additionally requires `tool/check_dependency_lock.dart` against a reviewed committed `pubspec.lock`. Follow [`release.md`](release.md), observe actual GitHub Actions results, and perform required native/device checks before publishing platform-specific claims.
 
 ## Failure-handling rule
 
