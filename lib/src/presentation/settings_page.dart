@@ -19,215 +19,238 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _buildSettings(context),
+    );
+  }
+
+  Widget _buildSettings(BuildContext context) {
     final strings = context.l10n;
     final settings = controller.settings;
     final scheduledNotificationsSupported = supportsScheduledNotifications();
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.settings)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      body: Column(
         children: [
-          _sectionTitle(context, strings.appearance),
-          SegmentedButton<ThemeMode>(
-            segments: [
-              ButtonSegment(
-                value: ThemeMode.system,
-                icon: const Icon(Icons.brightness_auto),
-                label: Text(strings.systemTheme),
-              ),
-              ButtonSegment(
-                value: ThemeMode.light,
-                icon: const Icon(Icons.light_mode),
-                label: Text(strings.lightTheme),
-              ),
-              ButtonSegment(
-                value: ThemeMode.dark,
-                icon: const Icon(Icons.dark_mode),
-                label: Text(strings.darkTheme),
-              ),
-            ],
-            selected: <ThemeMode>{settings.themeMode},
-            onSelectionChanged: (value) => unawaited(
-              controller.updateSettings(
-                settings.copyWith(themeMode: value.first),
-              ),
+          if (controller.lastError != null)
+            MaterialBanner(
+              content: Text(controller.lastError!),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: controller.clearError,
+                  child: Text(strings.dismiss),
+                ),
+              ],
             ),
-          ),
-          SwitchListTile(
-            title: Text(strings.compactTimerCards),
-            subtitle: Text(strings.compactTimerCardsHelp),
-            value: settings.compactCards,
-            onChanged: (value) => unawaited(
-              controller.updateSettings(
-                settings.copyWith(compactCards: value),
-              ),
-            ),
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.accessibilityPreferences),
-          SwitchListTile(
-            title: Text(strings.reducedMotion),
-            subtitle: Text(strings.reducedMotionHelp),
-            value: settings.reducedMotion,
-            onChanged: (value) => unawaited(
-              controller.updateSettings(
-                settings.copyWith(reducedMotion: value),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.visibility_outlined),
-            title: Text(strings.nonAudioCues),
-            subtitle: Text(strings.nonAudioCuesHelp),
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.notificationsCues),
-          SwitchListTile(
-            title: Text(strings.completionNotifications),
-            subtitle: Text(
-              scheduledNotificationsSupported
-                  ? strings.completionNotificationsHelp
-                  : strings.completionNotificationsUnavailable,
-            ),
-            value:
-                scheduledNotificationsSupported && settings.notificationsEnabled,
-            onChanged: scheduledNotificationsSupported
-                ? (value) => unawaited(
-                      controller.updateSettings(
-                        settings.copyWith(notificationsEnabled: value),
-                      ),
-                    )
-                : null,
-          ),
-          SwitchListTile(
-            title: Text(strings.sound),
-            value: settings.soundEnabled,
-            onChanged:
-                scheduledNotificationsSupported && settings.notificationsEnabled
-                    ? (value) => unawaited(
-                          controller.updateSettings(
-                            settings.copyWith(soundEnabled: value),
-                          ),
-                        )
-                    : null,
-          ),
-          SwitchListTile(
-            title: Text(strings.vibration),
-            value: settings.vibrationEnabled,
-            onChanged:
-                scheduledNotificationsSupported && settings.notificationsEnabled
-                    ? (value) => unawaited(
-                          controller.updateSettings(
-                            settings.copyWith(vibrationEnabled: value),
-                          ),
-                        )
-                    : null,
-          ),
-          SwitchListTile(
-            title: Text(strings.quietMode),
-            subtitle: Text(strings.quietModeHelp),
-            value: settings.quietMode,
-            onChanged:
-                scheduledNotificationsSupported && settings.notificationsEnabled
-                    ? (value) => unawaited(
-                          controller.updateSettings(
-                            settings.copyWith(quietMode: value),
-                          ),
-                        )
-                    : null,
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.privacyData),
-          ListTile(
-            leading: const Icon(Icons.shield_outlined),
-            title: Text(strings.localFirstStorage),
-            subtitle: Text(strings.localFirstStorageHelp),
-          ),
-          ListTile(
-            leading: const Icon(Icons.file_upload_outlined),
-            title: Text(strings.exportLocalBackup),
-            subtitle: Text(strings.exportLocalBackupHelp),
-            onTap: () => unawaited(_exportBackup(context)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: Text(strings.importLocalBackup),
-            subtitle: Text(strings.importLocalBackupHelp),
-            onTap: () => unawaited(_importBackup(context)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: Text(strings.clearHistory),
-            subtitle: Text(strings.clearHistoryHelp),
-            onTap: () => unawaited(_confirmClearHistory(context)),
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.desktopShortcuts),
-          ListTile(
-            leading: const Icon(Icons.keyboard_outlined),
-            title: Text(strings.newTimerOrPreset),
-            trailing: const Text('Ctrl/Cmd + N'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.search),
-            title: Text(strings.searchTimers),
-            trailing: const Text('Ctrl/Cmd + F'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: Text(strings.openSettings),
-            trailing: const Text('Ctrl/Cmd + ,'),
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.updates),
-          ListTile(
-            leading: const Icon(Icons.system_update_alt),
-            title: Text(strings.checkForUpdates),
-            subtitle: Text(strings.checkForUpdatesHelp),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => unawaited(
-              _openExternal(context, Uri.parse(AppLinks.releases)),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.bug_report_outlined),
-            title: Text(strings.reportIssue),
-            subtitle: Text(strings.reportIssueHelp),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => unawaited(
-              _openExternal(context, Uri.parse(AppLinks.issues)),
-            ),
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.about),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(strings.aboutCountora),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              unawaited(
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AboutPage(),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: [
+                _sectionTitle(context, strings.appearance),
+                SegmentedButton<ThemeMode>(
+                  segments: [
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: const Icon(Icons.brightness_auto),
+                      label: Text(strings.systemTheme),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: const Icon(Icons.light_mode),
+                      label: Text(strings.lightTheme),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: const Icon(Icons.dark_mode),
+                      label: Text(strings.darkTheme),
+                    ),
+                  ],
+                  selected: <ThemeMode>{settings.themeMode},
+                  onSelectionChanged: (value) => unawaited(
+                    controller.updateSettings(
+                      settings.copyWith(themeMode: value.first),
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-          const Divider(height: 32),
-          _sectionTitle(context, strings.dangerZone),
-          ListTile(
-            leading: Icon(
-              Icons.delete_forever_outlined,
-              color: Theme.of(context).colorScheme.error,
+                SwitchListTile(
+                  title: Text(strings.compactTimerCards),
+                  subtitle: Text(strings.compactTimerCardsHelp),
+                  value: settings.compactCards,
+                  onChanged: (value) => unawaited(
+                    controller.updateSettings(
+                      settings.copyWith(compactCards: value),
+                    ),
+                  ),
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.accessibilityPreferences),
+                SwitchListTile(
+                  title: Text(strings.reducedMotion),
+                  subtitle: Text(strings.reducedMotionHelp),
+                  value: settings.reducedMotion,
+                  onChanged: (value) => unawaited(
+                    controller.updateSettings(
+                      settings.copyWith(reducedMotion: value),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.visibility_outlined),
+                  title: Text(strings.nonAudioCues),
+                  subtitle: Text(strings.nonAudioCuesHelp),
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.notificationsCues),
+                SwitchListTile(
+                  title: Text(strings.completionNotifications),
+                  subtitle: Text(
+                    scheduledNotificationsSupported
+                        ? strings.completionNotificationsHelp
+                        : strings.completionNotificationsUnavailable,
+                  ),
+                  value: scheduledNotificationsSupported &&
+                      settings.notificationsEnabled,
+                  onChanged: scheduledNotificationsSupported
+                      ? (value) => unawaited(
+                            controller.updateSettings(
+                              settings.copyWith(notificationsEnabled: value),
+                            ),
+                          )
+                      : null,
+                ),
+                SwitchListTile(
+                  title: Text(strings.sound),
+                  value: settings.soundEnabled,
+                  onChanged: scheduledNotificationsSupported &&
+                          settings.notificationsEnabled
+                      ? (value) => unawaited(
+                            controller.updateSettings(
+                              settings.copyWith(soundEnabled: value),
+                            ),
+                          )
+                      : null,
+                ),
+                SwitchListTile(
+                  title: Text(strings.vibration),
+                  value: settings.vibrationEnabled,
+                  onChanged: scheduledNotificationsSupported &&
+                          settings.notificationsEnabled
+                      ? (value) => unawaited(
+                            controller.updateSettings(
+                              settings.copyWith(vibrationEnabled: value),
+                            ),
+                          )
+                      : null,
+                ),
+                SwitchListTile(
+                  title: Text(strings.quietMode),
+                  subtitle: Text(strings.quietModeHelp),
+                  value: settings.quietMode,
+                  onChanged: scheduledNotificationsSupported &&
+                          settings.notificationsEnabled
+                      ? (value) => unawaited(
+                            controller.updateSettings(
+                              settings.copyWith(quietMode: value),
+                            ),
+                          )
+                      : null,
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.privacyData),
+                ListTile(
+                  leading: const Icon(Icons.shield_outlined),
+                  title: Text(strings.localFirstStorage),
+                  subtitle: Text(strings.localFirstStorageHelp),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.file_upload_outlined),
+                  title: Text(strings.exportLocalBackup),
+                  subtitle: Text(strings.exportLocalBackupHelp),
+                  onTap: () => unawaited(_exportBackup(context)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.file_download_outlined),
+                  title: Text(strings.importLocalBackup),
+                  subtitle: Text(strings.importLocalBackupHelp),
+                  onTap: () => unawaited(_importBackup(context)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(strings.clearHistory),
+                  subtitle: Text(strings.clearHistoryHelp),
+                  onTap: () => unawaited(_confirmClearHistory(context)),
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.desktopShortcuts),
+                ListTile(
+                  leading: const Icon(Icons.keyboard_outlined),
+                  title: Text(strings.newTimerOrPreset),
+                  trailing: const Text('Ctrl/Cmd + N'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.search),
+                  title: Text(strings.searchTimers),
+                  trailing: const Text('Ctrl/Cmd + F'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: Text(strings.openSettings),
+                  trailing: const Text('Ctrl/Cmd + ,'),
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.updates),
+                ListTile(
+                  leading: const Icon(Icons.system_update_alt),
+                  title: Text(strings.checkForUpdates),
+                  subtitle: Text(strings.checkForUpdatesHelp),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => unawaited(
+                    _openExternal(context, Uri.parse(AppLinks.releases)),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: Text(strings.reportIssue),
+                  subtitle: Text(strings.reportIssueHelp),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => unawaited(
+                    _openExternal(context, Uri.parse(AppLinks.issues)),
+                  ),
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.about),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: Text(strings.aboutCountora),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    unawaited(
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AboutPage(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 32),
+                _sectionTitle(context, strings.dangerZone),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_forever_outlined,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: Text(
+                    strings.eraseAllData,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  subtitle: Text(strings.eraseAllDataHelp),
+                  onTap: () => unawaited(_confirmResetAll(context)),
+                ),
+              ],
             ),
-            title: Text(
-              strings.eraseAllData,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-            subtitle: Text(strings.eraseAllDataHelp),
-            onTap: () => unawaited(_confirmResetAll(context)),
           ),
         ],
       ),
