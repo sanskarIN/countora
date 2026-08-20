@@ -32,6 +32,9 @@ jobs:
       - name: Verify committed dependency lock
         run: dart run tool/check_dependency_lock.dart
 
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
       - name: Scan tracked source for obvious secrets
         run: dart run tool/check_secrets.dart
 
