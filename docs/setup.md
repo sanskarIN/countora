@@ -1,6 +1,8 @@
 # Setup
 
-Countora is developed against the Flutter stable channel. Prefer the current stable SDK that satisfies the Dart constraint declared in `pubspec.yaml` instead of relying on a hard-coded framework version in this document.
+Countora is developed against the Flutter stable channel. Prefer the current stable SDK that satisfies the Dart/Flutter constraints declared in `pubspec.yaml` instead of relying on an arbitrary older framework installation.
+
+The declared baseline is Flutter `>=3.38.1`. Flutter 3.38.1 itself generates Android projects with Gradle 8.14, AGP 8.11.1, and compileSdk 36, which satisfy Countora's current notification dependency requirements. Countora still validates/patches critical generated native settings defensively so future template drift fails visibly.
 
 ## 1. Install Flutter
 
@@ -32,9 +34,14 @@ Generate Android, iOS, Web, Windows, macOS, and Linux project files with:
 dart run tool/bootstrap_platforms.dart
 ```
 
-The bootstrap script also applies Countora's required Android notification/desugaring configuration.
+The bootstrap script then applies deterministic native notification setup:
 
-It is safe to rerun after a Flutter SDK/template change; custom patches are designed to be idempotent.
+- Android manifest scheduling permissions and receivers;
+- Android core-library desugaring and multidex configuration;
+- an Android Plugin DSL AGP floor of 8.11.1 while leaving newer versions untouched;
+- iOS `UserNotifications` import and `UNUserNotificationCenter` delegate setup for foreground presentation.
+
+The transforms are designed to be idempotent. They fail explicitly when an expected Flutter template anchor disappears so a framework-template change cannot silently remove Countora's native requirements.
 
 ## 4. Resolve packages
 
@@ -55,6 +62,8 @@ Generated localization Dart files are ignored by Git and rebuilt by CI.
 ## 6. Run quality checks
 
 ```bash
+dart run tool/check_version_sync.dart
+dart run tool/check_localization_source.dart
 dart format --output=none --set-exit-if-changed lib test integration_test tool
 flutter analyze
 flutter test
@@ -93,25 +102,63 @@ flutter doctor --android-licenses
 
 Countora requests notification permission when notifications are actually needed. Exact alarms are requested where supported; scheduling falls back to an inexact mode if exact scheduling is unavailable.
 
-### iOS/macOS
+The supported Flutter baseline already supplies the required AGP/Gradle/compileSdk levels. `tool/bootstrap_platforms.dart` additionally validates/hardens the generated notification-specific manifest and Gradle configuration.
 
-A Mac with Xcode is required for Apple builds. Store/device distribution requires valid Apple signing identities/profiles; these are never committed.
+### iOS
+
+A Mac with Xcode is required for iOS builds. The generated AppDelegate is patched to install the notification-center delegate required for foreground local-notification presentation.
+
+Unsigned source compilation:
+
+```bash
+flutter build ios --debug --no-codesign
+```
+
+Device/App Store distribution requires valid Apple signing identities/profiles; these are never committed.
+
+### macOS
+
+A Mac with Xcode is required. Distribution outside local testing may require code signing and notarization.
 
 ### Windows
 
 Build Windows on Windows with the Flutter desktop prerequisites/Visual Studio C++ desktop tooling reported by `flutter doctor`.
 
+Portable build:
+
+```bash
+flutter build windows --release
+```
+
+Portable Windows uses Countora's runtime local-notification fallback because reliable future notification cancellation/history depends on Windows package identity.
+
+Package-identity/MSIX build verification:
+
+```bash
+dart run msix:create
+```
+
+The MSIX configuration rebuilds Countora with `COUNTORA_WINDOWS_PACKAGED=true`, enabling the packaged Windows scheduled-notification path. The default MSIX development signing behavior is not a production distribution strategy; use a trusted certificate or Microsoft Store signing path before publishing an MSIX.
+
+`tool/check_version_sync.dart` verifies that `msix_version` remains synchronized with the Flutter package version/build number.
+
 ### Linux
 
 Install Flutter's Linux desktop build prerequisites such as CMake, Ninja, Clang, pkg-config, GTK development headers, and liblzma development headers as appropriate for the distribution.
 
+Linux local notifications use Countora's runtime fallback. They can notify while the Countora process remains active; persisted timer state still reconciles correctly after restart/resume.
+
 ### Web
 
-A supported browser is sufficient for development, but platform notification behavior can differ from native targets. Core Countora timer workflows remain local and do not require a backend.
+A supported browser is sufficient for development. Web local notifications use the browser Notifications API while the Countora page/runtime remains active. Browser permission prompts depend on user-activation/browser policy, and future delivery after the page/runtime is gone is not guaranteed.
+
+Core Countora timer workflows remain local and do not require a backend.
 
 ## Environment/configuration
 
 Countora currently has no required production API keys, secrets, backend URL, or authentication configuration. `.env.example` exists to document that future environment configuration must use placeholders only and must never commit credentials.
+
+The Windows package-identity behavior uses a compile-time Dart define generated by the MSIX build configuration; it is not a secret.
 
 ## First-run verification
 
@@ -123,7 +170,9 @@ After setup, manually check:
 4. save/start a preset;
 5. export/import a backup;
 6. open Settings/About;
-7. enable notifications on a native platform;
-8. background/resume the app and verify countdown reconciliation.
+7. enable notifications and verify the delivery mode appropriate to the target/distribution;
+8. background/resume the app and verify countdown reconciliation;
+9. on Windows, compare portable runtime-fallback behavior with an installed package-identity build;
+10. on Web, verify permission behavior from a user interaction in representative browsers.
 
-See [`testing.md`](testing.md), [`release.md`](release.md), and [`troubleshooting.md`](troubleshooting.md).
+See [`testing.md`](testing.md), [`release.md`](release.md), [`notification-support.md`](notification-support.md), and [`troubleshooting.md`](troubleshooting.md).
