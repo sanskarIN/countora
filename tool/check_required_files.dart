@@ -61,6 +61,7 @@ void main() {
     'test/platform_capabilities_test.dart',
     'test/platform_patches_test.dart',
     'test/external_link_launcher_test.dart',
+    'test/timer_controller_limits_test.dart',
     'test/timer_controller_resilience_test.dart',
     'test/version_audit_test.dart',
     'integration_test/app_journey_test.dart',
