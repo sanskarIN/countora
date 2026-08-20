@@ -30,17 +30,17 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Desktop shortcuts for creation, search, and Settings.
 - Interval-step labels, validation, rename, removal, and ordering.
 - Monotonic runtime clock and app-resume reconciliation.
-- Structured diagnostics with sensitive-key redaction.
+- Structured diagnostics with recursive sensitive-key redaction across nested maps/iterables.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
 - Central scheduled-notification capability policy shared by Settings and the notification adapter.
-- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, controller-capacity, diagnostic-redaction, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
 - Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
 - Deterministic localization-source audit enforced by repository audit, normal CI, and tagged release CI before generated localization code is created.
-- Expanded required-file contract protecting repository audit, release tooling, localization/backup audit tooling, critical docs, integration journey source, and issue-template configuration.
+- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, and issue-template configuration.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
 - Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
@@ -54,6 +54,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Import rejects malformed types rather than allowing low-level type-cast failures.
 - Imported timer/preset/history identifiers are limited to 128 characters; oversized identifiers are discarded instead of truncated to avoid accidental collisions or altered relationships.
 - Backup import now reconciles staged state and requires successful persistence before replacing platform notification schedules; a failed import save restores the prior in-memory state and surfaces failure.
+- Timer and preset creation now stops at the same 500-entity limits enforced by decoded persistence, preventing live controller state from exceeding those collection bounds.
+- Starting a preset at full timer capacity no longer increments its usage counter without creating the requested timer.
 - Timer ticker execution is guarded against overlapping asynchronous ticks.
 - Interval catch-up anchors later steps to prior deadlines to reduce drift after suspension.
 - Timer reconciliation persists completed/advanced state before changing associated platform schedules.
@@ -79,10 +81,13 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Prevented failed backup persistence from being reported as a successful import.
 - Prevented generated-runner patching from silently succeeding when expected Flutter Android template anchors disappear.
 - Prevented unsupported or unknown notification targets from being treated as future-scheduling capable by default.
+- Prevented nested structured-log maps with non-`String` generic types from bypassing recursive sensitive-key redaction through stringification.
+- Prevented timer/preset creation from exceeding the persistence collection limits and producing restart-time truncation surprises.
 
 ### Security
 
 - Added bounded validation for untrusted imported JSON, including explicit identifier length limits.
+- Expanded structured-log sanitization for nested maps/iterables and common credential/session/API/private-key key names.
 - Added dependency-review failure threshold of moderate severity.
 - Added redacting structured diagnostics.
 - Added CodeQL analysis for GitHub Actions workflow source.
