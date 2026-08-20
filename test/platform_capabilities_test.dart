@@ -48,12 +48,11 @@ void main() {
     );
   });
 
-  test('Android Apple and Windows support scheduled background delivery', () {
+  test('Android and Apple targets support scheduled background delivery', () {
     for (final platform in <TargetPlatform>[
       TargetPlatform.android,
       TargetPlatform.iOS,
       TargetPlatform.macOS,
-      TargetPlatform.windows,
     ]) {
       expect(
         notificationDeliveryMode(isWeb: false, platform: platform),
@@ -73,6 +72,60 @@ void main() {
         isFalse,
       );
     }
+  });
+
+  test('portable Windows uses safe runtime fallback without package identity', () {
+    expect(
+      notificationDeliveryMode(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: false,
+      ),
+      NotificationDeliveryMode.runtimeOnly,
+    );
+    expect(
+      supportsLocalNotifications(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: false,
+      ),
+      isTrue,
+    );
+    expect(
+      supportsScheduledNotifications(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: false,
+      ),
+      isFalse,
+    );
+  });
+
+  test('packaged Windows can use scheduled background delivery', () {
+    expect(
+      notificationDeliveryMode(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: true,
+      ),
+      NotificationDeliveryMode.scheduledBackground,
+    );
+    expect(
+      supportsScheduledNotifications(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: true,
+      ),
+      isTrue,
+    );
+    expect(
+      usesRuntimeNotificationFallback(
+        isWeb: false,
+        platform: TargetPlatform.windows,
+        windowsPackaged: true,
+      ),
+      isFalse,
+    );
   });
 
   test('unknown unsupported native targets fail closed', () {
