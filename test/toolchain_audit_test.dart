@@ -10,7 +10,7 @@ runs:
     - uses: subosito/flutter-action@v2
       with:
         channel: stable
-        flutter-version: '3.44.7'
+        flutter-version: '3.47.1'
         cache: true
 ''';
 
@@ -31,13 +31,13 @@ steps:
 
     expect(result.isValid, isTrue);
     expect(result.errors, isEmpty);
-    expect(result.flutterVersion, '3.44.7');
+    expect(result.flutterVersion, '3.47.1');
   });
 
   test('rejects a moving or missing Flutter version', () {
     final result = auditToolchain(
       setupAction: validSetup.replaceFirst(
-        "flutter-version: '3.44.7'",
+        "flutter-version: '3.47.1'",
         "flutter-version: '3.x'",
       ),
       workflowSources: const {'ci.yml': sharedWorkflow},
