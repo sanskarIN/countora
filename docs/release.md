@@ -1,6 +1,6 @@
 # Release
 
-Countora release tags must represent verified source, not merely a version bump. Do not create a final release tag while known analyzer/test/build failures remain.
+Countora release tags must represent verified source, not merely a version bump. Do not create a final release tag while known analyzer/test/build/platform failures remain.
 
 ## Versioning
 
@@ -11,6 +11,14 @@ MAJOR.MINOR.PATCH+BUILD
 ```
 
 `AppMetadata.version` and `AppMetadata.buildNumber` must match the package version shown to users.
+
+Countora's Windows MSIX metadata uses the required four-part package version:
+
+```text
+MAJOR.MINOR.PATCH.BUILD
+```
+
+`tool/check_version_sync.dart` verifies the Flutter package metadata, `AppMetadata`, matching changelog section, and configured `msix_version` together. For example, `0.2.0+2` must map to MSIX `0.2.0.2`.
 
 Before a release, update:
 
@@ -44,6 +52,7 @@ dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
 dart run tool/check_dependency_lock.dart
 dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
 dart run tool/bootstrap_platforms.dart
 flutter pub get
 flutter gen-l10n
@@ -65,6 +74,19 @@ A headless Linux host can provide a virtual display:
 xvfb-run -a flutter test integration_test -d linux -r github
 ```
 
+## Generated native runner policy
+
+Countora generates Android, iOS, Web, Windows, macOS, and Linux runners with `tool/bootstrap_platforms.dart` rather than freezing stale Flutter boilerplate in the repository.
+
+After generation, deterministic native patches are applied:
+
+- Android manifest scheduling permissions and receivers;
+- Android desugaring and multidex configuration;
+- Android Plugin DSL AGP floor compatible with the notification dependency;
+- iOS `UserNotifications` import and notification-center delegate setup.
+
+The transforms are idempotent, regression-tested, and intentionally fail when expected Flutter template anchors disappear. A template failure must be reviewed and adapted rather than bypassed.
+
 ## Platform build verification
 
 Run only on compatible hosts/toolchains.
@@ -76,6 +98,8 @@ flutter build apk --release
 flutter build appbundle --release
 ```
 
+The Android bootstrap enforces the native setup required by Countora's notification dependency, including a compatible AGP floor, scheduled-notification receivers, exact-alarm permission path, desugaring, and multidex.
+
 The repository's default source build is not a substitute for Play signing. Store signing credentials must be injected through the release environment and never committed.
 
 ### Web
@@ -84,17 +108,43 @@ The repository's default source build is not a substitute for Play signing. Stor
 flutter build web --release
 ```
 
+Web is a full Countora application target. Browser notification delivery uses Countora's runtime fallback because browsers do not provide the same guaranteed future scheduling path after the page/runtime is gone. Browser permission behavior must be manually verified.
+
 ### Linux
 
 ```bash
 flutter build linux --release
 ```
 
-### Windows
+Linux is a full Countora application target. Desktop notification delivery uses Countora's runtime fallback while the application remains active; timer state still reconciles from persisted deadlines after resume/restart.
+
+### Windows portable
 
 ```bash
 flutter build windows --release
 ```
+
+The portable Windows application is intentionally built without `COUNTORA_WINDOWS_PACKAGED=true`, so it uses Countora's runtime notification fallback. This avoids relying on Windows notification cancellation/history behavior that requires package identity.
+
+The tagged workflow archives this portable build as `countora-windows-x64.zip`.
+
+### Windows MSIX package-identity verification
+
+```bash
+dart run msix:create
+```
+
+Countora's `msix_config` rebuilds Windows with:
+
+```text
+--dart-define=COUNTORA_WINDOWS_PACKAGED=true
+```
+
+That build has the package-identity path required for Countora's scheduled Windows notification mode. The MSIX version is audited against the Flutter package version before release.
+
+The `msix` tool uses development/self-signed behavior by default when production credentials/store configuration are not supplied. Countora's CI therefore uses MSIX creation as **packaging and package-identity build verification**, not as proof of production signing. The current tagged workflow continues to publish the portable ZIP while MSIX production signing/store distribution remains an explicit external release step.
+
+Before publishing an MSIX publicly, use an approved production certificate or Microsoft Store signing path, verify installation/update behavior, and verify notification scheduling/cancellation on the installed package.
 
 ### macOS
 
@@ -102,7 +152,7 @@ flutter build windows --release
 flutter build macos --release
 ```
 
-Distribution outside local testing may require signing/notarization.
+Distribution outside local testing may require signing/notarization. Native notification behavior must be tested from a representative release-like application.
 
 ### iOS source verification
 
@@ -110,7 +160,26 @@ Distribution outside local testing may require signing/notarization.
 flutter build ios --release --no-codesign
 ```
 
-An unsigned iOS application verifies compilation only. App Store/device distribution requires Apple signing/provisioning and should be performed on a trusted release host.
+The generated iOS runner is patched so `UNUserNotificationCenter.current().delegate` is configured before generated plugin registration. An unsigned iOS application verifies compilation only. App Store/device distribution and actual notification delivery require Apple signing/provisioning and a supported release host/device.
+
+## Cross-platform smoke workflow
+
+`.github/workflows/platform-smoke.yml` runs on `main`, pull requests targeting `main`, and manual dispatch.
+
+It checks:
+
+- Android debug APK on Ubuntu;
+- Linux debug application on Ubuntu;
+- portable Windows debug application on Windows;
+- Windows MSIX package-identity creation on Windows;
+- macOS debug application on macOS;
+- unsigned iOS debug compilation on macOS.
+
+The Windows job also runs `tool/check_version_sync.dart` so MSIX version drift is detected before packaging.
+
+Web remains covered by the main CI release-mode Web build.
+
+A workflow definition is not verification evidence. Every required job must be observed as successful for the release-candidate commit before Countora is described as cross-platform build-verified.
 
 ## GitHub tagged release workflow
 
@@ -118,28 +187,29 @@ An unsigned iOS application verifies compilation only. App Store/device distribu
 
 The initial Ubuntu quality job must pass before desktop/Apple jobs run. It performs:
 
-- required-file verification
-- version-metadata synchronization verification
-- committed dependency-lock verification before `flutter pub get`
-- tracked-source obvious-secret scan
-- platform runner generation
-- dependency resolution
-- localization generation
-- formatting verification
-- `flutter analyze`
-- `flutter test`
-- local Markdown-link check
-- Web release build
-- Android APK/AAB builds
-- SHA-256 checksum generation for Android/Web artifacts
+- required-file verification;
+- version/MSIX-metadata synchronization verification;
+- committed dependency-lock verification before `flutter pub get`;
+- localization-source validation;
+- tracked-source obvious-secret scan;
+- platform runner generation and native patching;
+- dependency resolution;
+- localization generation;
+- formatting verification;
+- `flutter analyze`;
+- `flutter test`;
+- local Markdown-link check;
+- Web release build;
+- Android APK/AAB builds;
+- SHA-256 checksum generation for Android/Web artifacts.
 
 After that quality gate:
 
-- Ubuntu runs the primary integration journey under Xvfb, builds Linux x64, and emits a SHA-256 checksum
-- Windows builds Windows x64 and emits a SHA-256 checksum
-- macOS builds macOS plus an unsigned iOS application and emits SHA-256 checksums
+- Ubuntu runs the primary integration journey under Xvfb, builds Linux x64, and emits a SHA-256 checksum;
+- Windows builds/archives the portable Windows x64 application, verifies MSIX package-identity creation, and emits the portable ZIP checksum;
+- macOS builds macOS plus an unsigned iOS application and emits SHA-256 checksums.
 
-The workflow attaches matching artifacts and checksum files to the GitHub release.
+The workflow attaches the approved public artifact set and checksum files to the GitHub release. MSIX creation is currently verification-only until a trusted signing/store strategy is configured.
 
 ## Artifact integrity
 
@@ -162,42 +232,48 @@ On Windows, compare the published digest with:
 (Get-FileHash .\countora-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
-A checksum proves file integrity against the published digest; it does not replace code signing, trusted release provenance, or platform notarization.
+A checksum proves file integrity against the published digest; it does not replace code signing, trusted release provenance, package identity, or platform notarization.
 
 ## Security/repository checks
 
 Before tagging:
 
-1. Review CI status for the release commit.
+1. Review main CI and Platform smoke status for the exact release commit.
 2. Review Dependency Review on dependency-changing pull requests.
 3. Review CodeQL GitHub Actions scan status.
 4. Review Dependabot alerts/update pull requests where available.
-5. Confirm `.env`, keystores, signing profiles, private keys, tokens, and generated credentials are not tracked.
+5. Confirm `.env`, keystores, signing profiles, private keys, certificates, tokens, and generated credentials are not tracked.
 6. Confirm generated backup/test fixtures contain only fictional data.
-7. Run the repository required-file/version/dependency-lock/secret/link audit.
-8. Use a trusted additional secret scanner in the release environment when available.
+7. Run the repository required-file/version/dependency-lock/localization/secret/link audit.
+8. Confirm MSIX version metadata matches the application version.
+9. Use a trusted additional secret scanner in the release environment when available.
 
-## Native behavior checks
+## Native/browser behavior checks
 
 Before a stable public release, manually verify on representative targets:
 
-- timer start/pause/resume/restart/add-time
-- multiple simultaneous timers
-- interval rollover
-- app suspension/resume reconciliation
-- completion notification delivery
-- notification permission denial
-- Android exact-alarm denial fallback
-- quiet mode/sound/vibration combinations
-- backup export/import/reset
-- keyboard shortcuts on desktop/web
-- dark/light/system themes
-- reduced motion
-- screen-reader/scaled-text basics
+- timer start/pause/resume/restart/add-time;
+- multiple simultaneous timers;
+- interval rollover;
+- app suspension/resume reconciliation;
+- completion notification delivery;
+- notification permission denial;
+- Android exact-alarm denial fallback;
+- iOS foreground notification presentation;
+- packaged Windows future scheduling/cancellation;
+- portable Windows runtime notification fallback;
+- Linux runtime notification fallback;
+- Web permission/runtime notification behavior in representative browsers;
+- quiet mode/sound/vibration combinations where supported;
+- backup export/import/reset;
+- keyboard shortcuts on desktop/Web;
+- dark/light/system themes;
+- reduced motion;
+- screen-reader/scaled-text basics.
 
 ## Screenshots
 
-Use only screenshots from an actual release-candidate build. Do not publish mockups as product captures. Store source captures in `docs/screenshots/` when they become available and update README references in the same commit.
+Use only screenshots from actual verified release-candidate builds. Do not publish mockups as product captures. Store source captures in `docs/screenshots/` when they become available and update README references in the same commit.
 
 ## Tagging
 
@@ -214,13 +290,13 @@ If signed tags are not configured, use the repository's approved release process
 
 Convert the matching `CHANGELOG.md` candidate section into a dated release entry and use it as the source for GitHub release notes. Include:
 
-- user-facing additions/changes
-- important fixes
-- privacy/security changes
-- known limitations
-- supported artifact types
-- checksum files
-- upgrade/backup compatibility notes
+- user-facing additions/changes;
+- important fixes;
+- privacy/security changes;
+- known limitations;
+- supported artifact types and distribution-specific behavior;
+- checksum files;
+- upgrade/backup compatibility notes.
 
 ## Rollback
 
