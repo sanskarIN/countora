@@ -1,7 +1,7 @@
 # Countora development handoff
 
 Updated: 2026-08-20
-Current milestone: Phase 6 release-candidate verification; static source, test, documentation, repository-governance, and release-workflow hardening are substantially complete
+Current milestone: Phase 6 release-candidate verification; static source, test, documentation, repository-governance, input-boundary, and release-workflow hardening are substantially complete
 Target release: 0.2.0+2
 Repository: https://github.com/sanskarIN/countora
 Source model: public / open source / MIT
@@ -73,6 +73,8 @@ Implemented data-safety behavior includes:
 - rejection of unknown future schema versions rather than guessing compatibility;
 - bounded backup size;
 - bounded timer, preset, history, and interval-step counts;
+- explicit 128-character timer/preset/history identifier limit;
+- oversized imported identifiers are dropped rather than truncated so truncation cannot create accidental identifier collisions or alter relationships;
 - bounded names, groups, interval durations, and remaining durations;
 - malformed type rejection through controlled format failures;
 - duplicate-ID handling;
@@ -144,6 +146,7 @@ Implemented localization architecture includes:
 - a `BuildContext` localization helper;
 - main Home/navigation/timer/focus/editor/Settings/data/About/support/accessibility/project copy externalized;
 - deterministic localization-source audit tooling;
+- localization-source audit enforced in the repository audit workflow, normal CI jobs, and tagged release quality job before generated localization source is created;
 - regression tests for English resources and localization-source references.
 
 English remains the only shipped locale for 0.2.0. Additional locales can be added through ARB resources without rewriting the main screens.
@@ -155,6 +158,7 @@ Implemented safeguards include:
 - local-first/no-account architecture;
 - bounded validation of imported JSON;
 - explicit schema/version trust boundary;
+- explicit imported identifier length bounds in addition to backup/entity/text/duration bounds;
 - structured JSON diagnostics with sensitive-key redaction;
 - diagnostic events that avoid timer names, raw backup payloads, credentials, authentication data, and other unnecessary user content;
 - guarded external URL launching with user-safe failure feedback;
@@ -194,7 +198,8 @@ The repository includes coverage for the major domain, data, controller, UI, pla
   - malformed type rejection;
   - duplicate ID handling;
   - malformed interval recovery;
-  - name/group/use-count and other bounds.
+  - name/group/use-count and other bounds;
+  - oversized imported identifier removal without truncation.
 - `test/local_store_test.dart`
   - persistence/restore;
   - corrupted JSON recovery;
@@ -242,7 +247,8 @@ The repository includes coverage for the major domain, data, controller, UI, pla
 - version/tag/changelog audit tests;
 - release-changelog exact-heading and unreleased-tag rejection tests;
 - dependency-lock audit tests added on 2026-08-20;
-- deterministic required-file/version/secret/localization/link repository tooling.
+- deterministic required-file/version/secret/localization/link repository tooling;
+- required-file contract now protects critical docs, repository audit/release workflows, backup/localization/version audit helpers and tests, integration journey source, issue templates, and issue-template configuration.
 
 ### End-to-end source
 
@@ -263,6 +269,7 @@ CI source includes a dedicated Linux/Xvfb integration job. Actual execution succ
 
 - check out source;
 - install stable Flutter;
+- validate committed localization source/references before generation;
 - generate platform runners;
 - resolve dependencies;
 - generate localization sources;
@@ -272,6 +279,7 @@ CI source includes a dedicated Linux/Xvfb integration job. Actual execution succ
 - check local Markdown links;
 - build Web in release mode;
 - run the primary integration journey in a separate Linux/Xvfb job;
+- run localization-source validation in the integration job before generated source;
 - cancel superseded in-progress CI for the same ref.
 
 ### Repository/security automation
@@ -279,11 +287,12 @@ CI source includes a dedicated Linux/Xvfb integration job. Actual execution succ
 The repository also contains:
 
 - deterministic repository audit workflow;
+- repository audit now verifies required files, version metadata, localization source references, obvious tracked secrets, and local documentation links;
 - dependency-review workflow;
 - CodeQL workflow for supported GitHub Actions source;
 - Dependabot configuration;
 - funding configuration;
-- bug/feature/documentation issue templates;
+- bug/feature/documentation issue templates and issue-template configuration;
 - pull-request template;
 - repository governance guidance for branch protection/rulesets, Discussions, labels, milestones, topics, merge policy, and security settings.
 
@@ -300,9 +309,9 @@ The repository also contains:
 - unsigned iOS application ZIP for compilation verification;
 - SHA-256 checksum files for the produced artifact groups.
 
-The release quality job performs repository/version/secret/docs/test/build checks before artifact publication. Desktop/Apple jobs depend on the initial Android/Web quality job.
+The release quality job performs required-file/version/dependency-lock/localization/secret/docs/test/build checks before artifact publication. The committed dependency lock and localization-source audit run before dependency/localization generation. Desktop/Apple jobs depend on the initial Android/Web quality job.
 
-## New release-safety work completed on 2026-08-20
+## Release-safety work completed on 2026-08-20
 
 A remaining static release gap was identified: because `pubspec.lock` is not yet committed, a tagged release could otherwise run `flutter pub get` and resolve fresh dependency metadata inside CI. That would not prove that the exact release dependency graph had been generated with the supported SDK, reviewed, and committed.
 
@@ -345,7 +354,7 @@ The command:
 
 ### Hardened tagged release ordering
 
-Updated `.github/workflows/release.yml` so the tagged release quality job now runs:
+Updated `.github/workflows/release.yml` so the tagged release quality job runs:
 
 ```text
 dart run tool/check_dependency_lock.dart
@@ -355,21 +364,72 @@ dart run tool/check_dependency_lock.dart
 
 This means a release tag cannot silently create the missing lockfile during CI and then treat that newly generated dependency graph as reviewed release source.
 
+### Hardened deterministic localization checks
+
+The existing `tool/check_localization_source.dart` audit was promoted from optional/manual tooling into the automated quality chain:
+
+- `.github/workflows/repository-audit.yml` now runs it;
+- the primary `.github/workflows/ci.yml` Flutter job now runs it before platform/dependency/localization generation;
+- the Linux integration CI job runs it before generated localization code;
+- the tagged `.github/workflows/release.yml` quality job runs it before `flutter gen-l10n`.
+
+This makes committed ARB/reference drift detectable independently of generated localization output.
+
+### Expanded the required repository contract
+
+`tool/check_required_files.dart` now protects additional critical files, including:
+
+- backup/branding/CLI/notification documentation;
+- dependency-lock/localization/link/required-file/secret/version check commands;
+- backup/dependency/localization/platform/version audit helpers;
+- related regression tests;
+- primary integration journey source;
+- documentation issue template and issue-template configuration;
+- repository audit workflow itself;
+- CI/security/CodeQL/release workflows.
+
+The required-file audit still deliberately does **not** require `pubspec.lock` during ordinary development; the release-only lock audit enforces that release evidence separately.
+
+### Bounded imported identifiers
+
+A source-level trust-boundary review found that imported timer, preset, and history identifiers were only indirectly bounded by the 2 MiB total backup limit.
+
+The codec now defines:
+
+```text
+CountoraStateCodec.maxIdLength = 128
+```
+
+Behavior:
+
+- empty timer/preset IDs continue to be dropped;
+- timer/preset IDs longer than 128 characters are dropped;
+- history entries whose `timerId` is empty or longer than 128 characters are dropped;
+- identifiers are not truncated, avoiding accidental collisions/relationship changes;
+- regression coverage verifies oversized timer/preset/history identifiers are removed;
+- `docs/backup-format.md` documents the bound and rationale;
+- `CHANGELOG.md` records the security hardening.
+
 ### Synchronized repository contracts/documentation
 
-Updated:
+Updated during this continuation:
 
-- `tool/check_required_files.dart` to require the dependency-lock audit source, command, and regression test;
-- `docs/release.md` with the reviewed application-lock policy and clean-checkout release sequence;
-- `docs/cli-tools.md` with the new command/helper contract;
-- `CHANGELOG.md` with the release dependency-lock gate and release blocker wording;
-- `ROADMAP.md` to mark the static dependency-lock audit complete while keeping actual lock generation/review/commit unchecked.
+- `tool/check_required_files.dart`;
+- `docs/release.md`;
+- `docs/cli-tools.md`;
+- `docs/backup-format.md`;
+- `CHANGELOG.md`;
+- `ROADMAP.md`;
+- `.github/workflows/repository-audit.yml`;
+- `.github/workflows/ci.yml`;
+- `.github/workflows/release.yml`;
+- this `what_changed.md` handoff.
 
-No fabricated `pubspec.lock` was added.
+No fabricated `pubspec.lock`, screenshots, release artifacts, or passing runtime results were added.
 
 ## Other hardening completed since the previous handoff was last written
 
-The previous handoff had become stale because several later 2026-08-19 commits were not yet reflected in it. Important completed work includes:
+Important completed work includes:
 
 - persistence-first timer reconciliation and import behavior;
 - centralized/fail-closed notification capability policy;
@@ -439,15 +499,18 @@ Real screenshots remain intentionally absent until captured from an actual verif
 - `pubspec.yaml` currently declares `0.2.0+2` with Dart `>=3.10.0 <4.0.0` and Flutter `>=3.38.1`.
 - `pubspec.lock` is currently absent; this is deliberately recorded as a release blocker instead of being fabricated.
 - No open repository Issues were returned during this continuation.
-- Repository code search returned no TODO/FIXME/XXX/HACK result during this continuation.
-- The release workflow now checks for the committed dependency lock before dependency resolution.
+- Repository code search returned no TODO/FIXME/XXX/HACK result during this continuation, including after the latest hardening.
+- Basic searches for direct `Text('...')`/`Text("...")` user-facing literals returned no results during the final localization scan.
+- The release workflow checks for the committed dependency lock before dependency resolution.
+- Repository audit, normal CI, Linux integration CI, and release quality CI now enforce deterministic localization-source validation before generation where applicable.
 - The release workflow source contains Android/Web/Linux/Windows/macOS/unsigned-iOS artifact jobs and checksum generation.
-- The changelog, roadmap, release docs, CLI tools docs, and this handoff now describe the dependency-lock release policy consistently.
+- The changelog, roadmap, backup docs, release docs, CLI tools docs, and this handoff describe the latest static policies.
+- The latest commit-status lookup returned no exposed status entries for the direct-push checkpoint; therefore no green status is inferred.
 - Earlier continuity work explicitly checked the requested commit identity and recorded `Sanskar <sanskarin@outlook.in>` for author/committer metadata where exposed.
 
 ### Not truthfully verified in this chat environment
 
-This execution environment does not expose a working Flutter/Dart SDK. The GitHub workflow-run lookup available during this continuation did not provide an observable completed run for these direct-push commits. Therefore the following are **not claimed as passing**:
+This execution environment does not expose a working Flutter/Dart SDK. The GitHub workflow/status lookups available during this continuation did not provide an observable completed run for these direct-push commits. Therefore the following are **not claimed as passing**:
 
 - `dart run tool/check_required_files.dart` in a real Dart/Flutter checkout;
 - `dart run tool/check_version_sync.dart` in a real Dart/Flutter checkout;
@@ -478,7 +541,7 @@ No result above should be marked green until it is actually executed and observe
 1. A supported Flutter SDK must generate native runners through `dart run tool/bootstrap_platforms.dart`; generated runner directories are intentionally not frozen into the repository.
 2. A supported Flutter SDK must run `flutter pub get`; the resulting application `pubspec.lock` must be reviewed and committed before a release tag.
 3. `dart run tool/check_dependency_lock.dart` must pass from the committed release-candidate checkout before tagging.
-4. Main CI must be observed successfully passing formatting, analyze, tests, documentation checks, Web release build, and Linux integration journey.
+4. Main CI must be observed successfully passing localization audit, formatting, analyze, tests, documentation checks, Web release build, and Linux integration journey.
 5. Every concrete analyzer/compiler/test/workflow failure discovered by the real Flutter toolchain must be fixed and regression-covered where appropriate.
 6. The state-codec benchmark should be run on representative hardware and the environment/results recorded without turning one machine's number into a universal threshold.
 7. Android completion notifications, permission denial, exact-alarm fallback, and cue combinations require real device/emulator verification.
@@ -532,13 +595,14 @@ These are now primarily execution/environment verification tasks rather than mis
 - Supported legacy unversioned state is migrated into the current schema boundary.
 - Unknown future schemas are rejected rather than interpreted optimistically.
 - Valid imported state is staged/validated before replacement.
+- Imported timer/preset/history identifiers above the current 128-character bound are discarded rather than truncated.
 - A failed persistence step must not be followed by platform schedule changes that imply unsaved state succeeded.
 - Existing 0.1-era local data should be exercised during final release-candidate migration testing using fictional/controlled fixtures and a real Flutter runtime.
 - A release must never weaken import bounds merely to accept malformed backup data.
 
 ## Recent meaningful commits
 
-### 2026-08-20 — dependency-lock release gate and handoff synchronization
+### 2026-08-20 — final static audit, release, and input-boundary hardening
 
 - `3589772` build: add dependency lock audit
 - `da09f64` test: cover dependency lock audit
@@ -550,7 +614,19 @@ These are now primarily execution/environment verification tasks rather than mis
 - `7e1db3d` docs: document dependency lock audit
 - `eab80fb` docs: record release dependency lock gate
 - `8e64cc0` docs: update release readiness roadmap
-- current commit: docs: refresh Countora release handoff
+- `4fd3434` docs: refresh Countora release handoff
+- `4e5c189` chore: protect repository audit toolchain
+- `3b3764d` ci: audit localization source deterministically
+- `8df301d` ci: validate localization source before generation
+- `9ddd89e` ci: audit localization before release generation
+- `3a85dd5` chore: require issue template configuration
+- `5949af9` docs: record deterministic localization gates
+- `830e5ec` docs: mark repository audit enforcement complete
+- `ced4d00` security: bound imported state identifiers
+- `547d8ff` test: reject oversized imported identifiers
+- `4b13816` docs: document imported identifier bounds
+- `cbfda8a` docs: record imported identifier hardening
+- current commit: docs: sync final static hardening handoff
 
 ### Late 2026-08-19 — release/version and platform reliability hardening
 
@@ -651,6 +727,7 @@ These are now primarily execution/environment verification tasks rather than mis
 ### Added
 
 - schema-aware validated backups and legacy migration safety;
+- explicit imported identifier bounds;
 - privacy-safe backup inspection tooling;
 - timer duplicate/edit/save-as-preset workflows;
 - history replay;
@@ -662,10 +739,10 @@ These are now primarily execution/environment verification tasks rather than mis
 - monotonic runtime clock and app-resume reconciliation;
 - fail-closed notification scheduling capability policy;
 - English generated-localization resource architecture;
-- localization source audit tooling;
+- deterministic localization-source audit enforced before generated localization code in repository/CI/release gates;
 - deterministic state-codec benchmark harness;
 - expanded domain/controller/widget/persistence/platform/tooling/integration regression coverage;
-- repository required-file/version/secret/localization/link checks;
+- expanded repository required-file/version/secret/localization/link checks;
 - release-only committed dependency-lock audit;
 - CodeQL Actions scanning;
 - strengthened Dependency Review;
@@ -676,6 +753,7 @@ These are now primarily execution/environment verification tasks rather than mis
 ### Changed
 
 - persistence validates and bounds untrusted local/imported JSON;
+- oversized imported timer/preset/history identifiers are discarded instead of retained/truncated;
 - durable state is persisted before associated platform notification side effects;
 - failed imports restore prior in-memory state rather than reporting a false successful replacement;
 - timer reconciliation handles suspended/elapsed sequences more safely;
@@ -688,12 +766,12 @@ These are now primarily execution/environment verification tasks rather than mis
 - design tokens centralize UI constants;
 - Settings import/reset/export/external-link failure handling is safer;
 - main UI strings are externalized;
-- CI formats integration tests and contains a dedicated Linux/Xvfb journey;
-- tagged releases now require synchronized version metadata, finalized changelog entry, matching tag, reviewed committed dependency lock, repository audits, tests/build gates, and artifact checksums.
+- CI formats integration tests, validates localization references before generation, and contains a dedicated Linux/Xvfb journey;
+- tagged releases require synchronized version metadata, finalized changelog entry, matching tag, reviewed committed dependency lock, deterministic localization/repository audits, tests/build gates, and artifact checksums.
 
 ### Security and privacy
 
-- bounded backup size/schema/type validation;
+- bounded backup size/schema/type/identifier validation;
 - corrupted local-state recovery;
 - sensitive structured-log redaction;
 - guarded external/platform failure boundaries;
@@ -707,7 +785,7 @@ These are now primarily execution/environment verification tasks rather than mis
 ### Remaining release blockers
 
 - generate/review/commit `pubspec.lock` using the supported Flutter SDK;
-- observe successful real Flutter formatting/analyze/test/integration/build results;
+- observe successful real Flutter localization-audit/formatting/analyze/test/integration/build results;
 - fix any concrete failures returned by that toolchain;
 - run and record benchmark evidence;
 - verify native notification behavior on representative targets;
