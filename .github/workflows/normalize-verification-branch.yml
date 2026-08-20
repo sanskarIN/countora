@@ -1,20 +1,21 @@
 name: Normalize verification branch
 
 on:
-  push:
-    branches:
-      - verification/phase-6-rc
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 concurrency:
-  group: normalize-verification-branch
+  group: normalize-verification-branch-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   normalize:
-    if: github.repository == 'sanskarIN/countora'
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'verification/phase-6-rc'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -22,7 +23,7 @@ jobs:
       - name: Checkout verification branch
         uses: actions/checkout@v6
         with:
-          ref: verification/phase-6-rc
+          ref: ${{ github.head_ref }}
 
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
@@ -54,5 +55,5 @@ jobs:
           git config user.name "Sanskar"
           git config user.email "sanskarin@outlook.in"
           git commit -m "style: normalize release candidate with pinned Dart"
-          git pull --rebase origin verification/phase-6-rc
-          git push origin HEAD:verification/phase-6-rc
+          git pull --rebase origin "${GITHUB_HEAD_REF}"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
