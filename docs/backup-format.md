@@ -44,11 +44,14 @@ The codec keeps the local document bounded:
 | Presets | 500 |
 | History entries | 500 |
 | Interval steps per timer/preset | 32 |
+| Timer/preset/history identifier | 128 characters; oversized identifiers are dropped, not truncated |
 | Name/interval label | 80 characters |
 | Group | 40 characters |
 | Individual interval duration | 365 days |
 
 Imported duplicate/invalid entities may be removed or normalized where the codec has an unambiguous safe recovery rule. Inputs that cannot be interpreted safely fail closed instead.
+
+Identifiers are not truncated because truncation could turn two distinct imported identifiers into the same identifier or accidentally change history/timer relationships. Empty or oversized timer/preset IDs are dropped, and history entries with empty or oversized timer IDs are dropped.
 
 ## Timer object
 
@@ -76,7 +79,7 @@ A serialized timer contains:
 
 ### Timer fields
 
-- `id` — local timer identifier. Empty IDs are not retained by decoded state.
+- `id` — local timer identifier. Empty or oversized IDs are not retained by decoded state.
 - `name` — user-visible timer name.
 - `group` — optional user-visible group name.
 - `steps` — one or more interval objects.
@@ -124,7 +127,7 @@ An imported timer/preset whose interval data is unusable is normalized to a boun
 }
 ```
 
-`useCount` is local usage metadata and is normalized to a non-negative bounded value by the persistence trust boundary.
+Preset identifiers follow the same 128-character maximum as timer identifiers. `useCount` is local usage metadata and is normalized to a non-negative bounded value by the persistence trust boundary.
 
 ## History object
 
@@ -138,7 +141,7 @@ An imported timer/preset whose interval data is unusable is normalized to a boun
 }
 ```
 
-History is local completion history. The controller retains at most 500 entries.
+History is local completion history. The controller retains at most 500 entries. History entries whose imported `timerId` is empty or exceeds the identifier bound are discarded at the codec boundary.
 
 ## Settings object
 
