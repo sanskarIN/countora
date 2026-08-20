@@ -26,6 +26,9 @@ jobs:
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
 
+      - name: Verify shared Flutter toolchain
+        run: dart run tool/check_toolchain.dart
+
       - name: Verify required repository files
         run: dart run tool/check_required_files.dart
 
