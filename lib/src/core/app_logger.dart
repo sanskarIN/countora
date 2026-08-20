@@ -62,52 +62,73 @@ class AppLogger {
       'level': level.name,
       'component': component,
       'event': event,
-      if (fields.isNotEmpty) 'fields': _redactMap(fields),
+      if (fields.isNotEmpty) 'fields': sanitizeLogFields(fields),
     };
     debugPrint(jsonEncode(payload));
   }
-
-  Map<String, Object?> _redactMap(Map<String, Object?> source) {
-    return source.map((key, value) {
-      final normalized = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
-      if (_sensitiveKeys.any(normalized.contains)) {
-        return MapEntry(key, '[REDACTED]');
-      }
-      if (value is Map<String, Object?>) {
-        return MapEntry(key, _redactMap(value));
-      }
-      if (value is Iterable<Object?>) {
-        return MapEntry(
-          key,
-          value.map((item) {
-            if (item is Map<String, Object?>) return _redactMap(item);
-            return _safeScalar(item);
-          }).toList(growable: false),
-        );
-      }
-      return MapEntry(key, _safeScalar(value));
-    });
-  }
-
-  Object? _safeScalar(Object? value) {
-    if (value == null || value is num || value is bool) return value;
-    if (value is Enum) return value.name;
-    final text = value.toString();
-    return text.length <= 200 ? text : '${text.substring(0, 200)}…';
-  }
-
-  static const _sensitiveKeys = <String>[
-    'password',
-    'passcode',
-    'token',
-    'secret',
-    'authorization',
-    'cookie',
-    'email',
-    'phone',
-    'backup',
-    'payload',
-    'timername',
-    'username',
-  ];
 }
+
+/// Returns JSON-encodable diagnostic fields with sensitive values removed.
+///
+/// This helper accepts nested maps regardless of their generic key/value types.
+/// That matters at logging boundaries because plugin/platform data can arrive as
+/// `Map<Object?, Object?>`; stringifying such a map would bypass key-based
+/// redaction of nested credentials.
+Map<String, Object?> sanitizeLogFields(Map<String, Object?> source) {
+  return source.map((key, value) {
+    if (_isSensitiveLogKey(key)) {
+      return MapEntry(key, '[REDACTED]');
+    }
+    return MapEntry(key, _sanitizeLogValue(value));
+  });
+}
+
+Object? _sanitizeLogValue(Object? value) {
+  if (value is Map) {
+    final normalized = <String, Object?>{};
+    for (final entry in value.entries) {
+      normalized['${entry.key}'] = entry.value;
+    }
+    return sanitizeLogFields(normalized);
+  }
+
+  if (value is Iterable) {
+    return value
+        .map(_sanitizeLogValue)
+        .toList(growable: false);
+  }
+
+  return _safeLogScalar(value);
+}
+
+Object? _safeLogScalar(Object? value) {
+  if (value == null || value is num || value is bool) return value;
+  if (value is Enum) return value.name;
+  final text = value.toString();
+  return text.length <= 200 ? text : '${text.substring(0, 200)}…';
+}
+
+bool _isSensitiveLogKey(String key) {
+  final normalized = key.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+  return _sensitiveLogKeys.any(normalized.contains);
+}
+
+const _sensitiveLogKeys = <String>[
+  'password',
+  'passcode',
+  'pin',
+  'token',
+  'secret',
+  'authorization',
+  'credential',
+  'apikey',
+  'privatekey',
+  'cookie',
+  'sessionid',
+  'email',
+  'phone',
+  'backup',
+  'payload',
+  'timername',
+  'username',
+];
