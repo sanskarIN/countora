@@ -84,6 +84,7 @@ void main() {
     '.github/dependabot.yml',
     '.github/FUNDING.yml',
     '.github/workflows/ci.yml',
+    '.github/workflows/dependency-lock.yml',
     '.github/workflows/platform-smoke.yml',
     '.github/workflows/security.yml',
     '.github/workflows/codeql.yml',
