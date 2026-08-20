@@ -79,7 +79,7 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ListTile(
-            leading: const Icon(Icons.license_outlined),
+            leading: const Icon(Icons.description_outlined),
             title: Text(strings.license),
             subtitle: Text(strings.mitLicense),
           ),
