@@ -29,6 +29,9 @@ jobs:
       - name: Verify version metadata
         run: dart run tool/check_version_sync.dart
 
+      - name: Verify committed dependency lock
+        run: dart run tool/check_dependency_lock.dart
+
       - name: Scan tracked source for obvious secrets
         run: dart run tool/check_secrets.dart
 
