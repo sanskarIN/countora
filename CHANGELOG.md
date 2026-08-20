@@ -34,10 +34,11 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
 - Central scheduled-notification capability policy shared by Settings and the notification adapter.
-- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-capability, platform-patch, and integration regression tests.
+- Persistence, state-codec, stable-clock, controller-workflow, widget, localization, external-link, platform-capability, platform-patch, dependency-lock, and integration regression tests.
 - Deterministic state-codec benchmark harness with machine-readable latency summaries.
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
+- Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
 - Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
@@ -66,7 +67,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
 - Main UI strings are externalized for future translations.
 - CI now generates localization source, formats `integration_test/`, and runs the primary Linux integration journey in a virtual display.
-- Release quality gates now include repository-file, version-sync, tracked-secret, test, integration, documentation, and build checks before publication.
+- Tagged release quality gates now require a reviewed committed dependency lock before running `flutter pub get`, in addition to repository/version/secret/test/integration/documentation/build checks.
 
 ### Fixed
 
@@ -89,7 +90,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 ### Known release requirements
 
 - Do not tag the final 0.2.0 release until actual Flutter analyze/test/build/integration runs have been observed as successful.
-- Generate dependency resolution with a real Flutter SDK and review whether the resulting application `pubspec.lock` should be committed before the stable release; do not fabricate a lockfile.
+- Generate dependency resolution with a real Flutter SDK, review it, and commit the resulting application `pubspec.lock`; the tagged release workflow now fails before `flutter pub get` when that reviewed lock is absent.
 - Native notification behavior must be verified on supported real platforms/devices.
 - Signed mobile/desktop distribution remains a release-environment responsibility.
 - Real screenshots must come from an actual verified build; mockups are not presented as product captures.
