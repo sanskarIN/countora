@@ -39,6 +39,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - ADR 0005 documenting durable-state-before-platform-side-effect ordering.
 - Markdown local-link checker.
 - Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
+- Deterministic localization-source audit enforced by repository audit, normal CI, and tagged release CI before generated localization code is created.
+- Expanded required-file contract protecting repository audit, release tooling, localization/backup audit tooling, critical docs, integration journey source, and issue-template configuration.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, Windows, macOS, and unsigned iOS verification.
 - Dedicated Linux/Xvfb integration-test CI job for the primary end-to-end journey.
@@ -66,8 +68,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
 - Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
 - Main UI strings are externalized for future translations.
-- CI now generates localization source, formats `integration_test/`, and runs the primary Linux integration journey in a virtual display.
-- Tagged release quality gates now require a reviewed committed dependency lock before running `flutter pub get`, in addition to repository/version/secret/test/integration/documentation/build checks.
+- CI now generates localization source, formats `integration_test/`, validates committed localization references before generation, and runs the primary Linux integration journey in a virtual display.
+- Tagged release quality gates now require a reviewed committed dependency lock and deterministic localization-source audit before `flutter pub get`/`flutter gen-l10n`, in addition to repository/version/secret/test/integration/documentation/build checks.
 
 ### Fixed
 
