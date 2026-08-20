@@ -3,6 +3,15 @@ import 'dart:io';
 import 'src/platform_patches.dart';
 import 'src/root_file_guard.dart';
 
+const flutterCreateArguments = <String>[
+  'create',
+  '.',
+  '--project-name=countora',
+  '--org=dev.sanskar',
+  '--platforms=android,ios,web,windows,macos,linux',
+  '--no-pub',
+];
+
 const _rootFilesToPreserve = <String>[
   '.gitignore',
   'README.md',
@@ -23,14 +32,7 @@ Future<void> main() async {
   try {
     create = await Process.run(
       flutter,
-      <String>[
-        'create',
-        '.',
-        '--project-name=countora',
-        '--org=dev.sanskar',
-        '--platforms=android,ios,web,windows,macos,linux',
-        '--no-pub',
-      ],
+      flutterCreateArguments,
       runInShell: true,
     );
   } finally {
