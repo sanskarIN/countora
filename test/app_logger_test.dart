@@ -8,7 +8,7 @@ void main() {
     test('redacts sensitive values at every nested map depth', () {
       final nested = <Object?, Object?>{
         'safe': 'kept',
-        'credentials': <Object?, Object?>{
+        'connection': <Object?, Object?>{
           'api_key': 'should-not-leak',
           'details': <Object?, Object?>{
             'supportEmail': 'person@example.test',
@@ -18,11 +18,11 @@ void main() {
 
       final result = sanitizeLogFields(<String, Object?>{'platform': nested});
       final platform = result['platform']! as Map<String, Object?>;
-      final credentials = platform['credentials']! as Map<String, Object?>;
-      final details = credentials['details']! as Map<String, Object?>;
+      final connection = platform['connection']! as Map<String, Object?>;
+      final details = connection['details']! as Map<String, Object?>;
 
       expect(platform['safe'], 'kept');
-      expect(credentials['api_key'], '[REDACTED]');
+      expect(connection['api_key'], '[REDACTED]');
       expect(details['supportEmail'], '[REDACTED]');
     });
 
