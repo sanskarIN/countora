@@ -115,7 +115,8 @@ class LocalNotificationService implements NotificationService {
       FlutterLocalNotificationsPlugin();
   static const _logger = AppLogger('notifications');
 
-  final Map<String, Timer> _runtimeTimers = <String, Timer>{};
+  final Map<String, _RuntimeNotificationEntry> _runtimeTimers =
+      <String, _RuntimeNotificationEntry>{};
   bool _ready = false;
 
   @override
@@ -265,37 +266,53 @@ class LocalNotificationService implements NotificationService {
     required bool vibrationEnabled,
     required bool quietMode,
   }) {
-    _runtimeTimers.remove(timer.id)?.cancel();
+    _cancelRuntimeTimer(timer.id, preserveIfDue: true);
     final scheduledAt = timer.endsAtUtc;
     if (scheduledAt == null) return;
 
-    final delay = scheduledAt.difference(DateTime.now().toUtc());
     final step = timer.currentStep;
-    if (delay <= Duration.zero) {
-      unawaited(
-        _showRuntimeNotification(
+    Future<void> deliver() => _showRuntimeNotification(
           timer: timer,
           step: step,
           soundEnabled: soundEnabled,
           vibrationEnabled: vibrationEnabled,
           quietMode: quietMode,
-        ),
-      );
+        );
+
+    final delay = scheduledAt.difference(DateTime.now().toUtc());
+    if (delay <= Duration.zero) {
+      unawaited(deliver());
       return;
     }
 
-    _runtimeTimers[timer.id] = Timer(delay, () {
-      _runtimeTimers.remove(timer.id);
-      unawaited(
-        _showRuntimeNotification(
-          timer: timer,
-          step: step,
-          soundEnabled: soundEnabled,
-          vibrationEnabled: vibrationEnabled,
-          quietMode: quietMode,
-        ),
-      );
+    final entry = _RuntimeNotificationEntry(
+      scheduledAtUtc: scheduledAt,
+      deliver: deliver,
+    );
+    entry.timer = Timer(delay, () {
+      if (identical(_runtimeTimers[timer.id], entry)) {
+        _runtimeTimers.remove(timer.id);
+      }
+      unawaited(entry.deliver());
     });
+    _runtimeTimers[timer.id] = entry;
+  }
+
+  void _cancelRuntimeTimer(
+    String timerId, {
+    required bool preserveIfDue,
+  }) {
+    final entry = _runtimeTimers.remove(timerId);
+    if (entry == null) return;
+
+    final isDue = !DateTime.now().toUtc().isBefore(entry.scheduledAtUtc);
+    if (preserveIfDue && isDue) {
+      // A controller reconciliation can race the Dart Timer at the exact
+      // deadline. Leave a due callback alive so completion delivery is not
+      // cancelled merely because state reconciliation won the event-loop race.
+      return;
+    }
+    entry.timer.cancel();
   }
 
   Future<void> _showRuntimeNotification({
@@ -330,8 +347,10 @@ class LocalNotificationService implements NotificationService {
 
   @override
   Future<void> cancelTimer(String timerId) async {
-    _runtimeTimers.remove(timerId)?.cancel();
-    if (!_ready) return;
+    final runtimeOnly = usesRuntimeNotificationFallback();
+    _cancelRuntimeTimer(timerId, preserveIfDue: runtimeOnly);
+    if (!_ready || runtimeOnly) return;
+
     await runBoundedNotificationCleanup(
       count: CountoraStateCodec.maxIntervalsPerTimer,
       cancel: (index) =>
@@ -353,4 +372,15 @@ class LocalNotificationService implements NotificationService {
     }
     return (hash + stepIndex) & 0x7fffffff;
   }
+}
+
+class _RuntimeNotificationEntry {
+  _RuntimeNotificationEntry({
+    required this.scheduledAtUtc,
+    required this.deliver,
+  });
+
+  final DateTime scheduledAtUtc;
+  final Future<void> Function() deliver;
+  late final Timer timer;
 }
