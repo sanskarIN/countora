@@ -70,7 +70,11 @@ The logger regression deliberately uses synthetic credential-like strings. It mu
 
 `test/home_page_test.dart` covers primary timer presentation, accessible semantics, the focus-mode entry hint, filtered empty states, resume controls, and history replay.
 
+`test/home_error_banner_test.dart` verifies recoverable controller failures remain visible and dismissible after navigating away from the Timers destination, including the Presets surface.
+
 `test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, and clipboard-backup failure feedback.
+
+`test/settings_reactivity_test.dart` verifies the pushed Settings route listens to controller changes and surfaces controller persistence failures without requiring navigation back to Home.
 
 `test/keyboard_shortcuts_test.dart` covers the primary desktop keyboard shortcuts.
 
