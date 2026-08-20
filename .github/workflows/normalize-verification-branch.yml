@@ -1,0 +1,58 @@
+name: Normalize verification branch
+
+on:
+  push:
+    branches:
+      - verification/phase-6-rc
+
+permissions:
+  contents: write
+
+concurrency:
+  group: normalize-verification-branch
+  cancel-in-progress: true
+
+jobs:
+  normalize:
+    if: github.repository == 'sanskarIN/countora'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout verification branch
+        uses: actions/checkout@v6
+        with:
+          ref: verification/phase-6-rc
+
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
+
+      - name: Format tracked Dart source
+        run: dart format lib test integration_test tool
+
+      - name: Resolve dependency graph
+        run: flutter pub get
+
+      - name: Verify dependency lock
+        run: dart run tool/check_dependency_lock.dart
+
+      - name: Verify localization source references
+        run: dart run tool/check_localization_source.dart
+
+      - name: Verify patch hygiene
+        run: git diff --check
+
+      - name: Commit normalized source and lockfile
+        shell: bash
+        run: |
+          git add lib test integration_test tool pubspec.lock
+          if git diff --cached --quiet; then
+            echo "Verification branch is already normalized."
+            exit 0
+          fi
+
+          git config user.name "Sanskar"
+          git config user.email "sanskarin@outlook.in"
+          git commit -m "style: normalize release candidate with pinned Dart"
+          git pull --rebase origin verification/phase-6-rc
+          git push origin HEAD:verification/phase-6-rc
