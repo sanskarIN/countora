@@ -2,7 +2,8 @@ name: Normalize verification branch
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - verification/phase-6-rc
 
 permissions:
   contents: write
@@ -15,12 +16,12 @@ jobs:
   normalize:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'verification/phase-6-rc'
-    runs-on: ubuntu-latest
+      github.head_ref == 'verification/normalize-phase-6'
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
 
     steps:
-      - name: Checkout verification branch
+      - name: Checkout normalization branch
         uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
