@@ -36,8 +36,8 @@ Current development version: **0.2.0+2**.
 - Monotonic in-process clock to reduce live countdown jumps after wall-clock changes
 - App-resume reconciliation for expired or suspended timers
 - Interval catch-up that preserves absolute sequence timing after suspension
-- Scheduled background completion notifications on Android, iOS, macOS, and Windows
-- Runtime local-notification fallback on Linux and Web when future scheduling is unavailable
+- Scheduled background completion notifications on Android, iOS, macOS, and package-identity Windows builds
+- Runtime local-notification fallback on Linux, Web, and portable Windows builds
 - Android exact-alarm fallback to inexact scheduling when exact permission is unavailable
 - Corruption-safe local persistence recovery
 - Bounded, schema-aware JSON backup validation and migration
@@ -69,18 +69,19 @@ Real product captures will be committed only after a verified runnable multi-pla
 
 ## Platforms
 
-Countora intentionally supports the six primary Flutter deployment families from one codebase. Platform-native APIs are used where available, with explicit fallbacks where an OS/browser exposes less functionality.
+Countora intentionally supports the six primary Flutter deployment families from one codebase. Platform-native APIs are used where available, with explicit fallbacks where an OS/browser or distribution format exposes less functionality.
 
-| Platform | Countora support | Build/release target | Completion notification behavior |
+| Platform / distribution | Countora support | Build/release target | Completion notification behavior |
 | --- | --- | --- | --- |
 | Android | Supported | APK + AAB | Future scheduled delivery; exact scheduling falls back to inexact when required |
 | iOS | Supported | unsigned CI build; signed distribution requires Apple credentials | Future scheduled delivery through Darwin notifications |
-| Windows | Supported | x64 application ZIP | Future scheduled Windows toast delivery |
+| Windows portable | Supported | x64 application ZIP | Local notification runtime fallback; portable builds deliberately avoid future scheduling that depends on Windows package identity |
+| Windows packaged | Supported packaging path | MSIX build verification; production signing required before promotion | Package-identity build enables future scheduled Windows toast delivery |
 | macOS | Supported | application ZIP | Future scheduled delivery through Darwin notifications |
 | Linux | Supported | x64 tar.gz | Local notifications while the Countora runtime remains active; future OS scheduling is unavailable |
-| Web | Supported | Web ZIP | Browser notifications while the page/runtime remains active; browsers do not provide future scheduled delivery |
+| Web | Supported | Web ZIP | Browser notifications while the page/runtime remains active; browsers do not provide guaranteed future delivery after the runtime is gone |
 
-All six targets retain timer state, live countdowns, presets, groups, interval sequences, history, backup/restore, responsive UI, themes, accessibility preferences, and resume reconciliation. Linux/Web differ only where their platform notification APIs cannot guarantee future delivery after the Countora process/page is no longer active.
+All six platform families retain timer state, live countdowns, presets, groups, interval sequences, history, backup/restore, responsive UI, themes, accessibility preferences, and resume reconciliation. Platform differences are isolated to capabilities the underlying OS/browser/distribution genuinely exposes.
 
 Native runner folders are generated from the installed Flutter SDK so stale framework boilerplate is not frozen into source control.
 
@@ -93,6 +94,7 @@ Native runner folders are generated from the installed Flutter SDK so stale fram
 - `flutter_local_notifications` for cross-platform local notifications
 - `timezone` for timezone-aware notification scheduling
 - `url_launcher` behind a guarded external-link helper
+- `msix` for Windows package-identity build verification
 
 ## Quick start
 
@@ -110,7 +112,7 @@ flutter gen-l10n
 flutter run
 ```
 
-`tool/bootstrap_platforms.dart` runs `flutter create` for Android, iOS, Web, Windows, macOS, and Linux runners, then applies validated Android notification/desugaring transforms from `tool/src/platform_patches.dart`.
+`tool/bootstrap_platforms.dart` runs `flutter create` for Android, iOS, Web, Windows, macOS, and Linux runners, then applies validated native notification requirements. Current transforms harden the Android manifest/Gradle/AGP setup and configure the generated iOS notification-center delegate. The transforms are idempotent and fail if expected Flutter template anchors disappear.
 
 For complete setup instructions, see [`docs/setup.md`](docs/setup.md).
 
@@ -169,13 +171,16 @@ flutter build appbundle --release
 flutter build web --release
 flutter build linux --release
 flutter build windows --release
+dart run msix:create
 flutter build macos --release
 flutter build ios --release --no-codesign
 ```
 
-The non-tagged `Platform smoke` workflow continuously compiles Android, Linux, Windows, macOS, and unsigned iOS targets while the main CI workflow builds Web and runs the Linux integration journey. The tagged GitHub release workflow performs the supported host-specific release builds and publishes artifacts after the main quality job succeeds. It also publishes SHA-256 digest files for Android/Web, Linux, Windows, macOS, and unsigned iOS release artifacts.
+The normal `flutter build windows` output is a portable build and therefore uses Countora's runtime notification fallback. The MSIX configuration rebuilds Windows with `COUNTORA_WINDOWS_PACKAGED=true`, giving the application package identity for the packaged notification path. CI verifies that MSIX creation works, but a production MSIX still requires an approved signing/store strategy before it should be distributed.
 
-See [`docs/release.md`](docs/release.md) for integrity-verification examples and the distinction between checksums and platform code signing.
+The non-tagged `Platform smoke` workflow continuously compiles Android, Linux, portable Windows, Windows MSIX packaging, macOS, and unsigned iOS targets while the main CI workflow builds Web and runs the Linux integration journey. The tagged GitHub release workflow performs host-specific release builds and publishes its approved artifact set after the main quality job succeeds. It also publishes SHA-256 digest files for Android/Web, Linux, portable Windows, macOS, and unsigned iOS release artifacts.
+
+See [`docs/release.md`](docs/release.md) for integrity-verification examples and the distinction between checksums, package identity, and production code signing.
 
 ## Project structure
 
@@ -192,8 +197,8 @@ lib/
 integration_test/           # end-to-end Flutter user journeys
 test/                       # domain, controller, persistence, UI, localization, tool tests
 tool/
-  bootstrap_platforms.dart  # deterministic Flutter runner generation
-  src/platform_patches.dart # pure validated Android runner transforms
+  bootstrap_platforms.dart  # deterministic Flutter runner generation + native patches
+  src/platform_patches.dart # pure validated Android/iOS runner transforms
   ...                       # repository checks
 docs/                       # architecture, setup, testing, release, ADRs
 .github/                    # CI, platform smoke, release, security, templates, Dependabot/funding
@@ -208,7 +213,7 @@ Countora uses a small modular-monolith structure:
 3. **Presentation** — controller-driven state transitions and adaptive Flutter UI.
 4. **Core** — stable clock, design tokens, metadata, links, localization helper, formatting, structured logging, and safe external-link launching.
 
-Running timers persist an absolute UTC deadline. During one process lifetime, countdown calculations use a monotonic clock anchored to UTC so a wall-clock edit does not directly make a live timer jump. On resume/startup, the controller reconciles elapsed interval steps and synchronizes notification behavior according to the target's delivery capability.
+Running timers persist an absolute UTC deadline. During one process lifetime, countdown calculations use a monotonic clock anchored to UTC so a wall-clock edit does not directly make a live timer jump. On resume/startup, the controller reconciles elapsed interval steps and synchronizes notification behavior according to the target's delivery capability and, on Windows, the current packaging identity.
 
 See [`docs/architecture.md`](docs/architecture.md), [`docs/notification-support.md`](docs/notification-support.md), and [`docs/adr/`](docs/adr/) for architectural decisions.
 
@@ -249,12 +254,15 @@ Countora has no authentication or cloud service. Security work therefore focuses
 - Local corruption falls back to a safe recoverable state.
 - Sensitive structured-log keys are redacted.
 - External URL-launch and clipboard platform failures are contained at guarded boundaries.
-- Notification capability is explicit: scheduled targets use native future delivery, Linux/Web use runtime fallbacks, and unknown targets fail closed.
+- Notification capability is explicit: Android/iOS/macOS and package-identity Windows use future scheduling; Linux/Web/portable Windows use runtime fallbacks; unknown targets fail closed.
+- Windows package version metadata is kept synchronized with the Flutter application version.
+- Generated Android notification setup enforces required scheduling receivers, permissions, desugaring, multidex, and a compatible AGP floor.
+- Generated iOS setup installs the notification-center delegate needed for foreground notification presentation.
 - Dependency Review blocks newly introduced moderate-or-higher vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
 - Tagged releases run deterministic required-file, version-sync, tracked-secret, and documentation-link audits.
 - Release artifacts include SHA-256 digests for post-download integrity checks.
-- Signing keys, `.env`, keystores, and generated credentials are ignored.
+- Signing keys, `.env`, keystores, certificates, and generated credentials are ignored or kept outside source control.
 
 Read [`SECURITY.md`](SECURITY.md) and [`PRIVACY.md`](PRIVACY.md).
 
@@ -271,15 +279,15 @@ The main CI workflow checks:
 - local Markdown links
 - Web release build
 
-The cross-platform smoke workflow additionally compiles:
+The cross-platform smoke workflow additionally compiles/verifies:
 
 - Android on Ubuntu
 - Linux on Ubuntu
-- Windows on Windows
+- portable Windows and MSIX packaging on Windows
 - macOS on macOS
 - unsigned iOS on macOS
 
-A separate Linux CI job runs the primary `integration_test` journey under Xvfb. Tagged releases additionally run repository-integrity checks and build Android APK/AAB, Web, Linux, Windows, macOS, and an unsigned iOS application artifact, with SHA-256 checksum files published alongside them. Signed store distribution remains an external release-credential step.
+A separate Linux CI job runs the primary `integration_test` journey under Xvfb. Tagged releases additionally run repository-integrity checks and build Android APK/AAB, Web, Linux, portable Windows, macOS, and an unsigned iOS application artifact. The Windows tagged job also verifies an MSIX package-identity build. Production-signed MSIX/store distribution remains an external release-credential step and is not implied by CI packaging verification.
 
 No release should be considered verified until the corresponding GitHub Actions runs are observed as successful.
 
