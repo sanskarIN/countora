@@ -133,7 +133,7 @@ jobs:
     name: Build Windows
     needs: quality-and-mobile-web
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
@@ -143,21 +143,23 @@ jobs:
       - run: dart run tool/bootstrap_platforms.dart
       - run: flutter pub get
       - run: flutter gen-l10n
-      - name: Build Windows release
+      - name: Build portable Windows release
         run: flutter build windows --release
-      - name: Archive Windows release
+      - name: Archive portable Windows release
         shell: pwsh
         run: >-
           Compress-Archive
           -Path build\windows\x64\runner\Release\*
           -DestinationPath build\countora-windows-x64.zip
+      - name: Verify package-identity Windows MSIX build
+        run: dart run msix:create
       - name: Create Windows checksum
         shell: pwsh
         run: |
           $artifact = "build\countora-windows-x64.zip"
           $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  countora-windows-x64.zip" | Set-Content -NoNewline "build\countora-windows-x64.zip.sha256"
-      - name: Publish Windows artifact
+      - name: Publish portable Windows artifact
         uses: softprops/action-gh-release@v2
         with:
           files: |
