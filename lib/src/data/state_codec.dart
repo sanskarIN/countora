@@ -16,6 +16,7 @@ class CountoraStateCodec {
   static const int maxPresets = 500;
   static const int maxHistoryEntries = 500;
   static const int maxIntervalsPerTimer = 32;
+  static const int maxIdLength = 128;
   static const int maxNameLength = 80;
   static const int maxGroupLength = 40;
   static const int maxIntervalSeconds = 365 * 24 * 60 * 60;
@@ -110,8 +111,8 @@ class CountoraStateCodec {
     final timers = <CountdownTimer>[];
     for (final timer in state.timers) {
       if (timers.length >= maxTimers) break;
-      final id = timer.id.trim();
-      if (id.isEmpty || !timerIds.add(id)) continue;
+      final id = _cleanId(timer.id);
+      if (id == null || !timerIds.add(id)) continue;
       timers.add(_sanitizeTimer(timer, id));
     }
 
@@ -119,8 +120,8 @@ class CountoraStateCodec {
     final presets = <TimerPreset>[];
     for (final preset in state.presets) {
       if (presets.length >= maxPresets) break;
-      final id = preset.id.trim();
-      if (id.isEmpty || !presetIds.add(id)) continue;
+      final id = _cleanId(preset.id);
+      if (id == null || !presetIds.add(id)) continue;
       presets.add(
         TimerPreset(
           id: id,
@@ -135,8 +136,8 @@ class CountoraStateCodec {
     final history = <TimerHistoryEntry>[];
     for (final entry in state.history) {
       if (history.length >= maxHistoryEntries) break;
-      final timerId = entry.timerId.trim();
-      if (timerId.isEmpty) continue;
+      final timerId = _cleanId(entry.timerId);
+      if (timerId == null) continue;
       history.add(
         TimerHistoryEntry(
           timerId: timerId,
@@ -214,6 +215,12 @@ class CountoraStateCodec {
       steps.add(const IntervalStep(label: 'Timer', durationSeconds: 60));
     }
     return List<IntervalStep>.unmodifiable(steps);
+  }
+
+  String? _cleanId(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed.length > maxIdLength) return null;
+    return trimmed;
   }
 
   String _cleanText(String value, {required String fallback}) {
