@@ -34,6 +34,7 @@ void main() {
             useCount: 2,
           ),
         ],
+        settings: const CountoraSettings(language: CountoraLanguage.hindi),
       );
 
       final decoded = codec.decode(codec.encode(state));
@@ -41,6 +42,7 @@ void main() {
       expect(decoded.timers.single.name, 'Tea');
       expect(decoded.timers.single.remainingWhenPausedSeconds, 120);
       expect(decoded.presets.single.useCount, 2);
+      expect(decoded.settings.language, CountoraLanguage.hindi);
     });
 
     test('encoded state includes the current schema version', () {
@@ -68,6 +70,7 @@ void main() {
 
       expect(decoded.timers, isEmpty);
       expect(decoded.presets, isEmpty);
+      expect(decoded.settings.language, CountoraLanguage.system);
     });
 
     test('rejects backups from a future schema', () {
