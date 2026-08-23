@@ -47,7 +47,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Markdown local-link checker.
 - Release-only committed dependency-lock audit that rejects missing/empty/malformed `pubspec.lock` metadata before dependency resolution.
 - Deterministic localization-source audit enforced by repository audit, normal CI, and tagged release CI before generated localization code is created.
-- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, important UI/cross-platform regressions, and issue-template configuration.
+- Expanded required-file contract protecting repository audit, release tooling, localization/backup/diagnostic audit tooling, critical docs, branding source, integration journey source, core model/state/controller regressions, important UI/cross-platform regressions, and issue-template configuration.
 - CodeQL scan for supported GitHub Actions code.
 - Multi-platform tagged release jobs for Android, Web, Linux, portable Windows, macOS, and unsigned iOS verification, with Windows MSIX packaging verification.
 - Dedicated non-tagged platform-smoke workflow compiling Android, Linux, portable Windows, Windows MSIX, macOS, and unsigned iOS targets on their appropriate GitHub-hosted runners.
@@ -71,6 +71,7 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Native notification permission is requested at most once per controller session where that automatic native path applies.
 - Web notification permission is no longer requested automatically by `LocalNotificationService.requestPermissions()`; the explicit Settings button owns the browser user-gesture boundary.
 - Disabling notifications cancels active platform schedules/runtime timers; enabling them reschedules running timers after settings persistence succeeds.
+- Sound, vibration, and quiet-mode changes reschedule running notifications when needed, while theme, language, compact-card, reduced-motion, and onboarding changes no longer churn notification schedules.
 - Multi-step notification cancellation now continues through the full bounded notification-ID range even when one plugin cancellation fails.
 - Android exact scheduling falls back to inexact scheduling if exact alarms cannot be used.
 - Linux, Web, and portable Windows use runtime local-notification fallback instead of being treated as unsupported notification targets.
