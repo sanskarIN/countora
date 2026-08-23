@@ -72,13 +72,33 @@ LocalizationAuditResult auditLocaleCatalogs({
 }) {
   final errors = <String>[];
   final templateKeys = _messageKeys(templateArb);
+  final localeOwners = <String, String>{};
 
   for (final catalog in localeArbs.entries) {
     final path = catalog.key;
     final arb = catalog.value;
     final locale = arb['@@locale'];
+    String? normalizedLocale;
     if (locale is! String || locale.trim().isEmpty) {
       errors.add('$path must declare a non-empty @@locale.');
+    } else {
+      normalizedLocale = locale.trim();
+      final previousOwner = localeOwners[normalizedLocale];
+      if (previousOwner != null) {
+        errors.add(
+          '$path and $previousOwner both declare @@locale "$normalizedLocale".',
+        );
+      } else {
+        localeOwners[normalizedLocale] = path;
+      }
+
+      final filenameLocale = _localeFromArbPath(path);
+      if (filenameLocale != null && filenameLocale != normalizedLocale) {
+        errors.add(
+          '$path declares @@locale "$normalizedLocale" but its filename '
+          'declares "$filenameLocale".',
+        );
+      }
     }
 
     final keys = _messageKeys(arb);
@@ -118,3 +138,10 @@ Set<String> referencedLocalizationKeys(String source) {
 Set<String> _messageKeys(Map<String, Object?> arb) => arb.keys
     .where((key) => !key.startsWith('@'))
     .toSet();
+
+String? _localeFromArbPath(String path) {
+  final normalized = path.replaceAll('\\', '/');
+  final filename = normalized.split('/').last;
+  final match = RegExp(r'^app_([A-Za-z0-9_\-]+)\.arb$').firstMatch(filename);
+  return match?.group(1);
+}
