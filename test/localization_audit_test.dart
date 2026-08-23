@@ -104,10 +104,63 @@ final action = context.l10n.openFocusMode;
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors.any((error) => error.contains('non-empty @@locale')), isTrue);
-    expect(result.errors.any((error) => error.contains('missing localization message "settings"')), isTrue);
-    expect(result.errors.any((error) => error.contains('unknown localization message "unknown"')), isTrue);
-    expect(result.errors.any((error) => error.contains('localization message "appName" must be non-empty')), isTrue);
+    expect(
+      result.errors.any((error) => error.contains('non-empty @@locale')),
+      isTrue,
+    );
+    expect(
+      result.errors.any(
+        (error) => error.contains('missing localization message "settings"'),
+      ),
+      isTrue,
+    );
+    expect(
+      result.errors.any(
+        (error) => error.contains('unknown localization message "unknown"'),
+      ),
+      isTrue,
+    );
+    expect(
+      result.errors.any(
+        (error) => error.contains(
+          'localization message "appName" must be non-empty',
+        ),
+      ),
+      isTrue,
+    );
+  });
+
+  test('reports filename locale mismatch and duplicate locale declarations', () {
+    final result = auditLocaleCatalogs(
+      templateArb: const <String, Object?>{
+        '@@locale': 'en',
+        'appName': 'Countora',
+      },
+      localeArbs: const <String, Map<String, Object?>>{
+        'lib/l10n/app_hi.arb': <String, Object?>{
+          '@@locale': 'fr',
+          'appName': 'Countora',
+        },
+        'lib/l10n/app_fr.arb': <String, Object?>{
+          '@@locale': 'fr',
+          'appName': 'Countora',
+        },
+      },
+    );
+
+    expect(result.isValid, isFalse);
+    expect(
+      result.errors.any(
+        (error) => error.contains('app_hi.arb declares @@locale "fr"'),
+      ),
+      isTrue,
+    );
+    expect(
+      result.errors.any(
+        (error) => error.contains('both declare @@locale "fr"'),
+      ),
+      isTrue,
+    );
   });
 
   test('extracts strings and context localization references', () {
