@@ -57,6 +57,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Advanced interval editor ordering and labels
 - [x] Richer focus mode controls
 - [x] Desktop keyboard shortcuts
+- [x] Persisted System/English/Hindi language selector
 
 ### UX/platform quality
 
@@ -64,10 +65,14 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Main accessibility semantics improvements
 - [x] Correct focus-mode entry/exit semantics copy
 - [x] English generated-localization architecture
+- [x] Complete Hindi localization with immediate runtime switching
+- [x] System-locale fallback plus explicit English/Hindi override
 - [x] Structured redacting diagnostics with recursive nested-map/iterable sanitization
 - [x] Guarded URL-launch and clipboard failure handling
 - [x] Recoverable controller errors visible across Timers, Presets, and History
 - [x] Settings listens to live controller changes and surfaces persistence failures
+- [x] Language dropdown stays synchronized after external settings/import changes
+- [x] Non-notification settings changes avoid unnecessary notification rescheduling
 - [x] Responsive phone/tablet/desktop/Web navigation
 - [x] Dark/light/system themes and reduced motion
 - [x] Notification controls available on all six supported Countora platform families where local notifications are available
@@ -83,6 +88,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Expanded controller workflow tests
 - [x] Controller collection-cap regression tests
 - [x] Persistence/notification consistency regression tests
+- [x] Notification-setting change/reschedule/cancellation regression tests
 - [x] Notification cleanup continuation regression tests
 - [x] Runtime notification deadline-policy regression tests
 - [x] Web user-gesture notification-permission boundary tests
@@ -103,8 +109,9 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Focus-mode semantics widget regression
 - [x] Primary integration journey source
 - [x] Dedicated Linux/Xvfb integration CI job source
-- [x] Localization tests including browser-permission copy
-- [x] Deterministic localization-source audit before generated localization code
+- [x] English/Hindi localization and regional-locale resolution tests
+- [x] Persisted-language startup/Settings/backup regression coverage
+- [x] Deterministic localization-source and translated-catalog parity/identity audit before generated localization code
 - [x] Localization-source audit enforced in repository audit, normal CI, and tagged release CI
 - [x] Deterministic state-codec performance benchmark harness
 - [x] Documentation local-link checker
@@ -161,7 +168,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 
 These are deliberately not part of 0.2 unless they can be added without compromising reliability or simplicity:
 
-- additional translated locales
+- additional translated locales beyond English and Hindi
 - optional home-screen/platform widgets where native support is justified
 - richer preset analytics that remain entirely local
 - additional notification actions where platform APIs can be implemented consistently
