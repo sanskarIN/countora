@@ -428,8 +428,15 @@ class TimerController extends ChangeNotifier {
   }
 
   Future<void> updateSettings(CountoraSettings value) async {
+    final previous = _settings;
     final notificationsWereDisabled =
-        _settings.notificationsEnabled && !value.notificationsEnabled;
+        previous.notificationsEnabled && !value.notificationsEnabled;
+    final notificationsWereEnabled =
+        !previous.notificationsEnabled && value.notificationsEnabled;
+    final notificationPresentationChanged =
+        previous.soundEnabled != value.soundEnabled ||
+        previous.vibrationEnabled != value.vibrationEnabled ||
+        previous.quietMode != value.quietMode;
     _settings = value;
 
     if (!await _persist()) return;
@@ -438,7 +445,8 @@ class TimerController extends ChangeNotifier {
       for (final timer in _timers) {
         await _notifications.cancelTimer(timer.id);
       }
-    } else if (value.notificationsEnabled) {
+    } else if (value.notificationsEnabled &&
+        (notificationsWereEnabled || notificationPresentationChanged)) {
       for (final timer in _timers.where(
         (item) => item.status == CountdownStatus.running,
       )) {
