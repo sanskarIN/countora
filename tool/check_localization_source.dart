@@ -11,22 +11,37 @@ void main() {
     return;
   }
 
-  final Object? decoded;
+  final Map<String, Object?> arb;
   try {
-    decoded = jsonDecode(arbFile.readAsStringSync());
+    arb = _decodeArbFile(arbFile);
   } on FormatException catch (error) {
-    stderr.writeln('lib/l10n/app_en.arb is invalid JSON: ${error.message}');
+    stderr.writeln('${arbFile.path} is invalid: ${error.message}');
     exitCode = 1;
     return;
   }
 
-  if (decoded is! Map<Object?, Object?>) {
-    stderr.writeln('lib/l10n/app_en.arb must contain a JSON object.');
-    exitCode = 1;
-    return;
+  final localeCatalogs = <String, Map<String, Object?>>{};
+  final l10nDirectory = Directory('lib/l10n');
+  final localeFiles = l10nDirectory
+      .listSync(followLinks: false)
+      .whereType<File>()
+      .where(
+        (file) => file.path.replaceAll('\\', '/').split('/').last.startsWith('app_'),
+      )
+      .where((file) => file.path.endsWith('.arb') && file.path != arbFile.path)
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+
+  for (final file in localeFiles) {
+    try {
+      localeCatalogs[file.path.replaceAll('\\', '/')] = _decodeArbFile(file);
+    } on FormatException catch (error) {
+      stderr.writeln('${file.path} is invalid: ${error.message}');
+      exitCode = 1;
+      return;
+    }
   }
 
-  final arb = decoded.map((key, value) => MapEntry('$key', value));
   final sources = <String, String>{};
   final libDirectory = Directory('lib');
   if (!libDirectory.existsSync()) {
@@ -42,18 +57,40 @@ void main() {
     sources[normalized] = entity.readAsStringSync();
   }
 
-  final result = auditLocalizationSources(arb: arb, dartSources: sources);
-  if (!result.isValid) {
+  final sourceResult = auditLocalizationSources(arb: arb, dartSources: sources);
+  final catalogResult = auditLocaleCatalogs(
+    templateArb: arb,
+    localeArbs: localeCatalogs,
+  );
+  final errors = <String>[...sourceResult.errors, ...catalogResult.errors];
+  if (errors.isNotEmpty) {
     stderr.writeln('Countora localization source audit failed:');
-    for (final error in result.errors) {
+    for (final error in errors) {
       stderr.writeln('  - $error');
     }
     exitCode = 1;
     return;
   }
 
+  final messageCount =
+      arb.entries.where((entry) => !entry.key.startsWith('@')).length;
   stdout.writeln(
-    'Verified ${arb.entries.where((entry) => !entry.key.startsWith('@')).length} '
-    'English localization messages across ${sources.length} Dart source files.',
+    'Verified $messageCount English localization messages across '
+    '${sources.length} Dart source files and ${localeCatalogs.length} '
+    'translated locale catalog(s).',
   );
+}
+
+Map<String, Object?> _decodeArbFile(File file) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(file.readAsStringSync());
+  } on FormatException catch (error) {
+    throw FormatException('invalid JSON: ${error.message}');
+  }
+
+  if (decoded is! Map<Object?, Object?>) {
+    throw const FormatException('must contain a JSON object.');
+  }
+  return decoded.map((key, value) => MapEntry('$key', value));
 }
