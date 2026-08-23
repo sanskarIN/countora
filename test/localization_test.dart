@@ -14,6 +14,10 @@ void main() {
     expect(strings.importLocalBackup, 'Import local backup');
     expect(strings.openFocusMode, 'Open focus mode');
     expect(strings.exitFocusMode, 'Exit focus mode');
+    expect(strings.language, 'Language');
+    expect(strings.systemLanguage, 'System language');
+    expect(strings.englishLanguage, 'English');
+    expect(strings.hindiLanguage, 'Hindi');
     expect(
       strings.backupExportFailed,
       'Could not copy the backup. Your local Countora data was unchanged.',
@@ -42,10 +46,26 @@ void main() {
     );
   });
 
-  test('English is a supported application locale', () {
+  test('Hindi localization exposes core Countora copy', () async {
+    final strings = await AppLocalizations.delegate.load(const Locale('hi'));
+
+    expect(strings.appName, 'Countora');
+    expect(strings.timers, 'टाइमर');
+    expect(strings.presets, 'प्रीसेट');
+    expect(strings.history, 'इतिहास');
+    expect(strings.settings, 'सेटिंग्स');
+    expect(strings.language, 'भाषा');
+    expect(strings.systemLanguage, 'सिस्टम भाषा');
+    expect(strings.englishLanguage, 'अंग्रेज़ी');
+    expect(strings.hindiLanguage, 'हिन्दी');
+    expect(strings.openFocusMode, 'फोकस मोड खोलें');
+    expect(strings.exitFocusMode, 'फोकस मोड से बाहर आएँ');
+  });
+
+  test('English and Hindi are supported application locales', () {
     expect(
       AppLocalizations.supportedLocales,
-      contains(const Locale('en')),
+      containsAll(<Locale>[const Locale('en'), const Locale('hi')]),
     );
   });
 }
