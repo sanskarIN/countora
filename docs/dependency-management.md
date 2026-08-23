@@ -31,6 +31,7 @@ The lockfile must be produced by the approved Flutter toolchain. Do not:
 A normal dependency refresh starts with:
 
 ```bash
+dart run tool/check_localization_source.dart
 dart run tool/bootstrap_platforms.dart
 flutter pub get
 dart run tool/check_dependency_lock.dart
@@ -50,7 +51,7 @@ The workflow runs when its dependency inputs change and can also be started manu
 
 1. checks out `main`;
 2. installs the shared pinned Flutter toolchain;
-3. validates localization references;
+3. validates localization references and every translated catalog;
 4. generates and patches all Flutter platform runners;
 5. resolves dependencies;
 6. validates the generated lockfile shape;
@@ -60,7 +61,7 @@ The workflow runs when its dependency inputs change and can also be started manu
 10. runs the Flutter unit/widget test suite;
 11. runs repository, version, secret, and documentation checks;
 12. verifies patch whitespace hygiene;
-13. uploads the verified lockfile as a short-lived workflow artifact;
+13. uploads the verified lockfile as a 14-day workflow artifact;
 14. commits only `pubspec.lock` when it actually changed;
 15. uses `sanskarin@outlook.in` as the automated Git commit email.
 
