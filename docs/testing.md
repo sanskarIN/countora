@@ -1,21 +1,21 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, notification synchronization, cross-platform capability decisions, browser permission boundaries, native runner patching, packaging metadata, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, localization/catalog integrity, cross-platform capability decisions, browser permission boundaries, native runner patching, packaging metadata, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
 ### Domain tests
 
-`test/models_test.dart` covers timer-model behavior such as serialization, remaining-time calculation, negative-time clamping, and malformed-state recovery.
+`test/models_test.dart` covers timer-model behavior such as serialization, remaining-time calculation, negative-time clamping, malformed-state recovery, and persisted language-preference parsing/round trips.
 
 ### State codec and persistence tests
 
 `test/state_codec_test.dart` covers:
 
-- supported-state round trips
+- supported-state round trips, including persisted language preference
 - codec-owned schema stamping
 - domain serialization remaining schema-agnostic
-- legacy unversioned migration
+- legacy unversioned migration with System-language fallback
 - future-schema rejection
 - non-object backup rejection
 - malformed field-type rejection
@@ -36,7 +36,7 @@ Countora treats timing, persistence, backup parsing, notification synchronizatio
 
 `test/stable_clock_test.dart` verifies the monotonic clock anchor behavior without using real elapsed time.
 
-`test/timer_controller_test.dart` and `test/timer_controller_workflows_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, and history reuse.
+`test/timer_controller_test.dart` and `test/timer_controller_workflows_test.dart` cover timer creation, persistence, pause/resume, interval rollover, notification behavior, duplication, editing, bulk controls, imports, reset, history reuse, and settings/notification synchronization. In particular, controller tests verify that visual/language settings do not churn running notification schedules while notification enablement and presentation-cue changes still perform the required cancellation/rescheduling work.
 
 `test/timer_controller_limits_test.dart` verifies that live timer/preset creation respects the same collection caps as persistence decoding and that a full timer collection does not increment preset usage without creating a timer.
 
@@ -91,7 +91,7 @@ The logger regression deliberately uses synthetic credential-like strings. It mu
 - iOS notification-center delegate installation before plugin registration;
 - iOS patch idempotence and explicit template-drift failure.
 
-The declared Flutter baseline, 3.38.1, already generates Gradle 8.14, AGP 8.11.1, and compileSdk 36. The AGP transform is therefore a defensive floor on the supported baseline, not a forced downgrade/upgrade during normal generation.
+The repository-approved CI Flutter baseline is 3.44.7. The Android transform enforces AGP 8.11.1 as a compatibility floor and leaves newer generated versions untouched rather than forcing a downgrade.
 
 ### Version and Windows packaging tests
 
@@ -105,19 +105,25 @@ The declared Flutter baseline, 3.38.1, already generates Gradle 8.14, AGP 8.11.1
 
 For example, package `0.2.0+2` requires MSIX `0.2.0.2`.
 
+### Localization tests
+
+`test/localization_audit_test.dart` verifies the pure source audit rejects missing English references, missing/extra/blank translated messages, duplicate locale declarations, and ARB filename/`@@locale` mismatches.
+
+`test/localization_test.dart` verifies English and Hindi generated delegate behavior, core translated copy, language Settings labels, focus-mode entry/exit semantics, notification explanatory copy, and regional `en-IN`/`hi-IN` language support.
+
+`test/app_language_test.dart` verifies a persisted Hindi preference localizes the application immediately at startup.
+
 ### Widget tests
 
 `test/home_page_test.dart` covers primary timer presentation, accessible semantics, the focus-mode entry hint, filtered empty states, resume controls, and history replay.
 
 `test/home_error_banner_test.dart` verifies recoverable controller failures remain visible and dismissible after navigating away from the Timers destination, including the Presets surface.
 
-`test/settings_page_test.dart` covers Settings sections, reduced-motion persistence, destructive reset confirmation, clipboard-backup failure feedback, runtime-notification controls, and fail-closed notification controls on unsupported targets. Web-only rendering of the browser permission action must additionally be exercised in a real/Web widget target because `kIsWeb` cannot be toggled in a normal VM widget test.
+`test/settings_page_test.dart` covers Settings sections, persisted/immediate language switching, reduced-motion persistence, destructive reset confirmation, clipboard-backup failure feedback, runtime-notification controls, and fail-closed notification controls on unsupported targets. Web-only rendering of the browser permission action must additionally be exercised in a real/Web widget target because `kIsWeb` cannot be toggled in a normal VM widget test.
 
 `test/settings_reactivity_test.dart` verifies the pushed Settings route listens to controller changes and surfaces controller persistence failures without requiring navigation back to Home.
 
 `test/keyboard_shortcuts_test.dart` covers the primary desktop keyboard shortcuts.
-
-`test/localization_test.dart` verifies English localization generation/delegate behavior, including distinct focus-mode entry/exit semantics, scheduled-vs-runtime notification explanatory copy, and browser-permission copy.
 
 ### Integration journey
 
@@ -129,7 +135,7 @@ For example, package `0.2.0+2` requires MSIX `0.2.0.2`.
 4. save it as a preset
 5. start another timer from that preset
 
-CI has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, validates committed localization references, generates Countora's platform runners/localization source, and executes the integration suite against the Linux desktop target in a virtual display.
+CI has a dedicated Linux integration job that installs the required GTK build dependencies plus Xvfb, validates committed localization references/catalogs, generates Countora's platform runners/localization source, and executes the integration suite against the Linux desktop target in a virtual display.
 
 ## Cross-platform build smoke coverage
 
@@ -148,7 +154,7 @@ The Windows job runs `tool/check_version_sync.dart` before packaging so stale MS
 
 Web compilation remains part of `.github/workflows/ci.yml` as a release-mode Web build.
 
-Each platform-smoke job performs localization-source validation, deterministic runner generation, dependency resolution, localization generation, and a host-appropriate build. Windows additionally exercises both portable and package-identity distribution modes.
+Each platform-smoke job performs localization-source/catalog validation, deterministic runner generation, dependency resolution, localization generation, and a host-appropriate build. Windows additionally exercises both portable and package-identity distribution modes.
 
 The existence of this workflow is source coverage only. A platform must not be described as build-verified until its actual workflow result has been observed as successful.
 
@@ -172,7 +178,7 @@ The harness verifies every encode/decode round trip and emits JSON with fixture 
 
 ## Standard local quality suite
 
-Validate version/package metadata and committed localization references:
+Validate version/package metadata and committed localization references/catalogs:
 
 ```bash
 dart run tool/check_version_sync.dart
@@ -232,7 +238,7 @@ The main Flutter quality job performs:
 
 1. checkout
 2. Flutter setup
-3. deterministic localization-source/reference validation
+3. deterministic localization-source/reference/catalog validation
 4. deterministic platform-runner generation and native patching
 5. dependency resolution
 6. localization generation
@@ -246,7 +252,7 @@ The Linux integration job performs:
 
 1. checkout and Flutter setup
 2. installation of GTK/Linux build dependencies and Xvfb
-3. deterministic localization-source/reference validation
+3. deterministic localization-source/reference/catalog validation
 4. deterministic platform-runner generation
 5. dependency resolution and localization generation
 6. the full `integration_test` directory against `-d linux`
@@ -255,9 +261,9 @@ The Linux integration job performs:
 
 Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful.
 
-## Native and browser verification
+## Native, browser, and localization verification
 
-Automated Dart/widget/build-smoke/Linux integration tests cannot fully prove OS/browser notification behavior. Before a stable release, manually verify on supported targets where applicable:
+Automated Dart/widget/build-smoke/Linux integration tests cannot fully prove OS/browser notification behavior or visual translation quality. Before a stable release, manually verify on supported targets where applicable:
 
 - native notification permission prompts;
 - Web Settings **Browser notification permission → Allow** prompt from a direct user interaction;
@@ -277,6 +283,8 @@ Automated Dart/widget/build-smoke/Linux integration tests cannot fully prove OS/
 - exact-alarm denied fallback behavior;
 - pause/resume after suspension;
 - app-resume reconciliation;
+- System/English/Hindi switching and persistence across restart;
+- Hindi labels/layout at narrow width and large text;
 - keyboard shortcuts and focus traversal on desktop/Web;
 - screen-reader labels and live-region behavior;
 - Settings capability messaging for scheduled and runtime-only targets.
