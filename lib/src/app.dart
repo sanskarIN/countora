@@ -49,6 +49,7 @@ class _CountoraAppState extends State<CountoraApp>
           onGenerateTitle: (context) => AppLocalizations.of(context).appName,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          locale: controller.settings.language.locale,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: controller.settings.themeMode,
