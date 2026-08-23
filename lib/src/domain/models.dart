@@ -2,6 +2,22 @@ import 'package:flutter/material.dart';
 
 enum CountdownStatus { running, paused, completed }
 
+enum CountoraLanguage { system, english, hindi }
+
+extension CountoraLanguageCodec on CountoraLanguage {
+  static CountoraLanguage parse(Object? value) =>
+      CountoraLanguage.values.firstWhere(
+        (item) => item.name == value,
+        orElse: () => CountoraLanguage.system,
+      );
+
+  Locale? get locale => switch (this) {
+        CountoraLanguage.system => null,
+        CountoraLanguage.english => const Locale('en'),
+        CountoraLanguage.hindi => const Locale('hi'),
+      };
+}
+
 extension CountdownStatusCodec on CountdownStatus {
   static CountdownStatus parse(String value) =>
       CountdownStatus.values.firstWhere(
@@ -260,6 +276,7 @@ class TimerHistoryEntry {
 class CountoraSettings {
   const CountoraSettings({
     this.themeMode = ThemeMode.system,
+    this.language = CountoraLanguage.system,
     this.notificationsEnabled = true,
     this.soundEnabled = true,
     this.vibrationEnabled = true,
@@ -270,6 +287,7 @@ class CountoraSettings {
   });
 
   final ThemeMode themeMode;
+  final CountoraLanguage language;
   final bool notificationsEnabled;
   final bool soundEnabled;
   final bool vibrationEnabled;
@@ -280,6 +298,7 @@ class CountoraSettings {
 
   CountoraSettings copyWith({
     ThemeMode? themeMode,
+    CountoraLanguage? language,
     bool? notificationsEnabled,
     bool? soundEnabled,
     bool? vibrationEnabled,
@@ -290,6 +309,7 @@ class CountoraSettings {
   }) {
     return CountoraSettings(
       themeMode: themeMode ?? this.themeMode,
+      language: language ?? this.language,
       notificationsEnabled:
           notificationsEnabled ?? this.notificationsEnabled,
       soundEnabled: soundEnabled ?? this.soundEnabled,
@@ -303,6 +323,7 @@ class CountoraSettings {
 
   Map<String, Object?> toJson() => {
         'themeMode': themeMode.name,
+        'language': language.name,
         'notificationsEnabled': notificationsEnabled,
         'soundEnabled': soundEnabled,
         'vibrationEnabled': vibrationEnabled,
@@ -321,6 +342,7 @@ class CountoraSettings {
 
     return CountoraSettings(
       themeMode: themeMode,
+      language: CountoraLanguageCodec.parse(json['language']),
       notificationsEnabled: readBool('notificationsEnabled', true),
       soundEnabled: readBool('soundEnabled', true),
       vibrationEnabled: readBool('vibrationEnabled', true),
