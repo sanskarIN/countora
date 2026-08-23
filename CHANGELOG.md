@@ -33,6 +33,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Structured diagnostics with recursive sensitive-key redaction across nested maps/iterables.
 - Countora design tokens and centralized release metadata.
 - Generated Flutter localization architecture with English ARB resources.
+- Complete Hindi ARB localization and a persisted System/English/Hindi language selector that is included in local backup data.
+- Localization catalog parity/identity auditing for missing, extra, blank, duplicate, or filename-mismatched locale resources.
 - Cross-platform notification delivery tiers: scheduled background delivery on Android/iOS/macOS and package-identity Windows, runtime local-notification fallback on Linux/Web/portable Windows, and fail-closed handling for unsupported future targets.
 - Cross-platform notification presentation details for Android, iOS, macOS, Linux, Windows, and Web.
 - Explicit Web **Browser notification permission → Allow** Settings action so browser permission is requested directly from user activation instead of an automatic timer/reconciliation path.
@@ -80,12 +82,13 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Windows smoke/release jobs now verify both portable compilation and MSIX package-identity creation; the portable ZIP remains the published CI artifact until a production MSIX signing/store strategy is configured.
 - Settings backup/import/reset UI is safer and more explicit.
 - Settings now listens directly to controller changes while its route is open and surfaces recoverable controller persistence errors without requiring navigation back to Home.
+- Settings language changes apply immediately, persist locally, and fall back safely to the system locale for older or unknown preference values.
 - Recoverable controller errors are displayed above the shared Home destination content, so Presets and History operations receive the same visible feedback as Timers.
 - Clipboard backup export now surfaces a localized failure message instead of allowing a platform-channel exception to escape.
 - Settings/About external links use a resilient launcher boundary that converts platform URL-launch failures into user-visible feedback.
 - Timer-card semantics now announce the **Open focus mode** action instead of incorrectly announcing the inverse exit action before navigation.
 - Main UI strings are externalized for future translations.
-- CI now generates localization source, formats `integration_test/`, validates committed localization references before generation, builds Web, runs the primary Linux integration journey, and has a separate cross-platform build/package smoke workflow for native targets.
+- CI now generates localization source, formats `integration_test/`, validates committed localization references and every translated catalog before generation, builds Web, runs the primary Linux integration journey, and has a separate cross-platform build/package smoke workflow for native targets.
 - Tagged release quality gates now require a reviewed committed dependency lock and deterministic localization-source audit before `flutter pub get`/`flutter gen-l10n`, in addition to repository/version/secret/test/integration/documentation/build checks.
 
 ### Fixed
@@ -103,6 +106,8 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - Prevented a single notification-plugin cancellation exception from abandoning cleanup of later interval notification IDs.
 - Prevented Presets/History controller failures from being hidden because the error banner existed only inside the Timers destination.
 - Prevented the pushed Settings route from displaying stale controller values or hiding save failures until navigation returned to Home.
+- Kept the language dropdown synchronized when backup import or another external settings change updates the persisted language while Settings remains open.
+- Updated the Linux runtime-notification regression copy to match the current distribution-mode wording.
 
 ### Security
 
