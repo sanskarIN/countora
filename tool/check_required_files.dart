@@ -61,6 +61,7 @@ void main() {
     'lib/src/data/notification_cleanup.dart',
     'lib/src/data/notification_service.dart',
     'lib/src/data/web_notification_permission.dart',
+    'test/app_language_test.dart',
     'test/app_logger_test.dart',
     'test/backup_inspection_test.dart',
     'test/dependency_lock_audit_test.dart',
