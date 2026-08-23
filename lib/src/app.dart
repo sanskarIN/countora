@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import 'core/app_theme.dart';
+import 'domain/models.dart';
 import 'presentation/home_page.dart';
 import 'presentation/timer_controller.dart';
 
