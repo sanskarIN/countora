@@ -66,6 +66,43 @@ LocalizationAuditResult auditLocalizationSources({
   return LocalizationAuditResult(errors: List<String>.unmodifiable(errors));
 }
 
+LocalizationAuditResult auditLocaleCatalogs({
+  required Map<String, Object?> templateArb,
+  required Map<String, Map<String, Object?>> localeArbs,
+}) {
+  final errors = <String>[];
+  final templateKeys = _messageKeys(templateArb);
+
+  for (final catalog in localeArbs.entries) {
+    final path = catalog.key;
+    final arb = catalog.value;
+    final locale = arb['@@locale'];
+    if (locale is! String || locale.trim().isEmpty) {
+      errors.add('$path must declare a non-empty @@locale.');
+    }
+
+    final keys = _messageKeys(arb);
+    final missing = templateKeys.difference(keys).toList()..sort();
+    final extra = keys.difference(templateKeys).toList()..sort();
+
+    for (final key in missing) {
+      errors.add('$path is missing localization message "$key".');
+    }
+    for (final key in extra) {
+      errors.add('$path contains unknown localization message "$key".');
+    }
+
+    for (final key in keys.intersection(templateKeys)) {
+      final value = arb[key];
+      if (value is! String || value.trim().isEmpty) {
+        errors.add('$path localization message "$key" must be non-empty.');
+      }
+    }
+  }
+
+  return LocalizationAuditResult(errors: List<String>.unmodifiable(errors));
+}
+
 Set<String> referencedLocalizationKeys(String source) {
   final result = <String>{};
   final pattern = RegExp(
@@ -77,3 +114,7 @@ Set<String> referencedLocalizationKeys(String source) {
   }
   return result;
 }
+
+Set<String> _messageKeys(Map<String, Object?> arb) => arb.keys
+    .where((key) => !key.startsWith('@'))
+    .toSet();
