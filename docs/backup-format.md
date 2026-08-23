@@ -150,6 +150,7 @@ A settings object can contain:
 ```json
 {
   "themeMode": "system",
+  "language": "system",
   "notificationsEnabled": true,
   "soundEnabled": true,
   "vibrationEnabled": true,
@@ -160,7 +161,15 @@ A settings object can contain:
 }
 ```
 
-Unknown/missing supported settings fall back to Countora's safe defaults where implemented. Platform capability remains separate from the saved preference: for example, a backup can contain `notificationsEnabled: true`, while Web/Linux still refuse unsupported future scheduling and keep only in-app completion behavior.
+The `language` field currently accepts Countora's persisted preference names:
+
+- `system` — follow the device/browser locale;
+- `english` — force English (`en`);
+- `hindi` — force Hindi (`hi`).
+
+Older backups that omit `language`, or backups containing an unknown language preference, safely fall back to `system`. This optional additive setting therefore does not require a persistence-schema bump.
+
+Unknown/missing supported settings fall back to Countora's safe defaults where implemented. Platform capability remains separate from the saved preference: for example, a backup can contain `notificationsEnabled: true`, while Web/Linux still refuse unsupported future scheduling and keep only their documented runtime notification behavior.
 
 ## Import transaction behavior
 
@@ -225,7 +234,7 @@ The inspection command is read-only. It never writes Countora application state 
 
 ## Privacy guidance
 
-Backup JSON can contain user-entered timer names, groups, interval labels, and completion history. Treat the complete backup as private user data.
+Backup JSON can contain user-entered timer names, groups, interval labels, completion history, and local preferences. Treat the complete backup as private user data.
 
 Do not:
 
