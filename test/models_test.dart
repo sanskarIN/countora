@@ -76,4 +76,27 @@ void main() {
       expect(decoded.currentStep.durationSeconds, 60);
     });
   });
+
+  group('CountoraSettings', () {
+    test('round trips explicit language preference', () {
+      const settings = CountoraSettings(language: CountoraLanguage.hindi);
+
+      final decoded = CountoraSettings.fromJson(settings.toJson());
+
+      expect(decoded.language, CountoraLanguage.hindi);
+      expect(decoded.language.locale?.languageCode, 'hi');
+    });
+
+    test('defaults missing and unknown language preferences to system', () {
+      final missing = CountoraSettings.fromJson(const <String, Object?>{});
+      final unknown = CountoraSettings.fromJson(
+        const <String, Object?>{'language': 'unsupported'},
+      );
+
+      expect(missing.language, CountoraLanguage.system);
+      expect(missing.language.locale, isNull);
+      expect(unknown.language, CountoraLanguage.system);
+      expect(unknown.language.locale, isNull);
+    });
+  });
 }
