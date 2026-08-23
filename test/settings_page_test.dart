@@ -77,10 +77,10 @@ void main() {
     expect(completionTile, findsOneWidget);
     expect(
       find.text(
-        'Future background scheduling is not available on this platform. '
-        'Countora can still deliver local completion notifications while its '
-        'runtime remains active, and in-app state plus visual completion cues '
-        'reconcile when you return.',
+        'Future background scheduling is not available on this platform or '
+        'distribution mode. Countora can still deliver local completion '
+        'notifications while its runtime remains active, and in-app state plus '
+        'visual completion cues reconcile when you return.',
       ),
       findsOneWidget,
     );
