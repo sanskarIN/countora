@@ -41,6 +41,30 @@ void main() {
     expect(find.text('Report an issue'), findsOneWidget);
   });
 
+  testWidgets('language selector persists and applies Hindi immediately', (
+    tester,
+  ) async {
+    controller = await _buildController();
+
+    await tester.pumpWidget(CountoraApp(controller: controller));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('System language'), findsOneWidget);
+
+    await tester.tap(find.text('System language'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hindi'));
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.language, CountoraLanguage.hindi);
+    expect(find.text('सेटिंग्स'), findsOneWidget);
+    expect(find.text('भाषा'), findsOneWidget);
+    expect(find.text('हिन्दी'), findsOneWidget);
+  });
+
   testWidgets('reduced motion preference persists through the controller', (
     tester,
   ) async {
