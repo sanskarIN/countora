@@ -32,7 +32,7 @@ jobs:
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
 
-      - name: Verify localization source references
+      - name: Verify localization source and catalogs
         run: dart run tool/check_localization_source.dart
 
       - name: Generate platform runners
@@ -79,7 +79,7 @@ jobs:
           name: countora-pubspec-lock-${{ github.run_id }}
           path: pubspec.lock
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
 
       - name: Commit reviewed lockfile when changed
         shell: bash
