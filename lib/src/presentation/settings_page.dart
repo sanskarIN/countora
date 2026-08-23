@@ -79,6 +79,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<CountoraLanguage>(
+                  key: ValueKey<CountoraLanguage>(settings.language),
                   initialValue: settings.language,
                   decoration: InputDecoration(
                     labelText: strings.language,
