@@ -1,6 +1,6 @@
 # Architecture
 
-Countora is a local-first modular Flutter monolith. The architecture is intentionally small enough for an offline countdown utility while keeping platform adapters, untrusted persistence, timer rules, and UI concerns separated.
+Countora is a local-first modular Flutter monolith. The architecture is intentionally small enough for an offline countdown utility while keeping platform adapters, untrusted persistence, timer rules, localization, and UI concerns separated.
 
 ## Layers
 
@@ -12,10 +12,11 @@ Owns immutable product data structures:
 - `CountdownTimer`
 - `TimerPreset`
 - `TimerHistoryEntry`
+- `CountoraLanguage`
 - `CountoraSettings`
 - `CountoraState`
 
-Domain models describe valid application state and serialization shape but do not know about SharedPreferences, notification plugins, widgets, or navigation.
+Domain models describe valid application state and serialization shape but do not know about SharedPreferences, notification plugins, widgets, or navigation. `CountoraLanguage` is a persisted user preference that resolves to either the system locale or an explicit supported locale.
 
 ### `lib/src/data`
 
@@ -26,6 +27,7 @@ Owns infrastructure/trust-boundary concerns:
 - `CountoraStateCodec`
 - `NotificationService` interface
 - `LocalNotificationService`
+- Web browser notification-permission boundary
 
 The controller depends on interfaces instead of plugin implementations. Unit/widget tests can therefore replace persistence and notifications with deterministic in-memory fakes.
 
@@ -39,7 +41,7 @@ Owns application state transitions and Flutter UI:
 - Settings/About screens
 - full-screen focus mode
 
-`TimerController` is the application coordinator. It contains timer transitions, reconciliation, persistence orchestration, and notification orchestration, while widgets remain mostly declarative.
+`TimerController` is the application coordinator. It contains timer transitions, reconciliation, persistence orchestration, settings changes, and notification orchestration, while widgets remain mostly declarative.
 
 ### `lib/src/core`
 
@@ -48,7 +50,7 @@ Owns cross-cutting application infrastructure:
 - `StableClock`
 - structured `AppLogger`
 - `openExternalUri` guarded external-launch boundary
-- `supportsScheduledNotifications` platform capability policy
+- notification delivery/capability policy
 - design tokens/theme
 - formatting helpers
 - application metadata/links
@@ -56,11 +58,19 @@ Owns cross-cutting application infrastructure:
 
 External links are routed through one small helper that converts a declined or throwing platform URL launch into a safe `false` result. Widgets can then show localized feedback without depending directly on plugin exception behavior.
 
-Scheduled-notification capability is centralized in `platform_capabilities.dart`. The current policy explicitly allows Android, iOS, macOS, and Windows native targets and fails closed for Web, Linux, Fuchsia, or any target not deliberately added to the supported set. The notification adapter and Settings UI consume the same policy so product copy, controls, and platform calls do not diverge.
+Notification capability is centralized in `platform_capabilities.dart`. It models three delivery modes rather than a binary supported/unsupported value:
+
+- `scheduledBackground` — Android, iOS, macOS, and package-identity Windows;
+- `runtimeOnly` — Linux, Web, and portable Windows;
+- `unavailable` — unsupported future targets unless explicitly added.
+
+The notification adapter and Settings UI consume the same policy so product copy, controls, and platform calls do not diverge. Windows selection is distribution-aware: normal portable builds use runtime delivery, while the MSIX build enables package-identity scheduling with `COUNTORA_WINDOWS_PACKAGED=true`.
 
 ### `lib/l10n`
 
-`app_en.arb` is the English source of truth for generated Flutter localization. Generated Dart localization files are build outputs and are not committed.
+`app_en.arb` is the English template/source of truth and `app_hi.arb` is the complete Hindi catalog. Generated Dart localization files are build outputs and are not committed.
+
+`tool/check_localization_source.dart` audits Dart message references plus translated catalog key parity, non-empty values, locale identity, duplicate locale declarations, and filename/`@@locale` consistency before generated localization source is trusted.
 
 ## Timer correctness model
 
@@ -94,9 +104,9 @@ When a running step expires:
 2. the next step starts from the previous absolute deadline, not from an arbitrary delayed UI tick;
 3. if no next step exists, the timer completes and a history entry is created;
 4. reconciled state is persisted;
-5. only after successful persistence are affected completion notifications synchronized where the target supports scheduling.
+5. only after successful persistence are affected completion notifications synchronized according to the target delivery mode.
 
-The notification adapter schedules the remaining sequence completion instants from the current step onward on targets with future-notification support.
+The notification adapter schedules remaining sequence completion instants on targets with future-notification support. Runtime-only targets maintain only the current in-process deadline callback because their process/page cannot guarantee future delivery after termination.
 
 ## Persistence and backup trust boundary
 
@@ -119,6 +129,8 @@ All persisted/imported JSON crosses `CountoraStateCodec`, which enforces:
 
 The codec owns persistence schema versioning. `CountoraState.toJson()` serializes domain state without stamping a schema version, while `CountoraStateCodec` adds the current persisted schema at the trust boundary. This keeps migration/version authority in one place.
 
+The language preference is an additive Settings field. Missing or unknown language values safely resolve to System language, so older backups remain compatible without a schema-version bump.
+
 Clipboard import validates and previews the incoming state before replacement. Import then stages the decoded/reconciled state, persists it, and only after successful persistence replaces related notification schedules. If that save fails, the previous in-memory state is restored and the previous schedules are left untouched. Clipboard export catches platform-channel failures and reports them without mutating local state.
 
 If locally persisted data is corrupted, startup falls back to a safe empty state rather than crashing. Import remains strict because silently replacing current valid data with malformed input would be destructive.
@@ -129,19 +141,24 @@ If locally persisted data is corrupted, startup falls back to a safe empty state
 
 The production adapter:
 
-- initializes platform notification implementations, including the web implementation when available
-- requests notification permissions only on targets where Countora can use future scheduling
-- schedules remaining timer/interval deadlines on supported scheduling targets
-- intentionally avoids future scheduling on Web and Linux and fails closed for unsupported native targets
-- falls back from exact Android scheduling to inexact scheduling when necessary
-- catches plugin/platform failures so notification infrastructure cannot crash a timer operation
-- cancels stale schedules when a successfully persisted timer transition requires it
-- derives its cancellation bound from the same state-codec interval limit used for validation
-- avoids logging user timer names/payload contents
+- initializes Android, iOS, macOS, Linux, Windows, and Web notification implementations where the plugin exposes them;
+- requests native permissions only through appropriate native paths;
+- never automatically requests Web browser notification permission from startup/reconciliation code;
+- schedules remaining timer/interval deadlines on `scheduledBackground` targets;
+- uses an in-process completion callback on `runtimeOnly` targets;
+- falls back from exact Android scheduling to inexact scheduling when necessary;
+- catches plugin/platform failures so notification infrastructure cannot crash a timer operation;
+- cancels stale schedules/runtime callbacks when a successfully persisted timer transition requires it;
+- derives its cancellation bound from the same state-codec interval limit used for validation;
+- avoids logging user timer names/payload contents.
 
-Web and Linux still use the same local timer model, persistence, resume reconciliation, and visible in-app completion state. Their lack of background scheduled completion delivery is a platform-capability limitation, not a different timer data model. Settings disables the scheduled-notification controls there and explains that in-app completion cues continue to work.
+Linux, Web, and portable Windows retain local notification delivery while the Countora runtime remains active. They deliberately do not claim the same guarantee as OS-scheduled targets once the process/page is gone. Controller reconciliation remains authoritative for timer state after restart/resume.
 
-Generated Android runner configuration is patched by `tool/bootstrap_platforms.dart` using pure transforms in `tool/src/platform_patches.dart`. Those transforms validate expected template anchors and their postconditions rather than silently accepting an unpatched runner when Flutter's template changes.
+Web permission is intentionally separated into `web_notification_permission.dart`. The Settings **Allow** action owns the direct user-gesture request required by browsers; automatic timer lifecycle paths do not prompt.
+
+Runtime notification cleanup preserves callbacks that have already reached their deadline so controller reconciliation cannot win an exact-deadline event-loop race and cancel a due completion notification before its callback gets a turn.
+
+Generated Android/iOS runner configuration is patched by `tool/bootstrap_platforms.dart` using pure transforms in `tool/src/platform_patches.dart`. Those transforms validate expected template anchors and their postconditions rather than silently accepting an unpatched runner when Flutter's template changes.
 
 ## State change and persistence model
 
@@ -153,8 +170,10 @@ A normal timer/settings mutation follows this pattern:
 2. create immutable updated model values;
 3. replace the relevant candidate in-memory collection item(s);
 4. persist the resulting Countora state;
-5. only after successful persistence, update/cancel dependent platform notification schedules;
+5. only after successful persistence, perform required platform notification changes;
 6. notify Flutter listeners as state/error information changes.
+
+Notification work is additionally change-sensitive. Enabling/disabling notifications or changing sound/vibration/quiet mode can require cancellation/rescheduling. Purely visual/local settings such as theme, language, compact-card mode, reduced motion, or onboarding state do not reschedule running notifications.
 
 This ordering protects the durable local state as Countora's restart authority. Notification delivery itself remains best-effort: if a platform operation fails after persistence, the local timer state remains valid and the failure is contained/logged rather than rolling back durable data.
 
@@ -170,19 +189,23 @@ No global mutable singleton stores domain state.
 - unsupported future notification targets fail closed before scheduling calls;
 - corrupted saved JSON does not block startup;
 - unsupported future backup schemas fail closed;
-- generated Android template drift fails bootstrap explicitly when required patch anchors disappear.
+- generated Android/iOS template drift fails bootstrap explicitly when required patch anchors disappear.
 
 ## Localization
 
-English is shipped first, but visible UI copy is externalized in ARB resources. Adding future locales should not require branching business logic by language.
+Countora currently ships English (`en`) and Hindi (`hi`). Flutter follows the device/browser locale by default, while Settings allows a persisted System language / English / Hindi override. `MaterialApp.locale` receives the explicit override only when one is selected, preserving normal Flutter locale resolution for System language.
 
-Background notification copy remains English-first in 0.2 because notification scheduling happens outside a widget context; future locale-aware notification scheduling should receive the active locale explicitly rather than reaching into UI globals.
+Language selection is local-first and included in Countora backup data. Startup and runtime widget coverage protect persisted Hindi selection, and catalog/source audits keep translations synchronized with the English template.
+
+Background notification copy remains English-first in 0.2 because notification scheduling happens outside a widget context. Future locale-aware notification scheduling should receive the active locale explicitly rather than reaching into UI globals.
+
+See [`localization.md`](localization.md) for the translation workflow and review checklist.
 
 ## Platform runners
 
-Native runners are generated using the installed Flutter SDK via `tool/bootstrap_platforms.dart`. This keeps framework-generated platform boilerplate reproducible and avoids committing stale runner files.
+Native runners are generated using the repository-approved Flutter SDK via `tool/bootstrap_platforms.dart`. This keeps framework-generated platform boilerplate reproducible and avoids committing stale runner files.
 
-The script applies Countora-specific Android notification/desugaring configuration after generation. The pure text transforms are isolated in `tool/src/platform_patches.dart` and regression-tested for required additions, idempotence, and template-drift failure behavior.
+The current GitHub Actions toolchain is pinned centrally in `.github/actions/setup-flutter/action.yml`. Countora-specific Android/iOS transforms are isolated in `tool/src/platform_patches.dart` and regression-tested for required additions, version floors, idempotence, and template-drift failure behavior.
 
 ## Why not an embedded database yet?
 
