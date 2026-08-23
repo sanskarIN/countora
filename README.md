@@ -42,10 +42,14 @@ Current development version: **0.2.0+2**.
 - Corruption-safe local persistence recovery
 - Bounded, schema-aware JSON backup validation and migration
 - Resilient external-link and clipboard-export failure handling
+- Non-notification preference changes avoid unnecessary running-notification rescheduling
 
-### Accessibility and desktop usability
+### Accessibility, localization, and desktop usability
 
 - Material 3 light, dark, and system themes
+- Complete English and Hindi localization
+- Persisted System language / English / Hindi override in Settings
+- Regional locale resolution such as `hi-IN` through Flutter localization matching
 - Reduced-motion preference
 - Sound, vibration, quiet mode, and visual progress cues
 - Semantic timer/progress labels and focus-mode live-region cues
@@ -59,7 +63,7 @@ Current development version: **0.2.0+2**.
 
 - No account required
 - No cloud backend required
-- Timers, presets, history, and settings remain local unless a user explicitly copies a backup
+- Timers, presets, history, language, and other settings remain local unless a user explicitly copies a backup
 - Structured diagnostics redact sensitive fields
 - Open source under the MIT License
 
@@ -81,7 +85,7 @@ Countora intentionally supports the six primary Flutter deployment families from
 | Linux | Supported | x64 tar.gz | Local notifications while the Countora runtime remains active; future OS scheduling is unavailable |
 | Web | Supported | Web ZIP | Browser notifications while the page/runtime remains active; browsers do not provide guaranteed future delivery after the runtime is gone |
 
-All six platform families retain timer state, live countdowns, presets, groups, interval sequences, history, backup/restore, responsive UI, themes, accessibility preferences, and resume reconciliation. Platform differences are isolated to capabilities the underlying OS/browser/distribution genuinely exposes.
+All six platform families retain timer state, live countdowns, presets, groups, interval sequences, history, backup/restore, responsive UI, themes, accessibility preferences, localization, and resume reconciliation. Platform differences are isolated to capabilities the underlying OS/browser/distribution genuinely exposes.
 
 Native runner folders are generated from the installed Flutter SDK so stale framework boilerplate is not frozen into source control.
 
@@ -124,6 +128,7 @@ Repository integrity checks:
 dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
 dart run tool/check_secrets.dart
+dart run tool/check_localization_source.dart
 dart run tool/check_markdown_links.dart
 ```
 
@@ -187,7 +192,8 @@ See [`docs/release.md`](docs/release.md) for integrity-verification examples and
 ```text
 lib/
   l10n/
-    app_en.arb              # English localization source
+    app_en.arb              # English localization template/source
+    app_hi.arb              # Complete Hindi localization source
   main.dart
   src/
     core/                   # metadata, links, safe launch, logging, clock, theme, tokens
@@ -200,7 +206,7 @@ tool/
   bootstrap_platforms.dart  # deterministic Flutter runner generation + native patches
   src/platform_patches.dart # pure validated Android/iOS runner transforms
   ...                       # repository checks
-docs/                       # architecture, setup, testing, release, ADRs
+docs/                       # architecture, setup, testing, localization, release, ADRs
 .github/                    # CI, platform smoke, release, security, templates, Dependabot/funding
 ```
 
@@ -232,19 +238,22 @@ Current safety bounds include:
 - maximum group length: 40 characters
 - maximum individual interval: 365 days
 
-Unknown future schema versions are rejected instead of silently interpreted. A valid import is previewed before it replaces current local data. Clipboard export failures are reported without changing the current local state.
+Unknown future schema versions are rejected instead of silently interpreted. A valid import is previewed before it replaces current local data. Clipboard export failures are reported without changing the current local state. The persisted language preference is part of Settings backup data; older backups without it safely use System language.
 
 ## Localization
 
-English ships first through `lib/l10n/app_en.arb`. User-facing application copy is externalized so additional locales can be added with ARB files without rewriting the main screens.
+English (`en`) and Hindi (`hi`) ship through ARB catalogs in `lib/l10n`. Countora follows the device/browser locale by default and also lets users persist an explicit English or Hindi override from Settings.
+
+Translated catalogs are audited against `app_en.arb` for key parity, non-empty values, locale identity, duplicate locale declarations, and filename/`@@locale` consistency. Dart localization references are also checked before generated localization code is created.
 
 After modifying ARB files, run:
 
 ```bash
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
-Generated localization Dart files are intentionally ignored from Git; CI regenerates them.
+Generated localization Dart files are intentionally ignored from Git; CI regenerates them. See [`docs/localization.md`](docs/localization.md) for the translation workflow and review checklist.
 
 ## Security and privacy
 
@@ -260,7 +269,7 @@ Countora has no authentication or cloud service. Security work therefore focuses
 - Generated iOS setup installs the notification-center delegate needed for foreground notification presentation.
 - Dependency Review blocks newly introduced moderate-or-higher vulnerabilities on pull requests.
 - CodeQL scans supported GitHub Actions workflow code.
-- Tagged releases run deterministic required-file, version-sync, tracked-secret, and documentation-link audits.
+- Tagged releases run deterministic required-file, version-sync, tracked-secret, localization-source, and documentation-link audits.
 - Release artifacts include SHA-256 digests for post-download integrity checks.
 - Signing keys, `.env`, keystores, certificates, and generated credentials are ignored or kept outside source control.
 
@@ -271,6 +280,7 @@ Read [`SECURITY.md`](SECURITY.md) and [`PRIVACY.md`](PRIVACY.md).
 The main CI workflow checks:
 
 - generated platform bootstrap
+- deterministic localization source/catalog auditing
 - dependency resolution
 - localization generation
 - formatting
@@ -301,6 +311,7 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/development.md`](docs/devel
 - [`docs/setup.md`](docs/setup.md)
 - [`docs/development.md`](docs/development.md)
 - [`docs/testing.md`](docs/testing.md)
+- [`docs/localization.md`](docs/localization.md)
 - [`docs/release.md`](docs/release.md)
 - [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - [`docs/accessibility.md`](docs/accessibility.md)
