@@ -158,6 +158,44 @@ void main() {
     controller.dispose();
   });
 
+  test('disabling notifications cancels running timer schedules', () async {
+    final now = DateTime.utc(2026, 8, 23, 8);
+    final store = MemoryStore()
+      ..state = CountoraState(
+        timers: <CountdownTimer>[
+          CountdownTimer(
+            id: 'running',
+            name: 'Focus',
+            group: '',
+            steps: const <IntervalStep>[
+              IntervalStep(label: 'Focus', durationSeconds: 300),
+            ],
+            currentStepIndex: 0,
+            status: CountdownStatus.running,
+            remainingWhenPausedSeconds: 300,
+            endsAtUtc: now.add(const Duration(minutes: 5)),
+          ),
+        ],
+      );
+    final notifications = FakeNotifications();
+    final controller = TimerController(
+      store: store,
+      notifications: notifications,
+      nowUtc: () => now,
+    );
+    await controller.initialize();
+    notifications.cancelled.clear();
+
+    await controller.updateSettings(
+      controller.settings.copyWith(notificationsEnabled: false),
+    );
+
+    expect(notifications.cancelled, <String>['running']);
+    expect(store.state.settings.notificationsEnabled, isFalse);
+
+    controller.dispose();
+  });
+
   test('rejects a zero-length timer interval', () async {
     final controller = TimerController(
       store: MemoryStore(),
