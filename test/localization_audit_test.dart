@@ -67,6 +67,49 @@ final action = context.l10n.openFocusMode;
     );
   });
 
+  test('accepts locale catalogs with template key parity', () {
+    final result = auditLocaleCatalogs(
+      templateArb: const <String, Object?>{
+        '@@locale': 'en',
+        'appName': 'Countora',
+        'settings': 'Settings',
+      },
+      localeArbs: const <String, Map<String, Object?>>{
+        'lib/l10n/app_hi.arb': <String, Object?>{
+          '@@locale': 'hi',
+          'appName': 'Countora',
+          'settings': 'सेटिंग्स',
+        },
+      },
+    );
+
+    expect(result.isValid, isTrue);
+    expect(result.errors, isEmpty);
+  });
+
+  test('reports missing, extra, blank, and invalid locale catalog entries', () {
+    final result = auditLocaleCatalogs(
+      templateArb: const <String, Object?>{
+        '@@locale': 'en',
+        'appName': 'Countora',
+        'settings': 'Settings',
+      },
+      localeArbs: const <String, Map<String, Object?>>{
+        'lib/l10n/app_hi.arb': <String, Object?>{
+          '@@locale': '',
+          'appName': '   ',
+          'unknown': 'अतिरिक्त',
+        },
+      },
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.errors.any((error) => error.contains('non-empty @@locale')), isTrue);
+    expect(result.errors.any((error) => error.contains('missing localization message "settings"')), isTrue);
+    expect(result.errors.any((error) => error.contains('unknown localization message "unknown"')), isTrue);
+    expect(result.errors.any((error) => error.contains('localization message "appName" must be non-empty')), isTrue);
+  });
+
   test('extracts strings and context localization references', () {
     final keys = referencedLocalizationKeys('''
 final one = strings.timerProgress;
