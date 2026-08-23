@@ -77,6 +77,37 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<CountoraLanguage>(
+                  initialValue: settings.language,
+                  decoration: InputDecoration(
+                    labelText: strings.language,
+                    helperText: strings.languageHelp,
+                    prefixIcon: const Icon(Icons.language),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: CountoraLanguage.system,
+                      child: Text(strings.systemLanguage),
+                    ),
+                    DropdownMenuItem(
+                      value: CountoraLanguage.english,
+                      child: Text(strings.englishLanguage),
+                    ),
+                    DropdownMenuItem(
+                      value: CountoraLanguage.hindi,
+                      child: Text(strings.hindiLanguage),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null || value == settings.language) return;
+                    unawaited(
+                      controller.updateSettings(
+                        settings.copyWith(language: value),
+                      ),
+                    );
+                  },
+                ),
                 SwitchListTile(
                   title: Text(strings.compactTimerCards),
                   subtitle: Text(strings.compactTimerCardsHelp),
