@@ -67,6 +67,44 @@ final action = context.l10n.openFocusMode;
     );
   });
 
+  test('rejects keys that collide with generated AppLocalizations members', () {
+    final arb = <String, Object?>{
+      ...completeArb,
+      'of': 'of',
+    };
+
+    final result = auditLocalizationSources(
+      arb: arb,
+      dartSources: const <String, String>{},
+    );
+
+    expect(result.isValid, isFalse);
+    expect(
+      result.errors,
+      contains(
+        'Localization message "of" collides with a generated '
+        'AppLocalizations API member.',
+      ),
+    );
+  });
+
+  test('accepts a non-conflicting replacement for a reserved label', () {
+    final arb = <String, Object?>{
+      ...completeArb,
+      'ofLabel': 'of',
+    };
+
+    final result = auditLocalizationSources(
+      arb: arb,
+      dartSources: const <String, String>{
+        'lib/example.dart': 'final value = strings.ofLabel;',
+      },
+    );
+
+    expect(result.isValid, isTrue);
+    expect(result.errors, isEmpty);
+  });
+
   test('accepts locale catalogs with template key parity', () {
     final result = auditLocaleCatalogs(
       templateArb: const <String, Object?>{
