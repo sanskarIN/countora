@@ -144,6 +144,10 @@ String patchAndroidSettingsGradle(String source) {
 
 /// Applies the notification-center delegate required by
 /// flutter_local_notifications for foreground iOS presentation.
+///
+/// Newer Flutter UIScene templates register plugins in
+/// didInitializeImplicitFlutterEngine rather than in application startup, so
+/// this patch anchors to the stable didFinishLaunchingWithOptions return line.
 String patchIosAppDelegate(String source) {
   var text = source;
 
@@ -152,10 +156,13 @@ String patchIosAppDelegate(String source) {
       'ios/Runner/AppDelegate.swift does not contain the expected UIKit import.',
     );
   }
-  if (!text.contains('GeneratedPluginRegistrant.register(with: self)')) {
+
+  const launchReturn =
+      '    return super.application(application, didFinishLaunchingWithOptions: launchOptions)';
+  if (!text.contains(launchReturn)) {
     throw const FormatException(
-      'ios/Runner/AppDelegate.swift does not contain the expected plugin '
-      'registration marker.',
+      'ios/Runner/AppDelegate.swift does not contain the expected '
+      'didFinishLaunchingWithOptions return marker.',
     );
   }
 
@@ -171,9 +178,8 @@ String patchIosAppDelegate(String source) {
       'UNUserNotificationCenterDelegate';
   if (!text.contains(delegateLine)) {
     text = text.replaceFirst(
-      '    GeneratedPluginRegistrant.register(with: self)',
-      '    $delegateLine\n'
-      '    GeneratedPluginRegistrant.register(with: self)',
+      launchReturn,
+      '    $delegateLine\n$launchReturn',
     );
   }
 
