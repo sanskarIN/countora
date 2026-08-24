@@ -4,11 +4,11 @@ description: Install the repository-approved Flutter toolchain with shared cachi
 runs:
   using: composite
   steps:
-    - name: Install Flutter 3.44.7
+    - name: Install Flutter 3.47.1
       uses: subosito/flutter-action@v2
       with:
         channel: stable
-        flutter-version: '3.44.7'
+        flutter-version: '3.47.1'
         cache: true
 
     - name: Print Flutter toolchain
