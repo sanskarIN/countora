@@ -16,7 +16,7 @@
   "uses": "uses",
   "steps": "steps",
   "step": "Step",
-  "of": "of",
+  "ofLabel": "of",
   "percent": "percent",
   "remaining": "remaining",
   "version": "Version",
