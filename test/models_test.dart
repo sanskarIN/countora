@@ -89,9 +89,9 @@ void main() {
 
     test('defaults missing and unknown language preferences to system', () {
       final missing = CountoraSettings.fromJson(const <String, Object?>{});
-      final unknown = CountoraSettings.fromJson(
-        const <String, Object?>{'language': 'unsupported'},
-      );
+      final unknown = CountoraSettings.fromJson(const <String, Object?>{
+        'language': 'unsupported',
+      });
 
       expect(missing.language, CountoraLanguage.system);
       expect(missing.language.locale, isNull);

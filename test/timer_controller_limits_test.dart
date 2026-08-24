@@ -46,26 +46,26 @@ class _NoopNotifications implements NotificationService {
 }
 
 CountdownTimer _pausedTimer(int index) => CountdownTimer(
-      id: 'timer_$index',
-      name: 'Timer $index',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-      currentStepIndex: 0,
-      status: CountdownStatus.paused,
-      remainingWhenPausedSeconds: 60,
-    );
+  id: 'timer_$index',
+  name: 'Timer $index',
+  group: '',
+  steps: const <IntervalStep>[
+    IntervalStep(label: 'Timer', durationSeconds: 60),
+  ],
+  currentStepIndex: 0,
+  status: CountdownStatus.paused,
+  remainingWhenPausedSeconds: 60,
+);
 
 TimerPreset _preset(int index, {int useCount = 0}) => TimerPreset(
-      id: 'preset_$index',
-      name: 'Preset $index',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-      useCount: useCount,
-    );
+  id: 'preset_$index',
+  name: 'Preset $index',
+  group: '',
+  steps: const <IntervalStep>[
+    IntervalStep(label: 'Timer', durationSeconds: 60),
+  ],
+  useCount: useCount,
+);
 
 void main() {
   test('does not create a timer beyond the persisted timer limit', () async {

@@ -147,9 +147,8 @@ Set<String> referencedLocalizationKeys(String source) {
   return result;
 }
 
-Set<String> _messageKeys(Map<String, Object?> arb) => arb.keys
-    .where((key) => !key.startsWith('@'))
-    .toSet();
+Set<String> _messageKeys(Map<String, Object?> arb) =>
+    arb.keys.where((key) => !key.startsWith('@')).toSet();
 
 String? _localeFromArbPath(String path) {
   final normalized = path.replaceAll('\\', '/');

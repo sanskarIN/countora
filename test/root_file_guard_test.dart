@@ -18,14 +18,17 @@ void main() {
   });
 
   test('restores existing root files and removes generated absent files', () {
-    final pubspec = File('${tempDirectory.path}${Platform.pathSeparator}pubspec.yaml')
-      ..writeAsStringSync('name: countora\n');
-    final lockfile = File('${tempDirectory.path}${Platform.pathSeparator}pubspec.lock');
-
-    final snapshots = snapshotRootFiles(
-      tempDirectory,
-      const <String>['pubspec.yaml', 'pubspec.lock'],
+    final pubspec = File(
+      '${tempDirectory.path}${Platform.pathSeparator}pubspec.yaml',
+    )..writeAsStringSync('name: countora\n');
+    final lockfile = File(
+      '${tempDirectory.path}${Platform.pathSeparator}pubspec.lock',
     );
+
+    final snapshots = snapshotRootFiles(tempDirectory, const <String>[
+      'pubspec.yaml',
+      'pubspec.lock',
+    ]);
 
     pubspec.writeAsStringSync('name: overwritten\n');
     lockfile.writeAsStringSync('generated: true\n');
@@ -37,7 +40,9 @@ void main() {
   });
 
   test('restores exact bytes instead of normalizing text content', () {
-    final readme = File('${tempDirectory.path}${Platform.pathSeparator}README.md');
+    final readme = File(
+      '${tempDirectory.path}${Platform.pathSeparator}README.md',
+    );
     final originalBytes = <int>[
       0x43,
       0x6f,
@@ -52,10 +57,9 @@ void main() {
     ];
     readme.writeAsBytesSync(originalBytes);
 
-    final snapshots = snapshotRootFiles(
-      tempDirectory,
-      const <String>['README.md'],
-    );
+    final snapshots = snapshotRootFiles(tempDirectory, const <String>[
+      'README.md',
+    ]);
     readme.writeAsStringSync('changed\n');
 
     restoreRootFiles(tempDirectory, snapshots);
@@ -64,13 +68,13 @@ void main() {
   });
 
   test('accepts harmless dotted repository-relative filenames', () {
-    final dotted = File('${tempDirectory.path}${Platform.pathSeparator}release..notes')
-      ..writeAsStringSync('safe\n');
+    final dotted = File(
+      '${tempDirectory.path}${Platform.pathSeparator}release..notes',
+    )..writeAsStringSync('safe\n');
 
-    final snapshots = snapshotRootFiles(
-      tempDirectory,
-      const <String>['release..notes'],
-    );
+    final snapshots = snapshotRootFiles(tempDirectory, const <String>[
+      'release..notes',
+    ]);
     dotted.writeAsStringSync('changed\n');
 
     restoreRootFiles(tempDirectory, snapshots);
@@ -84,10 +88,8 @@ void main() {
       throwsArgumentError,
     );
     expect(
-      () => snapshotRootFiles(
-        tempDirectory,
-        const <String>['nested/../outside'],
-      ),
+      () =>
+          snapshotRootFiles(tempDirectory, const <String>['nested/../outside']),
       throwsArgumentError,
     );
     expect(

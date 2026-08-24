@@ -50,18 +50,21 @@ void main() {
     expect(restored.history, isEmpty);
   });
 
-  test('recovers to empty state when persisted field types are invalid', () async {
-    SharedPreferences.setMockInitialValues(<String, Object>{
-      'countora_state_v1':
-          '{"schemaVersion":1,"timers":[{"id":"x","steps":"wrong"}]}',
-    });
-    final preferences = await SharedPreferences.getInstance();
-    final store = SharedPreferencesTimerStore(preferences);
+  test(
+    'recovers to empty state when persisted field types are invalid',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'countora_state_v1':
+            '{"schemaVersion":1,"timers":[{"id":"x","steps":"wrong"}]}',
+      });
+      final preferences = await SharedPreferences.getInstance();
+      final store = SharedPreferencesTimerStore(preferences);
 
-    final restored = await store.load();
+      final restored = await store.load();
 
-    expect(restored.timers, isEmpty);
-  });
+      expect(restored.timers, isEmpty);
+    },
+  );
 
   test('clear removes stored state', () async {
     final preferences = await SharedPreferences.getInstance();

@@ -22,15 +22,22 @@ void main() {
 
   final localeCatalogs = <String, Map<String, Object?>>{};
   final l10nDirectory = Directory('lib/l10n');
-  final localeFiles = l10nDirectory
-      .listSync(followLinks: false)
-      .whereType<File>()
-      .where(
-        (file) => file.path.replaceAll('\\', '/').split('/').last.startsWith('app_'),
-      )
-      .where((file) => file.path.endsWith('.arb') && file.path != arbFile.path)
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final localeFiles =
+      l10nDirectory
+          .listSync(followLinks: false)
+          .whereType<File>()
+          .where(
+            (file) => file.path
+                .replaceAll('\\', '/')
+                .split('/')
+                .last
+                .startsWith('app_'),
+          )
+          .where(
+            (file) => file.path.endsWith('.arb') && file.path != arbFile.path,
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   for (final file in localeFiles) {
     try {
@@ -50,7 +57,10 @@ void main() {
     return;
   }
 
-  for (final entity in libDirectory.listSync(recursive: true, followLinks: false)) {
+  for (final entity in libDirectory.listSync(
+    recursive: true,
+    followLinks: false,
+  )) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
     final normalized = entity.path.replaceAll('\\', '/');
     if (normalized.contains('/l10n/app_localizations')) continue;
@@ -72,8 +82,9 @@ void main() {
     return;
   }
 
-  final messageCount =
-      arb.entries.where((entry) => !entry.key.startsWith('@')).length;
+  final messageCount = arb.entries
+      .where((entry) => !entry.key.startsWith('@'))
+      .length;
   stdout.writeln(
     'Verified $messageCount English localization messages across '
     '${sources.length} Dart source files and ${localeCatalogs.length} '

@@ -24,20 +24,20 @@ class BackupInspection {
   final int totalPresetSteps;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'encodedBytes': encodedBytes,
-        'timers': <String, int>{
-          'total': timerCount,
-          'running': runningTimerCount,
-          'paused': pausedTimerCount,
-          'completed': completedTimerCount,
-          'intervalSteps': totalTimerSteps,
-        },
-        'presets': <String, int>{
-          'total': presetCount,
-          'intervalSteps': totalPresetSteps,
-        },
-        'historyEntries': historyCount,
-      };
+    'encodedBytes': encodedBytes,
+    'timers': <String, int>{
+      'total': timerCount,
+      'running': runningTimerCount,
+      'paused': pausedTimerCount,
+      'completed': completedTimerCount,
+      'intervalSteps': totalTimerSteps,
+    },
+    'presets': <String, int>{
+      'total': presetCount,
+      'intervalSteps': totalPresetSteps,
+    },
+    'historyEntries': historyCount,
+  };
 }
 
 BackupInspection inspectCountoraState(

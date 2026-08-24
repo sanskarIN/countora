@@ -90,7 +90,8 @@ String patchAndroidGradle(String source) {
   }
 
   if (!text.contains('coreLibraryDesugaring(')) {
-    text = '${text.trimRight()}\n\n'
+    text =
+        '${text.trimRight()}\n\n'
         'dependencies {\n'
         '    coreLibraryDesugaring('
         '"com.android.tools:desugar_jdk_libs:2.1.5")\n'
@@ -104,7 +105,9 @@ String patchAndroidGradle(String source) {
   ];
   for (final snippet in requiredSnippets) {
     if (!text.contains(snippet)) {
-      throw FormatException('Failed to apply required Gradle snippet: $snippet');
+      throw FormatException(
+        'Failed to apply required Gradle snippet: $snippet',
+      );
     }
   }
 
@@ -177,10 +180,7 @@ String patchIosAppDelegate(String source) {
       'UNUserNotificationCenter.current().delegate = self as? '
       'UNUserNotificationCenterDelegate';
   if (!text.contains(delegateLine)) {
-    text = text.replaceFirst(
-      launchReturn,
-      '    $delegateLine\n$launchReturn',
-    );
+    text = text.replaceFirst(launchReturn, '    $delegateLine\n$launchReturn');
   }
 
   if (!text.contains('import UserNotifications') ||

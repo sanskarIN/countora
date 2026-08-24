@@ -27,14 +27,10 @@ class AppLogger {
     Object? error,
     Map<String, Object?> fields = const {},
   }) {
-    _write(
-      AppLogLevel.warning,
-      event,
-      <String, Object?>{
-        ...fields,
-        if (error != null) 'errorType': error.runtimeType.toString(),
-      },
-    );
+    _write(AppLogLevel.warning, event, <String, Object?>{
+      ...fields,
+      if (error != null) 'errorType': error.runtimeType.toString(),
+    });
   }
 
   void error(
@@ -42,21 +38,13 @@ class AppLogger {
     Object? error,
     Map<String, Object?> fields = const {},
   }) {
-    _write(
-      AppLogLevel.error,
-      event,
-      <String, Object?>{
-        ...fields,
-        if (error != null) 'errorType': error.runtimeType.toString(),
-      },
-    );
+    _write(AppLogLevel.error, event, <String, Object?>{
+      ...fields,
+      if (error != null) 'errorType': error.runtimeType.toString(),
+    });
   }
 
-  void _write(
-    AppLogLevel level,
-    String event,
-    Map<String, Object?> fields,
-  ) {
+  void _write(AppLogLevel level, String event, Map<String, Object?> fields) {
     final payload = <String, Object?>{
       'timeUtc': DateTime.now().toUtc().toIso8601String(),
       'level': level.name,

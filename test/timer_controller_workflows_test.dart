@@ -66,25 +66,28 @@ void main() {
 
   tearDown(() => controller.dispose());
 
-  test('requests notification permission only once per controller session', () async {
-    await controller.addTimer(
-      name: 'One',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'One', durationSeconds: 60),
-      ],
-    );
-    await controller.addTimer(
-      name: 'Two',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Two', durationSeconds: 60),
-      ],
-    );
+  test(
+    'requests notification permission only once per controller session',
+    () async {
+      await controller.addTimer(
+        name: 'One',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'One', durationSeconds: 60),
+        ],
+      );
+      await controller.addTimer(
+        name: 'Two',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Two', durationSeconds: 60),
+        ],
+      );
 
-    expect(notifications.permissionRequests, 1);
-    expect(notifications.scheduled, hasLength(2));
-  });
+      expect(notifications.permissionRequests, 1);
+      expect(notifications.scheduled, hasLength(2));
+    },
+  );
 
   test('duplicates a timer as a unique paused timer by default', () async {
     await controller.addTimer(
@@ -107,57 +110,61 @@ void main() {
     expect(duplicate.remainingWhenPausedSeconds, 180);
   });
 
-  test('updates timer name and group without changing countdown state', () async {
-    await controller.addTimer(
-      name: 'Old',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Work', durationSeconds: 60),
-      ],
-    );
-    final before = controller.timers.single;
+  test(
+    'updates timer name and group without changing countdown state',
+    () async {
+      await controller.addTimer(
+        name: 'Old',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Work', durationSeconds: 60),
+        ],
+      );
+      final before = controller.timers.single;
 
-    await controller.updateTimerDetails(
-      timerId: before.id,
-      name: '  New name  ',
-      group: '  Focus  ',
-    );
+      await controller.updateTimerDetails(
+        timerId: before.id,
+        name: '  New name  ',
+        group: '  Focus  ',
+      );
 
-    final after = controller.timers.single;
-    expect(after.name, 'New name');
-    expect(after.group, 'Focus');
-    expect(after.status, before.status);
-    expect(after.endsAtUtc, before.endsAtUtc);
-  });
+      final after = controller.timers.single;
+      expect(after.name, 'New name');
+      expect(after.group, 'Focus');
+      expect(after.status, before.status);
+      expect(after.endsAtUtc, before.endsAtUtc);
+    },
+  );
 
-  test('editing a paused timer does not request notification permission', () async {
-    await controller.addTimer(
-      name: 'Paused',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Paused', durationSeconds: 60),
-      ],
-      startImmediately: false,
-    );
+  test(
+    'editing a paused timer does not request notification permission',
+    () async {
+      await controller.addTimer(
+        name: 'Paused',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Paused', durationSeconds: 60),
+        ],
+        startImmediately: false,
+      );
 
-    await controller.updateTimerDetails(
-      timerId: controller.timers.single.id,
-      name: 'Still paused',
-      group: 'Later',
-    );
+      await controller.updateTimerDetails(
+        timerId: controller.timers.single.id,
+        name: 'Still paused',
+        group: 'Later',
+      );
 
-    expect(notifications.permissionRequests, 0);
-    expect(notifications.scheduled, isEmpty);
-  });
+      expect(notifications.permissionRequests, 0);
+      expect(notifications.scheduled, isEmpty);
+    },
+  );
 
   test('pauses and resumes all eligible timers', () async {
     for (final name in <String>['One', 'Two']) {
       await controller.addTimer(
         name: name,
         group: 'Batch',
-        steps: <IntervalStep>[
-          IntervalStep(label: name, durationSeconds: 60),
-        ],
+        steps: <IntervalStep>[IntervalStep(label: name, durationSeconds: 60)],
       );
     }
 
@@ -176,17 +183,19 @@ void main() {
     expect(controller.pausedCount, 0);
   });
 
-  test('valid import cancels notifications belonging to replaced timers', () async {
-    await controller.addTimer(
-      name: 'Old timer',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Old', durationSeconds: 60),
-      ],
-    );
-    final oldId = controller.timers.single.id;
+  test(
+    'valid import cancels notifications belonging to replaced timers',
+    () async {
+      await controller.addTimer(
+        name: 'Old timer',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Old', durationSeconds: 60),
+        ],
+      );
+      final oldId = controller.timers.single.id;
 
-    await controller.importJson('''
+      await controller.importJson('''
 {
   "schemaVersion": 1,
   "timers": [],
@@ -196,28 +205,32 @@ void main() {
 }
 ''');
 
-    expect(notifications.cancelled, contains(oldId));
-    expect(controller.timers, isEmpty);
-  });
+      expect(notifications.cancelled, contains(oldId));
+      expect(controller.timers, isEmpty);
+    },
+  );
 
-  test('future-schema import is rejected before replacing current state', () async {
-    await controller.addTimer(
-      name: 'Keep me',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Keep me', durationSeconds: 60),
-      ],
-    );
-    final id = controller.timers.single.id;
+  test(
+    'future-schema import is rejected before replacing current state',
+    () async {
+      await controller.addTimer(
+        name: 'Keep me',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Keep me', durationSeconds: 60),
+        ],
+      );
+      final id = controller.timers.single.id;
 
-    await expectLater(
-      controller.importJson('{"schemaVersion": 999}'),
-      throwsFormatException,
-    );
+      await expectLater(
+        controller.importJson('{"schemaVersion": 999}'),
+        throwsFormatException,
+      );
 
-    expect(controller.timers.single.id, id);
-    expect(controller.lastError, contains('schema'));
-  });
+      expect(controller.timers.single.id, id);
+      expect(controller.lastError, contains('schema'));
+    },
+  );
 
   test('clearAllData cancels timers and clears persisted state', () async {
     await controller.addTimer(

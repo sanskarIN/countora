@@ -16,14 +16,8 @@ void main() {
     test('adds required notification permissions and receivers', () {
       final patched = patchAndroidManifest(source);
 
-      expect(
-        patched,
-        contains('android.permission.RECEIVE_BOOT_COMPLETED'),
-      );
-      expect(
-        patched,
-        contains('android.permission.SCHEDULE_EXACT_ALARM'),
-      );
+      expect(patched, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
+      expect(patched, contains('android.permission.SCHEDULE_EXACT_ALARM'));
       expect(patched, contains('ScheduledNotificationReceiver'));
       expect(patched, contains('ScheduledNotificationBootReceiver'));
       expect(patched, contains('android.intent.action.BOOT_COMPLETED'));

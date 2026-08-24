@@ -24,15 +24,12 @@ void main() {
       quietMode: false,
     );
 
-    expect(
-      <String>{
-        soundAndVibration.channelId,
-        soundOnly.channelId,
-        vibrationOnly.channelId,
-        silent.channelId,
-      },
-      hasLength(4),
-    );
+    expect(<String>{
+      soundAndVibration.channelId,
+      soundOnly.channelId,
+      vibrationOnly.channelId,
+      silent.channelId,
+    }, hasLength(4));
     expect(soundAndVibration.playSound, isTrue);
     expect(soundAndVibration.enableVibration, isTrue);
     expect(soundOnly.playSound, isTrue);

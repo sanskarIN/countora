@@ -3,13 +3,14 @@ import 'dart:io';
 Future<void> main() async {
   final root = Directory.current.absolute;
   final failures = <String>[];
-  final markdownFiles = root
-      .listSync(recursive: true, followLinks: false)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.md'))
-      .where((file) => !_isIgnored(file.path))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final markdownFiles =
+      root
+          .listSync(recursive: true, followLinks: false)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.md'))
+          .where((file) => !_isIgnored(file.path))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   final markdownLink = RegExp(r'(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)');
   final markdownImage = RegExp(r'!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)');
@@ -33,10 +34,9 @@ Future<void> main() async {
           ? '${root.path}${Platform.pathSeparator}${decoded.substring(1)}'
           : '${file.parent.path}${Platform.pathSeparator}$decoded';
       final normalized = File(path).absolute.path;
-      if (!File(normalized).existsSync() && !Directory(normalized).existsSync()) {
-        failures.add(
-          '${_relative(root.path, file.path)} -> $target',
-        );
+      if (!File(normalized).existsSync() &&
+          !Directory(normalized).existsSync()) {
+        failures.add('${_relative(root.path, file.path)} -> $target');
       }
     }
   }

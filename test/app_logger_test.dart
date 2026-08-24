@@ -10,9 +10,7 @@ void main() {
         'safe': 'kept',
         'connection': <Object?, Object?>{
           'api_key': 'should-not-leak',
-          'details': <Object?, Object?>{
-            'supportEmail': 'person@example.test',
-          },
+          'details': <Object?, Object?>{'supportEmail': 'person@example.test'},
         },
       };
 

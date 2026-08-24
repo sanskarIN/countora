@@ -17,10 +17,7 @@ sdks:
 
 void main() {
   test('accepts a non-empty Flutter dependency lockfile shape', () {
-    final result = auditDependencyLock(
-      exists: true,
-      contents: _validLockfile,
-    );
+    final result = auditDependencyLock(exists: true, contents: _validLockfile);
 
     expect(result.isValid, isTrue);
     expect(result.errors, isEmpty);

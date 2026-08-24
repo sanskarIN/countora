@@ -42,10 +42,7 @@ void main(List<String> args) {
   try {
     const codec = CountoraStateCodec();
     final state = codec.decode(raw);
-    final inspection = inspectCountoraState(
-      state,
-      encodedBytes: encodedBytes,
-    );
+    final inspection = inspectCountoraState(state, encodedBytes: encodedBytes);
     final output = <String, Object?>{
       'valid': true,
       'schemaVersion': CountoraStateCodec.currentSchemaVersion,
