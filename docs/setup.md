@@ -1,12 +1,12 @@
 # Setup
 
-Countora is developed against the Flutter stable channel. Prefer the current stable SDK that satisfies the Dart/Flutter constraints declared in `pubspec.yaml` instead of relying on an arbitrary older framework installation.
+Countora is developed against the Flutter stable channel. The package constraint remains Flutter `>=3.38.1`, while the active 2.15.18 repository verification pipeline pins Flutter `3.47.1` so CI, lockfile generation, smoke builds, and tagged-release checks use one reproducible framework version.
 
-The declared baseline is Flutter `>=3.38.1`. Flutter 3.38.1 itself generates Android projects with Gradle 8.14, AGP 8.11.1, and compileSdk 36, which satisfy Countora's current notification dependency requirements. Countora still validates/patches critical generated native settings defensively so future template drift fails visibly.
+Flutter 3.38.1 itself generates Android projects with Gradle 8.14, AGP 8.11.1, and compileSdk 36, which satisfy Countora's current notification dependency requirements. Countora still validates/patches critical generated native settings defensively so future template drift fails visibly.
 
 ## 1. Install Flutter
 
-Install Flutter stable and the platform toolchains for the targets you intend to build.
+Install Flutter stable and the platform toolchains for the targets you intend to build. For release-candidate reproduction, use the same Flutter version pinned in `.github/actions/setup-flutter/action.yml`.
 
 Verify:
 
@@ -24,7 +24,21 @@ git clone https://github.com/sanskarIN/countora.git
 cd countora
 ```
 
-## 3. Generate platform runners
+For the active release candidate:
+
+```bash
+git switch release/2.15.18-rc
+```
+
+## 3. Verify the repository toolchain policy
+
+```bash
+dart run tool/check_toolchain.dart
+```
+
+This verifies the shared CI setup uses one exact stable cached Flutter version and that critical workflows do not bypass it.
+
+## 4. Generate platform runners
 
 Countora intentionally does not commit Flutter-generated platform runner directories.
 
@@ -34,35 +48,51 @@ Generate Android, iOS, Web, Windows, macOS, and Linux project files with:
 dart run tool/bootstrap_platforms.dart
 ```
 
-The bootstrap script then applies deterministic native notification setup:
+The bootstrap invokes `flutter create --no-pub`. It snapshots application-owned repository-root files before generation and restores them byte-for-byte afterward, including `analysis_options.yaml`, `pubspec.yaml`, `pubspec.lock`, `README.md`, `l10n.yaml`, and `.gitignore`.
+
+It then applies deterministic native notification setup:
 
 - Android manifest scheduling permissions and receivers;
 - Android core-library desugaring and multidex configuration;
 - an Android Plugin DSL AGP floor of 8.11.1 while leaving newer versions untouched;
 - iOS `UserNotifications` import and `UNUserNotificationCenter` delegate setup for foreground presentation.
 
-The transforms are designed to be idempotent. They fail explicitly when an expected Flutter template anchor disappears so a framework-template change cannot silently remove Countora's native requirements.
+The iOS transform supports both legacy AppDelegate plugin registration and Flutter 3.47's UIScene/implicit-engine template. The transforms are idempotent and fail explicitly when an expected Flutter template anchor disappears.
 
-## 4. Resolve packages
+## 5. Resolve packages
 
 ```bash
 flutter pub get
 ```
 
-For application/release work, keep the generated `pubspec.lock` produced by the real Flutter toolchain in the working checkout and review dependency changes before release.
+For release work, review the generated `pubspec.lock` and keep it in the release-candidate checkout. A release tag must use the reviewed committed lockfile rather than resolving an unreviewed dependency graph.
 
-## 5. Generate localization source
+After the lock is committed, release verification should use:
 
 ```bash
+flutter pub get --enforce-lockfile
+dart run tool/check_dependency_lock.dart
+```
+
+## 6. Generate localization source
+
+Validate committed localization input first:
+
+```bash
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 ```
 
 Generated localization Dart files are ignored by Git and rebuilt by CI.
 
-## 6. Run quality checks
+## 7. Run quality checks
 
 ```bash
+dart run tool/check_toolchain.dart
+dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
+dart run tool/check_dependency_lock.dart
+dart run tool/check_secrets.dart
 dart run tool/check_localization_source.dart
 dart format --output=none --set-exit-if-changed lib test integration_test tool
 flutter analyze
@@ -70,7 +100,9 @@ flutter test
 dart run tool/check_markdown_links.dart
 ```
 
-## 7. Run the application
+`check_dependency_lock.dart` is a release-candidate requirement once the reviewed lockfile has been committed.
+
+## 8. Run the application
 
 List targets:
 
@@ -106,7 +138,7 @@ The supported Flutter baseline already supplies the required AGP/Gradle/compileS
 
 ### iOS
 
-A Mac with Xcode is required for iOS builds. The generated AppDelegate is patched to install the notification-center delegate required for foreground local-notification presentation.
+A Mac with Xcode is required for iOS builds. The generated AppDelegate is patched to install the notification-center delegate required for foreground local-notification presentation. The patch supports the current Flutter 3.47 UIScene/implicit-engine runner as well as the older template.
 
 Unsigned source compilation:
 
@@ -140,7 +172,7 @@ dart run msix:create
 
 The MSIX configuration rebuilds Countora with `COUNTORA_WINDOWS_PACKAGED=true`, enabling the packaged Windows scheduled-notification path. The default MSIX development signing behavior is not a production distribution strategy; use a trusted certificate or Microsoft Store signing path before publishing an MSIX.
 
-`tool/check_version_sync.dart` verifies that `msix_version` remains synchronized with the Flutter package version/build number.
+`tool/check_version_sync.dart` verifies that `msix_version` remains synchronized with the Flutter package version/build number. For 2.15.18, the mapping is `2.15.18+18` → `2.15.18.18`.
 
 ### Linux
 
@@ -175,4 +207,4 @@ After setup, manually check:
 9. on Windows, compare portable runtime-fallback behavior with an installed package-identity build;
 10. on Web, verify permission behavior from a user interaction in representative browsers.
 
-See [`testing.md`](testing.md), [`release.md`](release.md), [`notification-support.md`](notification-support.md), and [`troubleshooting.md`](troubleshooting.md).
+For the active release gate, follow [`release-2.15.18.md`](release-2.15.18.md) in addition to [`testing.md`](testing.md), [`release.md`](release.md), [`notification-support.md`](notification-support.md), and [`troubleshooting.md`](troubleshooting.md).
