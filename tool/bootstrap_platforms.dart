@@ -1,25 +1,49 @@
 import 'dart:io';
 
 import 'src/platform_patches.dart';
+import 'src/root_file_guard.dart';
+
+const flutterCreateArguments = <String>[
+  'create',
+  '.',
+  '--project-name=countora',
+  '--org=dev.sanskar',
+  '--platforms=android,ios,web,windows,macos,linux',
+  '--no-pub',
+];
+
+const _rootFilesToPreserve = <String>[
+  '.gitignore',
+  'README.md',
+  'analysis_options.yaml',
+  'l10n.yaml',
+  'pubspec.lock',
+  'pubspec.yaml',
+];
 
 Future<void> main() async {
   final flutter = Platform.isWindows ? 'flutter.bat' : 'flutter';
-
-  final create = await Process.run(
-    flutter,
-    <String>[
-      'create',
-      '.',
-      '--project-name=countora',
-      '--org=dev.sanskar',
-      '--platforms=android,ios,web,windows,macos,linux',
-    ],
-    runInShell: true,
+  final rootSnapshots = snapshotRootFiles(
+    Directory.current,
+    _rootFilesToPreserve,
   );
+
+  late final ProcessResult create;
+  try {
+    create = await Process.run(
+      flutter,
+      flutterCreateArguments,
+      runInShell: true,
+    );
+  } finally {
+    restoreRootFiles(Directory.current, rootSnapshots);
+  }
+
   stdout.write(create.stdout);
   stderr.write(create.stderr);
   if (create.exitCode != 0) {
-    exit(create.exitCode);
+    exitCode = create.exitCode;
+    return;
   }
 
   _patchAndroidManifest();
