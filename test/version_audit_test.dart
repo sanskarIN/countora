@@ -4,27 +4,27 @@ import '../tool/src/version_audit.dart';
 
 const _pubspec = '''
 name: countora
-version: 0.2.0+2
+version: 2.15.18+18
 ''';
 
 const _pubspecWithMsix = '''
 name: countora
-version: 0.2.0+2
+version: 2.15.18+18
 
 msix_config:
   display_name: Countora
-  msix_version: 0.2.0.2
+  msix_version: 2.15.18.18
 ''';
 
 const _metadata = '''
 abstract final class AppMetadata {
-  static const version = '0.2.0';
-  static const buildNumber = 2;
+  static const version = '2.15.18';
+  static const buildNumber = 18;
 }
 ''';
 
 const _changelog = '''
-## [0.2.0] - 2026-08-19
+## [2.15.18] - 2026-08-24
 ''';
 
 void main() {
@@ -36,8 +36,8 @@ void main() {
     );
 
     expect(result.isValid, isTrue);
-    expect(result.packageVersion, '0.2.0');
-    expect(result.buildNumber, '2');
+    expect(result.packageVersion, '2.15.18');
+    expect(result.buildNumber, '18');
   });
 
   test('accepts synchronized Windows MSIX metadata', () {
@@ -52,7 +52,7 @@ void main() {
 
   test('rejects an MSIX version that drifts from package build metadata', () {
     final result = auditVersionMetadata(
-      pubspec: _pubspecWithMsix.replaceFirst('0.2.0.2', '0.2.0.3'),
+      pubspec: _pubspecWithMsix.replaceFirst('2.15.18.18', '2.15.18.19'),
       metadata: _metadata,
       changelog: _changelog,
     );
@@ -63,19 +63,22 @@ void main() {
 
   test('requires msix_version whenever MSIX configuration is present', () {
     final result = auditVersionMetadata(
-      pubspec: _pubspecWithMsix.replaceFirst('  msix_version: 0.2.0.2\n', ''),
+      pubspec: _pubspecWithMsix.replaceFirst(
+        '  msix_version: 2.15.18.18\n',
+        '',
+      ),
       metadata: _metadata,
       changelog: _changelog,
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors.single, contains('msix_version=0.2.0.2'));
+    expect(result.errors.single, contains('msix_version=2.15.18.18'));
   });
 
   test('rejects AppMetadata drift', () {
     final result = auditVersionMetadata(
       pubspec: _pubspec,
-      metadata: _metadata.replaceFirst("'0.2.0'", "'0.2.1'"),
+      metadata: _metadata.replaceFirst("'2.15.18'", "'2.15.19'"),
       changelog: _changelog,
     );
 
@@ -91,18 +94,18 @@ void main() {
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors.single, contains('[0.2.0]'));
+    expect(result.errors.single, contains('[2.15.18]'));
   });
 
   test('requires an exact changelog version heading', () {
     final result = auditVersionMetadata(
       pubspec: _pubspec,
       metadata: _metadata,
-      changelog: '## [0x2x0] - 2026-08-19\n',
+      changelog: '## [2x15x18] - 2026-08-24\n',
     );
 
     expect(result.isValid, isFalse);
-    expect(result.errors.single, contains('[0.2.0]'));
+    expect(result.errors.single, contains('[2.15.18]'));
   });
 
   test('accepts a release tag that matches the package version', () {
@@ -110,7 +113,7 @@ void main() {
       pubspec: _pubspec,
       metadata: _metadata,
       changelog: _changelog,
-      releaseTag: 'v0.2.0',
+      releaseTag: 'v2.15.18',
     );
 
     expect(result.isValid, isTrue);
@@ -121,7 +124,7 @@ void main() {
       pubspec: _pubspec,
       metadata: _metadata,
       changelog: _changelog,
-      releaseTag: 'v0.2.1',
+      releaseTag: 'v2.15.19',
     );
 
     expect(result.isValid, isFalse);
@@ -132,8 +135,8 @@ void main() {
     final result = auditVersionMetadata(
       pubspec: _pubspec,
       metadata: _metadata,
-      changelog: '## [0.2.0] - Unreleased release candidate\n',
-      releaseTag: 'v0.2.0',
+      changelog: '## [2.15.18] - Unreleased release candidate\n',
+      releaseTag: 'v2.15.18',
     );
 
     expect(result.isValid, isFalse);
