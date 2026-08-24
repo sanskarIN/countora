@@ -2,6 +2,8 @@
 
 Countora release tags must represent verified source, not merely a version bump. Do not create a final release tag while known analyzer/test/build/platform failures remain.
 
+The active release-candidate checklist is [`release-2.15.18.md`](release-2.15.18.md).
+
 ## Versioning
 
 The Flutter package version is declared in `pubspec.yaml` as:
@@ -18,7 +20,7 @@ Countora's Windows MSIX metadata uses the required four-part package version:
 MAJOR.MINOR.PATCH.BUILD
 ```
 
-`tool/check_version_sync.dart` verifies the Flutter package metadata, `AppMetadata`, matching changelog section, and configured `msix_version` together. For example, `0.2.0+2` must map to MSIX `0.2.0.2`.
+`tool/check_version_sync.dart` verifies the Flutter package metadata, `AppMetadata`, matching changelog section, and configured `msix_version` together. For the active candidate, `2.15.18+18` maps to MSIX `2.15.18.18`.
 
 Before a release, update:
 
@@ -27,6 +29,19 @@ Before a release, update:
 - `CHANGELOG.md`
 - `ROADMAP.md`
 - `what_changed.md`
+- the active release-candidate checklist under `docs/`
+
+## Pinned Flutter toolchain policy
+
+Repository automation uses the shared `.github/actions/setup-flutter/action.yml` action. The 2.15.18 candidate pins Flutter `3.47.1` on the stable channel with caching enabled.
+
+Run:
+
+```bash
+dart run tool/check_toolchain.dart
+```
+
+The audit rejects moving/unpinned Flutter versions and workflows that bypass the shared setup action. A release should not silently switch Flutter versions between CI jobs or release hosts.
 
 ## Dependency lock policy
 
@@ -35,26 +50,30 @@ Countora is an application, so the final release source must contain a reviewed 
 Generate and review it from the release-candidate checkout:
 
 ```bash
+dart run tool/bootstrap_platforms.dart
 flutter pub get
 dart run tool/check_dependency_lock.dart
 ```
 
+The bootstrap uses `flutter create --no-pub`; dependency resolution therefore happens only at the explicit `flutter pub get` step. Protected repository-root files are restored byte-for-byte after platform generation.
+
 Commit the resulting `pubspec.lock` only after reviewing the resolved dependency versions. The tagged release workflow runs `tool/check_dependency_lock.dart` **before** dependency resolution, so a release tag cannot silently generate a new unreviewed lockfile inside CI.
 
-Normal development commits are not blocked while the lockfile is still an explicitly documented release blocker; the release tag is.
+The guarded dependency-lock workflow runs on `main` and `release/**` branches. It rejects unexpected tracked changes before committing the lockfile, so platform generation cannot smuggle formatter/configuration rewrites into the lock refresh commit.
 
 ## Clean-checkout release candidate
 
 From a clean clone:
 
 ```bash
+dart run tool/check_toolchain.dart
 dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
 dart run tool/check_dependency_lock.dart
 dart run tool/check_secrets.dart
 dart run tool/check_localization_source.dart
 dart run tool/bootstrap_platforms.dart
-flutter pub get
+flutter pub get --enforce-lockfile
 flutter gen-l10n
 dart format --output=none --set-exit-if-changed lib test integration_test tool
 flutter analyze
@@ -78,6 +97,8 @@ xvfb-run -a flutter test integration_test -d linux -r github
 
 Countora generates Android, iOS, Web, Windows, macOS, and Linux runners with `tool/bootstrap_platforms.dart` rather than freezing stale Flutter boilerplate in the repository.
 
+The bootstrap runs `flutter create --no-pub`, snapshots protected repository-root files first, restores them exactly afterward, and then applies deterministic native patches. This prevents framework generation from rewriting application-owned root configuration or dependency metadata.
+
 After generation, deterministic native patches are applied:
 
 - Android manifest scheduling permissions and receivers;
@@ -85,7 +106,7 @@ After generation, deterministic native patches are applied:
 - Android Plugin DSL AGP floor compatible with the notification dependency;
 - iOS `UserNotifications` import and notification-center delegate setup.
 
-The transforms are idempotent, regression-tested, and intentionally fail when expected Flutter template anchors disappear. A template failure must be reviewed and adapted rather than bypassed.
+The iOS transform supports both the legacy generated AppDelegate template and Flutter 3.47's UIScene/implicit-engine template. The transforms are idempotent, regression-tested, and intentionally fail when expected Flutter template anchors disappear. A template failure must be reviewed and adapted rather than bypassed.
 
 ## Platform build verification
 
@@ -160,11 +181,11 @@ Distribution outside local testing may require signing/notarization. Native noti
 flutter build ios --release --no-codesign
 ```
 
-The generated iOS runner is patched so `UNUserNotificationCenter.current().delegate` is configured before generated plugin registration. An unsigned iOS application verifies compilation only. App Store/device distribution and actual notification delivery require Apple signing/provisioning and a supported release host/device.
+The generated iOS runner is patched so `UNUserNotificationCenter.current().delegate` is configured during `didFinishLaunchingWithOptions` before the launch method returns. This supports both legacy and current Flutter runner templates. An unsigned iOS application verifies compilation only. App Store/device distribution and actual notification delivery require Apple signing/provisioning and a supported release host/device.
 
 ## Cross-platform smoke workflow
 
-`.github/workflows/platform-smoke.yml` runs on `main`, pull requests targeting `main`, and manual dispatch.
+`.github/workflows/platform-smoke.yml` runs on `main`, `release/**`, pull requests targeting `main`, and manual dispatch.
 
 It checks:
 
@@ -187,13 +208,14 @@ A workflow definition is not verification evidence. Every required job must be o
 
 The initial Ubuntu quality job must pass before desktop/Apple jobs run. It performs:
 
+- shared Flutter toolchain-policy verification;
 - required-file verification;
 - version/MSIX-metadata synchronization verification;
 - committed dependency-lock verification before `flutter pub get`;
 - localization-source validation;
 - tracked-source obvious-secret scan;
 - platform runner generation and native patching;
-- dependency resolution;
+- locked dependency resolution;
 - localization generation;
 - formatting verification;
 - `flutter analyze`;
@@ -238,13 +260,13 @@ A checksum proves file integrity against the published digest; it does not repla
 
 Before tagging:
 
-1. Review main CI and Platform smoke status for the exact release commit.
+1. Review release-candidate CI and Platform smoke status for the exact release commit.
 2. Review Dependency Review on dependency-changing pull requests.
 3. Review CodeQL GitHub Actions scan status.
 4. Review Dependabot alerts/update pull requests where available.
 5. Confirm `.env`, keystores, signing profiles, private keys, certificates, tokens, and generated credentials are not tracked.
 6. Confirm generated backup/test fixtures contain only fictional data.
-7. Run the repository required-file/version/dependency-lock/localization/secret/link audit.
+7. Run the repository required-file/version/toolchain/dependency-lock/localization/secret/link audit.
 8. Confirm MSIX version metadata matches the application version.
 9. Use a trusted additional secret scanner in the release environment when available.
 
@@ -277,11 +299,11 @@ Use only screenshots from actual verified release-candidate builds. Do not publi
 
 ## Tagging
 
-Only after the release commit is verified:
+Only after the release commit is verified and the matching changelog heading has been converted from `Unreleased release candidate` to the actual release date:
 
 ```bash
-git tag -s vX.Y.Z -m "Countora vX.Y.Z"
-git push origin vX.Y.Z
+git tag -s v2.15.18 -m "Countora v2.15.18"
+git push origin v2.15.18
 ```
 
 If signed tags are not configured, use the repository's approved release process rather than weakening key security merely to satisfy this example.
