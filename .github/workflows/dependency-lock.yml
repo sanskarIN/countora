@@ -10,6 +10,8 @@ on:
       - pubspec.yaml
       - tool/bootstrap_platforms.dart
       - tool/src/root_file_guard.dart
+      - tool/check_toolchain.dart
+      - tool/src/toolchain_audit.dart
       - .github/actions/setup-flutter/action.yml
       - .github/workflows/dependency-lock.yml
 
@@ -37,6 +39,9 @@ jobs:
 
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
+
+      - name: Verify shared Flutter toolchain policy
+        run: dart run tool/check_toolchain.dart
 
       - name: Verify localization source and catalogs
         run: dart run tool/check_localization_source.dart
