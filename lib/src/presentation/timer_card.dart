@@ -146,7 +146,7 @@ class TimerCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   semanticsLabel: strings.timerProgress,
                   semanticsValue:
-                      '${(progress.clamp(0.0, 1.0) * 100).round()} ${strings.percent}',
+                      '${(progress.clamp(0.0, 1.0) * 100).round()}',
                 ),
                 SizedBox(height: compact ? 8 : 16),
                 Wrap(
@@ -378,7 +378,7 @@ class TimerCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(999),
                                 semanticsLabel: strings.timerProgress,
                                 semanticsValue:
-                                    '${(progress.clamp(0.0, 1.0) * 100).round()} ${strings.percent}',
+                                    '${(progress.clamp(0.0, 1.0) * 100).round()}',
                               ),
                               if (active.isSequence) ...[
                                 const SizedBox(height: 18),
