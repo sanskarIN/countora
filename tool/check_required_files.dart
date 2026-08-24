@@ -29,6 +29,7 @@ void main() {
     'docs/localization.md',
     'docs/testing.md',
     'docs/release.md',
+    'docs/release-2.15.18.md',
     'docs/troubleshooting.md',
     'docs/accessibility.md',
     'docs/performance.md',
