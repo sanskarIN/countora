@@ -1,6 +1,6 @@
 # Testing
 
-Countora treats timing, persistence, backup parsing, notification synchronization, localization/catalog integrity, cross-platform capability decisions, browser permission boundaries, native runner patching, packaging metadata, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
+Countora treats timing, persistence, backup parsing, notification synchronization, localization/catalog integrity, cross-platform capability decisions, browser permission boundaries, native runner patching, platform-bootstrap safety, packaging metadata, shared-toolchain policy, structured diagnostics, external-link handling, and destructive data workflows as high-regression-risk areas. Tests are deterministic by default and use injected clocks, in-memory stores, fake notification adapters, and injectable platform boundaries instead of production credentials or network services.
 
 ## Test layers
 
@@ -78,7 +78,11 @@ The logger regression deliberately uses synthetic credential-like strings. It mu
 
 `test/web_notification_permission_test.dart` protects the browser user-activation boundary: non-Web targets never invoke the browser request, Web user actions delegate exactly once to the permission request, and denial is returned as a safe boolean rather than escaping as a timer failure. The production `LocalNotificationService.requestPermissions()` intentionally does not ask Web for permission; the explicit Settings **Allow** button owns that user-gesture path.
 
-### Native runner patch tests
+### Platform-bootstrap and native runner tests
+
+`test/bootstrap_platforms_test.dart` verifies that Countora generates all six supported Flutter runner families and that runner generation uses `--no-pub` rather than resolving dependencies implicitly.
+
+`test/root_file_guard_test.dart` verifies that application-owned repository-root files are restored byte-for-byte after generation, generated files that were previously absent are removed, harmless dotted filenames remain valid, and absolute/path-traversal inputs are rejected.
 
 `test/platform_patches_test.dart` verifies generated native transforms:
 
@@ -88,10 +92,28 @@ The logger regression deliberately uses synthetic credential-like strings. It mu
 - Android Plugin DSL AGP floor (`8.11.1`) with newer-version preservation;
 - Android patch idempotence and explicit template-drift failure;
 - iOS `UserNotifications` import;
-- iOS notification-center delegate installation before plugin registration;
+- iOS notification-center delegate installation before the launch method returns;
+- legacy AppDelegate compatibility;
+- Flutter 3.47 UIScene/implicit-engine AppDelegate compatibility;
 - iOS patch idempotence and explicit template-drift failure.
 
-The repository-approved CI Flutter baseline is 3.44.7. The Android transform enforces AGP 8.11.1 as a compatibility floor and leaves newer generated versions untouched rather than forcing a downgrade.
+The repository-approved 2.15.18 CI toolchain is Flutter 3.47.1. The package baseline remains Flutter `>=3.38.1`. The Android transform enforces AGP 8.11.1 as a compatibility floor and leaves newer generated versions untouched rather than forcing a downgrade.
+
+### Toolchain policy tests
+
+`test/toolchain_audit_test.dart` verifies that repository automation:
+
+- pins exactly one `MAJOR.MINOR.PATCH` Flutter version;
+- uses the stable channel;
+- enables shared Flutter/pub caching;
+- routes critical workflows through `.github/actions/setup-flutter/action.yml`;
+- rejects critical workflows that bypass the shared setup with direct Flutter-action configuration.
+
+The corresponding executable audit is:
+
+```bash
+dart run tool/check_toolchain.dart
+```
 
 ### Version and Windows packaging tests
 
@@ -103,7 +125,7 @@ The repository-approved CI Flutter baseline is 3.44.7. The Android transform enf
 - release tags;
 - Windows `msix_version` in `MAJOR.MINOR.PATCH.BUILD` form whenever `msix_config` exists.
 
-For example, package `0.2.0+2` requires MSIX `0.2.0.2`.
+For the active candidate, package `2.15.18+18` requires MSIX `2.15.18.18`, and a `v2.15.18` tag is rejected until the matching changelog entry is finalized from its unreleased-candidate state.
 
 ### Localization tests
 
@@ -139,7 +161,7 @@ CI has a dedicated Linux integration job that installs the required GTK build de
 
 ## Cross-platform build smoke coverage
 
-`.github/workflows/platform-smoke.yml` exists to catch platform compilation/packaging drift before a release tag is created.
+`.github/workflows/platform-smoke.yml` exists to catch platform compilation/packaging drift before a release tag is created. It runs on `main`, `release/**`, pull requests targeting `main`, and manual dispatch.
 
 It verifies:
 
@@ -178,42 +200,28 @@ The harness verifies every encode/decode round trip and emits JSON with fixture 
 
 ## Standard local quality suite
 
-Validate version/package metadata and committed localization references/catalogs:
+For a release-candidate checkout with a reviewed committed lockfile:
 
 ```bash
+dart run tool/check_toolchain.dart
+dart run tool/check_required_files.dart
 dart run tool/check_version_sync.dart
+dart run tool/check_dependency_lock.dart
+dart run tool/check_secrets.dart
 dart run tool/check_localization_source.dart
-```
-
-Generate localization:
-
-```bash
+dart run tool/bootstrap_platforms.dart
+flutter pub get --enforce-lockfile
 flutter gen-l10n
-```
-
-Verify formatting:
-
-```bash
 dart format --output=none --set-exit-if-changed lib test integration_test tool
-```
-
-Run analysis and normal automated tests:
-
-```bash
 flutter analyze
 flutter test
+dart run tool/check_markdown_links.dart
 ```
 
 Optional coverage:
 
 ```bash
 flutter test --coverage
-```
-
-Check local Markdown references:
-
-```bash
-dart run tool/check_markdown_links.dart
 ```
 
 Run the integration journey on a configured Flutter target:
@@ -232,25 +240,26 @@ A different explicit device selector can be used when validating another support
 
 ## CI expectations
 
-`.github/workflows/ci.yml` contains two complementary jobs.
+`.github/workflows/ci.yml` runs for current main/release-candidate pushes and pull requests targeting `main`. It contains two complementary jobs.
 
 The main Flutter quality job performs:
 
 1. checkout
-2. Flutter setup
-3. deterministic localization-source/reference/catalog validation
-4. deterministic platform-runner generation and native patching
-5. dependency resolution
-6. localization generation
-7. formatting verification
-8. `flutter analyze`
-9. `flutter test`
-10. local Markdown-link verification
-11. Web release build
+2. shared pinned Flutter setup
+3. shared-toolchain policy audit
+4. deterministic localization-source/reference/catalog validation
+5. deterministic platform-runner generation and native patching
+6. dependency resolution
+7. localization generation
+8. formatting verification
+9. `flutter analyze`
+10. `flutter test`
+11. local Markdown-link verification
+12. Web release build
 
 The Linux integration job performs:
 
-1. checkout and Flutter setup
+1. checkout and shared Flutter setup
 2. installation of GTK/Linux build dependencies and Xvfb
 3. deterministic localization-source/reference/catalog validation
 4. deterministic platform-runner generation
@@ -259,7 +268,7 @@ The Linux integration job performs:
 
 `.github/workflows/platform-smoke.yml` independently compiles/packages the remaining native target families on matching GitHub-hosted operating systems.
 
-Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful.
+Any failure blocks its CI job. A release must not be described as verified until real workflow executions have been observed as successful on the exact candidate commit.
 
 ## Native, browser, and localization verification
 
@@ -288,6 +297,8 @@ Automated Dart/widget/build-smoke/Linux integration tests cannot fully prove OS/
 - keyboard shortcuts and focus traversal on desktop/Web;
 - screen-reader labels and live-region behavior;
 - Settings capability messaging for scheduled and runtime-only targets.
+
+The active release checklist is [`release-2.15.18.md`](release-2.15.18.md).
 
 ## Regression rule
 

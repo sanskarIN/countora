@@ -1,7 +1,7 @@
 name: countora
 description: A polished, local-first multi-countdown timer built with Flutter.
 publish_to: "none"
-version: 0.2.0+2
+version: 2.15.18+18
 
 environment:
   sdk: ">=3.10.0 <4.0.0"
@@ -30,7 +30,7 @@ msix_config:
   display_name: Countora
   publisher_display_name: Sanskar
   identity_name: dev.sanskar.countora
-  msix_version: 0.2.0.2
+  msix_version: 2.15.18.18
   output_path: build/windows/msix
   output_name: countora-windows-x64
   windows_build_args: "--dart-define=COUNTORA_WINDOWS_PACKAGED=true"

@@ -16,6 +16,12 @@ LocalizationAuditResult auditLocalizationSources({
     errors.add('lib/l10n/app_en.arb must declare @@locale as "en".');
   }
 
+  const reservedGeneratedMemberNames = <String>{
+    'delegate',
+    'localizationsDelegates',
+    'of',
+    'supportedLocales',
+  };
   final messageKeys = <String>{};
   for (final entry in arb.entries) {
     final key = entry.key;
@@ -25,6 +31,12 @@ LocalizationAuditResult auditLocalizationSources({
     if (value is! String || value.trim().isEmpty) {
       errors.add('Localization message "$key" must be a non-empty string.');
       continue;
+    }
+    if (reservedGeneratedMemberNames.contains(key)) {
+      errors.add(
+        'Localization message "$key" collides with a generated '
+        'AppLocalizations API member.',
+      );
     }
     messageKeys.add(key);
   }
@@ -135,9 +147,8 @@ Set<String> referencedLocalizationKeys(String source) {
   return result;
 }
 
-Set<String> _messageKeys(Map<String, Object?> arb) => arb.keys
-    .where((key) => !key.startsWith('@'))
-    .toSet();
+Set<String> _messageKeys(Map<String, Object?> arb) =>
+    arb.keys.where((key) => !key.startsWith('@')).toSet();
 
 String? _localeFromArbPath(String path) {
   final normalized = path.replaceAll('\\', '/');

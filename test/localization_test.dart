@@ -69,8 +69,17 @@ void main() {
     );
   });
 
-  test('regional English and Hindi locales resolve through language support', () {
-    expect(AppLocalizations.delegate.isSupported(const Locale('en', 'IN')), isTrue);
-    expect(AppLocalizations.delegate.isSupported(const Locale('hi', 'IN')), isTrue);
-  });
+  test(
+    'regional English and Hindi locales resolve through language support',
+    () {
+      expect(
+        AppLocalizations.delegate.isSupported(const Locale('en', 'IN')),
+        isTrue,
+      );
+      expect(
+        AppLocalizations.delegate.isSupported(const Locale('hi', 'IN')),
+        isTrue,
+      );
+    },
+  );
 }

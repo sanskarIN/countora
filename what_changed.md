@@ -1,11 +1,14 @@
 # Countora development handoff
 
-Updated: 2026-08-20
-Current milestone: Phase 6 cross-platform release-candidate verification
-Target release: 0.2.0+2
+Updated: 2026-08-24
+Current milestone: Countora 2.15.18 release-candidate verification
+Target release: 2.15.18+18
+Release branch: `release/2.15.18-rc`
+Release pull request: #8 — `release: prepare Countora 2.15.18`
 Repository: https://github.com/sanskarIN/countora
 Source model: public / open source / MIT
 Primary implementation: Flutter + Dart
+Pinned repository verification toolchain: Flutter 3.47.1 / stable
 
 ## Continuity contract
 
@@ -15,9 +18,272 @@ Continue the existing repository instead of replacing working code. Keep changes
 
 The requested commit email remains `sanskarin@outlook.in`. GitHub connector writes use the authenticated repository identity when the connector action does not expose custom Git author metadata.
 
-## Current cross-platform status
+## 2.15.18 release-candidate continuation
 
-Countora source now intentionally supports all six primary Flutter deployment families from one application codebase:
+The previous Phase 6 verification branches were intentionally not merged into the release candidate because they had diverged substantially from current `main`. `verification/phase-6-rc` was 22 commits ahead and 37 commits behind `main`; `verification/normalize-phase-6` was 33 commits ahead and 37 commits behind `main` when reviewed.
+
+A fresh branch was therefore created directly from the latest `main` head:
+
+```text
+release/2.15.18-rc
+```
+
+This keeps all current `main` work and carries forward only relevant, reviewed release fixes from the older verification experiments.
+
+### Version synchronization
+
+The candidate now uses:
+
+```text
+Flutter package: 2.15.18+18
+AppMetadata:     2.15.18 / build 18
+Windows MSIX:    2.15.18.18
+Reserved tag:    v2.15.18
+```
+
+The matching `CHANGELOG.md` section remains:
+
+```text
+## [2.15.18] - Unreleased release candidate
+```
+
+This is intentional. `tool/src/version_audit.dart` rejects a tag while the matching changelog heading still contains `unreleased`, preventing an unverified candidate from being published accidentally.
+
+### Fresh release PR
+
+PR #8 targets `main` from `release/2.15.18-rc`.
+
+It was opened as a real release-candidate verification surface rather than as a tag/publish action. The PR remains open while automated and manual release gates are unresolved.
+
+## Normalization failure discovered and fixed
+
+The older normalization workflow provided useful real toolchain evidence before failing.
+
+Observed successful steps on Flutter 3.47.1 / Dart 3.13.1 included:
+
+- Flutter installation;
+- Dart formatting execution;
+- `flutter pub get` dependency resolution;
+- generation of a real application `pubspec.lock`;
+- dependency-lock shape validation;
+- localization-source validation;
+- patch-hygiene validation.
+
+The workflow failed only during its final commit/push sequence. Flutter had rewritten `analysis_options.yaml`, leaving unstaged changes, and the later command:
+
+```text
+git pull --rebase
+```
+
+failed because the working tree was dirty.
+
+The 2.15.18 candidate fixes the cause rather than hiding/stashing the mutation.
+
+## Safe platform bootstrap
+
+`tool/bootstrap_platforms.dart` now invokes Flutter with:
+
+```text
+flutter create .
+--project-name=countora
+--org=dev.sanskar
+--platforms=android,ios,web,windows,macos,linux
+--no-pub
+```
+
+Dependency resolution is therefore not an implicit side effect of platform-runner generation.
+
+Before generation, Countora snapshots application-owned root files:
+
+- `.gitignore`;
+- `README.md`;
+- `analysis_options.yaml`;
+- `l10n.yaml`;
+- `pubspec.lock`;
+- `pubspec.yaml`.
+
+After `flutter create`, those files are restored byte-for-byte in a `finally` block before native runner patches are applied.
+
+Created:
+
+```text
+tool/src/root_file_guard.dart
+```
+
+The guard:
+
+- preserves exact bytes rather than normalizing text;
+- restores files that existed before generation;
+- removes a generated file that did not exist before generation;
+- permits harmless dotted repository-relative filenames;
+- rejects absolute paths;
+- rejects `..` traversal segments.
+
+Regression coverage:
+
+```text
+test/bootstrap_platforms_test.dart
+test/root_file_guard_test.dart
+```
+
+These tests protect the six-platform generation list, the `--no-pub` boundary, exact root-file restoration, absent-file cleanup, and unsafe path rejection.
+
+## Flutter 3.47 iOS runner compatibility
+
+A second useful finding from the old verification branch was that current Flutter 3.47 iOS templates can use UIScene/implicit-engine plugin registration instead of the older:
+
+```text
+GeneratedPluginRegistrant.register(with: self)
+```
+
+inside `didFinishLaunchingWithOptions`.
+
+`patchIosAppDelegate()` no longer requires that legacy registration line. It now anchors notification-center delegate setup to the stable launch return line and supports both:
+
+- legacy AppDelegate plugin registration;
+- Flutter 3.47 `FlutterImplicitEngineDelegate` / `didInitializeImplicitFlutterEngine` templates.
+
+The patch still:
+
+- requires the expected UIKit import;
+- adds `import UserNotifications` when absent;
+- installs `UNUserNotificationCenter.current().delegate` during launch;
+- remains idempotent;
+- fails closed if the expected launch template anchor disappears.
+
+`test/platform_patches_test.dart` now contains separate legacy and Flutter 3.47 template fixtures.
+
+## Pinned toolchain policy
+
+`.github/actions/setup-flutter/action.yml` now pins:
+
+```text
+Flutter 3.47.1
+channel: stable
+cache: true
+```
+
+Created:
+
+```text
+tool/src/toolchain_audit.dart
+tool/check_toolchain.dart
+test/toolchain_audit_test.dart
+```
+
+The audit requires:
+
+- exactly one pinned `MAJOR.MINOR.PATCH` Flutter version in the shared setup action;
+- stable channel;
+- caching enabled;
+- CI/release workflows to consume the shared setup action;
+- workflows not to bypass it with direct `subosito/flutter-action` usage.
+
+The audit covers:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/dependency-lock.yml
+.github/workflows/platform-smoke.yml
+.github/workflows/release.yml
+.github/workflows/repository-audit.yml
+```
+
+This reduces accidental “works on one runner version” drift across the release pipeline.
+
+## Dependency-lock workflow hardening
+
+`.github/workflows/dependency-lock.yml` now supports both:
+
+```text
+main
+release/**
+```
+
+The workflow:
+
+1. checks out the exact current branch;
+2. installs the shared pinned Flutter toolchain;
+3. verifies the toolchain policy;
+4. validates localization source/catalogs;
+5. safely generates all platform runners;
+6. explicitly runs `flutter pub get`;
+7. validates the generated lockfile;
+8. generates localization code;
+9. runs formatting, analysis, tests, repository checks, version checks, secret checks, and documentation-link checks;
+10. runs `git diff --check`;
+11. rejects every unexpected tracked change other than `pubspec.lock`;
+12. retains the lock as a workflow artifact;
+13. commits only `pubspec.lock` when it changed;
+14. rebases/pushes against the exact current branch.
+
+The commit identity configured by that workflow remains:
+
+```text
+Sanskar <sanskarin@outlook.in>
+```
+
+A lockfile must still come from a real successful toolchain run. It must not be hand-written or fabricated.
+
+## Release-branch CI coverage
+
+The following workflows now run for `release/**` pushes in addition to their previous main/PR behavior where appropriate:
+
+### CI
+
+- shared Flutter toolchain policy;
+- localization-source validation;
+- platform runner generation;
+- dependency resolution;
+- localization generation;
+- formatting;
+- `flutter analyze`;
+- `flutter test`;
+- local documentation links;
+- Web release build;
+- Linux/Xvfb integration journey.
+
+### Repository audit
+
+- shared Flutter toolchain policy;
+- required-file contract;
+- synchronized version metadata;
+- localization-source audit;
+- obvious-secret scan;
+- documentation-link audit.
+
+### Platform smoke
+
+- Android debug build on Ubuntu;
+- Linux debug build on Ubuntu;
+- portable Windows debug build on Windows;
+- Windows MSIX package-identity creation on Windows;
+- macOS debug build on macOS;
+- unsigned iOS debug build on macOS.
+
+### Tagged release
+
+The tagged release quality job now includes the shared toolchain-policy audit before repository/version/lock/localization/security/build work.
+
+The final tag remains blocked until the candidate changelog heading is finalized and all required release evidence exists.
+
+## 2.15.18 release documentation
+
+Created:
+
+```text
+docs/release-2.15.18.md
+```
+
+It records automated and manual release requirements for the exact candidate.
+
+`docs/release.md`, `README.md`, `ROADMAP.md`, `CHANGELOG.md`, and the required-file contract have been aligned to the 2.15.18 candidate.
+
+The release checklist itself is now a required repository file.
+
+## Current cross-platform product status
+
+Countora source intentionally supports all six primary Flutter deployment families from one application codebase:
 
 1. Android
 2. iOS
@@ -36,8 +302,8 @@ Shared product behavior across all six platform families includes:
 - multi-step interval sequences with custom labels and ordering;
 - local completion history and replay;
 - local-first persistence;
-- schema-aware, bounded backup/restore;
-- corruption recovery;
+- schema-aware bounded backup/restore;
+- corrupted-state recovery;
 - absolute UTC deadline persistence;
 - monotonic in-process runtime clock;
 - app-resume/startup reconciliation;
@@ -45,18 +311,18 @@ Shared product behavior across all six platform families includes:
 - light, dark, and system themes;
 - reduced motion and accessibility semantics;
 - desktop keyboard shortcuts;
+- English/Hindi localization with System override;
 - Settings/About/privacy/support surfaces;
-- generated-localization architecture;
 - structured redacting diagnostics;
 - guarded external links/clipboard operations.
 
-Cross-platform support does **not** mean pretending every operating system, browser, or packaging mode exposes identical APIs. Countora now models those differences explicitly and provides the safest useful fallback for each target.
+Cross-platform support does not imply identical OS APIs. Countora explicitly models capability differences and uses the safest available fallback.
 
 ## Notification capability architecture
 
-`lib/src/core/platform_capabilities.dart` is the notification-delivery capability source of truth.
+`lib/src/core/platform_capabilities.dart` remains the notification-delivery capability source of truth.
 
-It defines:
+Modes:
 
 ```text
 NotificationDeliveryMode.scheduledBackground
@@ -64,593 +330,186 @@ NotificationDeliveryMode.runtimeOnly
 NotificationDeliveryMode.unavailable
 ```
 
-It also exposes:
-
-- `notificationDeliveryMode()`;
-- `supportsLocalNotifications()`;
-- `supportsScheduledNotifications()`;
-- `usesRuntimeNotificationFallback()`.
-
 Current behavior:
 
 | Platform / distribution | Delivery mode | Countora behavior |
 | --- | --- | --- |
 | Android | scheduledBackground | Native future scheduling; exact scheduling falls back to inexact when exact alarms cannot be used |
-| iOS | scheduledBackground | Native Darwin future scheduling; generated AppDelegate receives required notification-center delegate setup |
+| iOS | scheduledBackground | Native Darwin future scheduling |
 | macOS | scheduledBackground | Native Darwin future scheduling |
-| Windows portable ZIP | runtimeOnly | Local Windows notifications while Countora remains active; no unsafe dependency on package-identity-only cancellation APIs |
-| Windows MSIX/package identity | scheduledBackground | Future Windows scheduling enabled through `COUNTORA_WINDOWS_PACKAGED=true` |
-| Linux | runtimeOnly | Linux desktop notifications while the Countora process remains active |
-| Web | runtimeOnly | Browser notifications while the page/runtime remains active, after explicit browser permission grant |
-| Fuchsia/unknown unsupported native target | unavailable | Fail closed |
+| Windows portable ZIP | runtimeOnly | Local notification while Countora remains active |
+| Windows MSIX/package identity | scheduledBackground | Future Windows scheduling through `COUNTORA_WINDOWS_PACKAGED=true` |
+| Linux | runtimeOnly | Linux desktop notification while Countora remains active |
+| Web | runtimeOnly | Browser notification while the page/runtime remains active after explicit permission grant |
+| Unsupported/unknown native target | unavailable | Fail closed |
 
-The Windows decision is intentionally distribution-aware. The notification plugin can display notifications without package identity, but reliable retrieval/cancellation of previous Windows notifications depends on package identity. Countora therefore does not use future-scheduling semantics in a normal portable ZIP build.
+Linux, Web, and portable Windows runtime notification delivery is not a promise of future notification delivery after the process/page has terminated.
 
-## Runtime notification fallback
+## Existing reliability and security work retained
 
-`LocalNotificationService` now provides a runtime completion-notification path for Linux, Web, and portable Windows builds.
-
-The fallback stores an in-process timer for the current countdown/interval deadline.
-
-Behavior:
-
-- starting/resuming a timer establishes a runtime completion callback;
-- extending/restarting/reconciling a timer replaces the associated callback;
-- pausing/deleting/disabling notifications cancels pending callbacks before their deadline;
-- after an interval advances, the next current interval receives a fresh callback;
-- when a deadline fires while Countora remains alive, the platform/browser local notification is shown;
-- timer correctness remains driven by persisted UTC deadlines and controller reconciliation rather than by the notification timer.
-
-This does not claim that Linux, a browser page, or a portable Windows process can notify after that runtime has been terminated.
-
-### Exact-deadline race hardening
-
-A real lifecycle race was found during this cross-platform work: the controller ticker can reconcile a completed timer at the same deadline before the runtime notification `Timer` callback gets its event-loop turn.
-
-The fallback now stores `_RuntimeNotificationEntry` values with the UTC deadline and delivery callback.
-
-`shouldPreserveDueRuntimeNotification()` returns true at/after the deadline. Cleanup preserves a due callback instead of cancelling it merely because controller reconciliation won the event-loop race.
-
-The callback uses identity checks before removing its runtime-map entry so an older due callback cannot accidentally delete a newer replacement for the same timer ID.
-
-`test/runtime_notification_policy_test.dart` protects:
-
-- before-deadline cancellation;
-- exact-deadline preservation;
-- after-deadline preservation;
-- timezone normalization.
-
-## Cross-platform notification presentation
-
-`countoraNotificationDetails()` now configures every supported notification adapter:
-
-- Android — stable cue-profile channel, high importance/priority, alarm category, sound/vibration flags;
-- iOS — Darwin alert/sound presentation;
-- macOS — Darwin alert/sound presentation;
-- Linux — normal urgency and quiet-mode sound suppression;
-- Windows — normal audio or explicit silent audio;
-- Web — `isSilent` behavior following Countora sound/quiet preferences.
-
-`test/notification_details_test.dart` protects the six-target configuration and quiet-mode behavior.
-
-## Web notification permission boundary
-
-Web required special handling because browsers require notification permission to originate directly from user activation.
-
-Countora no longer asks Web for notification permission inside `LocalNotificationService.requestPermissions()`.
-
-That automatic method remains responsible for the native permission paths where appropriate:
-
-- Android notification/exact-alarm permission;
-- iOS notification permission;
-- macOS notification permission.
-
-### New explicit Web boundary
-
-Created:
-
-```text
-lib/src/data/web_notification_permission.dart
-```
-
-It exposes:
-
-```text
-requestWebNotificationPermissionFromUserGesture()
-```
-
-The helper:
-
-- returns immediately on non-Web targets;
-- resolves `WebFlutterLocalNotificationsPlugin` only on Web;
-- recognizes already-granted permission;
-- otherwise requests browser permission;
-- returns a safe boolean result;
-- has an injectable request function for deterministic tests.
-
-### Web Settings action
-
-`SettingsPage` now renders, only on Web:
-
-```text
-Browser notification permission
-Allow
-```
-
-The **Allow** button invokes the browser permission helper directly from the button action.
-
-Startup, persistence, controller reconciliation, scheduled timer callbacks, and other automatic lifecycle paths never request Web notification permission.
-
-If permission is denied, Countora still keeps timers, persistence, history, reconciliation, and visual/in-app completion cues working.
-
-`test/web_notification_permission_test.dart` protects:
-
-- non-Web no-op behavior;
-- one direct Web request;
-- denial returning safely.
-
-`test/localization_test.dart` now also protects the browser-permission copy and the updated runtime-only notification explanation.
-
-## Windows portable vs MSIX support
-
-Windows now has two intentional distribution modes.
-
-### Portable Windows
-
-Normal:
-
-```text
-flutter build windows
-```
-
-leaves:
-
-```text
-COUNTORA_WINDOWS_PACKAGED=false
-```
-
-and Countora uses `runtimeOnly` notification delivery.
-
-The portable release ZIP remains a supported Countora application build and retains every core timer/data/UI capability.
-
-### Package-identity Windows
-
-`pubspec.yaml` now includes `msix: ^3.18.0` and `msix_config`.
-
-Current MSIX configuration includes:
-
-```text
-display_name: Countora
-publisher_display_name: Sanskar
-identity_name: dev.sanskar.countora
-msix_version: 0.2.0.2
-windows_build_args: --dart-define=COUNTORA_WINDOWS_PACKAGED=true
-install_certificate: false
-```
-
-The MSIX build therefore rebuilds Countora with package identity enabled and selects `scheduledBackground` Windows delivery.
-
-### Windows package version audit
-
-`tool/src/version_audit.dart` now checks the Windows MSIX four-part version whenever `msix_config` exists.
-
-Mapping rule:
-
-```text
-Flutter package: MAJOR.MINOR.PATCH+BUILD
-Windows MSIX:    MAJOR.MINOR.PATCH.BUILD
-```
-
-For the current candidate:
-
-```text
-0.2.0+2 -> 0.2.0.2
-```
-
-`test/version_audit_test.dart` covers:
-
-- synchronized MSIX metadata;
-- drift rejection;
-- missing `msix_version` rejection;
-- existing package/AppMetadata/changelog/tag checks.
-
-### MSIX signing boundary
-
-CI now verifies that MSIX/package-identity creation works, but Countora does **not** present a development/self-signed MSIX as a production-signed artifact.
-
-A trusted production certificate or Microsoft Store distribution/signing strategy remains required before the packaged Windows build is promoted publicly.
-
-The portable ZIP remains the currently published Windows CI/release artifact while MSIX production signing is unresolved.
-
-## Native runner generation and platform hardening
-
-Countora intentionally regenerates native Flutter runners through:
-
-```text
-dart run tool/bootstrap_platforms.dart
-```
-
-The command generates:
-
-- Android;
-- iOS;
-- Web;
-- Windows;
-- macOS;
-- Linux.
-
-It then applies deterministic native patches from `tool/src/platform_patches.dart`.
-
-### Android runner hardening
-
-The bootstrap ensures generated Android source contains:
-
-- `RECEIVE_BOOT_COMPLETED`;
-- `SCHEDULE_EXACT_ALARM`;
-- `ScheduledNotificationReceiver`;
-- `ScheduledNotificationBootReceiver`;
-- core-library desugaring;
-- multidex;
-- desugar JDK libs dependency;
-- Android Plugin DSL AGP floor of 8.11.1.
-
-`patchAndroidSettingsGradle()`:
-
-- finds the generated `com.android.application` Plugin DSL declaration;
-- raises versions below 8.11.1;
-- leaves newer versions untouched;
-- fails explicitly if the expected Flutter template declaration disappears.
-
-The declared Flutter baseline is `>=3.38.1`. Flutter 3.38.1 already generates Gradle 8.14, AGP 8.11.1, and compileSdk 36, so the AGP transform is a defensive floor/no-op on that supported baseline rather than a forced change.
-
-### iOS runner hardening
-
-`patchIosAppDelegate()` now:
-
-- verifies the expected generated Swift template anchors;
-- adds `import UserNotifications`;
-- adds `UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate` before generated plugin registration;
-- remains idempotent;
-- fails explicitly if Flutter changes the expected AppDelegate template.
-
-This protects foreground local-notification presentation setup instead of relying on an undocumented manual post-generation step.
-
-### Native patch regression coverage
-
-`test/platform_patches_test.dart` now covers:
-
-- Android manifest patching;
-- Android Gradle desugaring/multidex patching;
-- Android AGP floor behavior;
-- preservation of newer AGP versions;
-- idempotence;
-- explicit template-drift failure;
-- iOS UserNotifications/delegate patching;
-- iOS idempotence;
-- iOS template-drift failure.
-
-## Cross-platform CI and release verification source
-
-### Main CI
-
-`.github/workflows/ci.yml` continues to provide the main Flutter quality job and Linux integration job.
-
-It includes:
-
-- stable Flutter setup;
-- localization-source validation;
-- native runner generation/patching;
-- dependency resolution;
-- localization generation;
-- formatting verification;
-- `flutter analyze`;
-- `flutter test`;
-- Markdown-link checking;
-- Web release build;
-- Linux/Xvfb integration journey.
-
-### New Platform smoke workflow
-
-Added:
-
-```text
-.github/workflows/platform-smoke.yml
-```
-
-It runs on `main`, pull requests targeting `main`, and manual dispatch.
-
-Jobs:
-
-#### Android / Ubuntu
-
-- localization audit;
-- generated runners;
-- dependencies;
-- localization;
-- debug APK build.
-
-#### Linux / Ubuntu
-
-- Linux build dependencies;
-- localization audit;
-- generated runners;
-- dependencies;
-- localization;
-- debug Linux build.
-
-#### Windows / Windows runner
-
-- version/MSIX metadata audit;
-- localization audit;
-- generated runners;
-- dependencies;
-- localization;
-- portable Windows debug build;
-- MSIX package-identity debug creation.
-
-#### Apple / macOS runner
-
-- localization audit;
-- generated runners;
-- dependencies;
-- localization;
-- macOS debug build;
-- unsigned iOS debug compilation.
-
-Web remains covered by the main CI release-mode Web build.
-
-### Tagged release workflow
-
-The existing tagged release workflow remains gated by repository/version/dependency/localization/secret/test/build checks.
-
-Its Windows job now:
-
-1. builds the portable Windows release;
-2. archives the portable ZIP;
-3. verifies MSIX/package-identity creation;
-4. publishes the portable ZIP/checksum only.
-
-This verifies both Windows code paths while keeping production MSIX signing outside CI source until an approved signing/store configuration exists.
-
-## Repository contract additions
-
-`tool/check_required_files.dart` now protects the new cross-platform assets, including:
-
-- `lib/src/data/web_notification_permission.dart`;
-- `test/web_notification_permission_test.dart`;
-- `test/runtime_notification_policy_test.dart`;
-- `test/notification_details_test.dart`;
-- `test/notification_initialization_test.dart`;
-- cross-platform Settings/capability tests;
-- `.github/workflows/platform-smoke.yml`;
-- existing critical repository/release/source/test/documentation tooling.
-
-A future deletion of these important support boundaries will therefore fail the deterministic repository contract.
-
-## Existing reliability/security work retained
-
-The cross-platform work builds on, and does not replace, the existing Countora hardening:
+The 2.15.18 release work builds on rather than replaces previous Countora hardening:
 
 - schema-aware bounded state codec;
 - future-schema rejection;
 - legacy state migration;
-- explicit imported identifier length limits;
+- explicit imported identifier limits;
 - malformed backup/type rejection;
 - safe corrupted-state recovery;
-- controller timer/preset collection capacity limits;
+- timer/preset controller collection limits;
 - monotonic runtime clock;
 - startup/resume reconciliation;
 - interval catch-up using prior deadlines;
-- guarded non-overlapping ticker execution;
+- non-overlapping asynchronous ticker guard;
 - persistence-before-platform-side-effect ordering;
 - failed-import rollback;
-- bounded notification cleanup that continues after per-ID plugin failures;
-- stable Android cue-profile channels;
+- bounded notification cleanup that continues after individual plugin failures;
+- runtime notification exact-deadline race protection;
+- Android exact-to-inexact scheduling fallback;
+- stable Android cue-profile notification channels;
+- direct Web user-gesture notification permission boundary;
+- no automatic Web permission prompt from startup/reconciliation;
+- package-identity-aware Windows scheduling;
 - recursive structured diagnostic redaction;
-- deterministic localization-source auditing;
+- deterministic localization-source/catalog audits;
 - release-only dependency-lock auditing;
-- required-file/version/secret/link repository checks;
+- required-file/version/secret/link audits;
 - Dependency Review threshold;
 - CodeQL workflow scan;
 - SHA-256 tagged artifact digests;
 - responsive Home/Settings error surfaces;
-- accessibility and localization architecture;
+- accessibility/localization architecture;
 - deterministic state-codec benchmark harness.
 
-## Current documentation status
+## Native runner hardening retained
 
-Cross-platform behavior has been synchronized in:
+Android generation enforces:
 
-- `README.md`;
-- `CHANGELOG.md`;
-- `ROADMAP.md`;
-- `docs/setup.md`;
-- `docs/testing.md`;
-- `docs/release.md`;
-- `docs/notification-support.md`;
-- `lib/l10n/app_en.arb`;
-- this `what_changed.md` handoff.
+- `RECEIVE_BOOT_COMPLETED`;
+- `SCHEDULE_EXACT_ALARM`;
+- scheduled-notification receivers;
+- core-library desugaring;
+- multidex;
+- `desugar_jdk_libs` dependency;
+- AGP floor of 8.11.1 while preserving newer generated versions.
 
-The documentation distinguishes:
+iOS generation adds the notification-center delegate needed for foreground local-notification presentation and now supports both legacy and Flutter 3.47 runner structures.
 
-- supported application platform family;
-- scheduled vs runtime notification capability;
-- portable vs package-identity Windows behavior;
-- CI package verification vs production signing;
-- source implementation vs actually observed release evidence.
+## Current verification evidence
 
-## Current dependency-lock status
+### Evidence observed before this candidate
 
-`pubspec.lock` is still absent from the repository.
+The older normalization run proved that Flutter 3.47.1 could install, format source, resolve the Countora dependency graph, generate a lockfile, validate the lock shape, validate localization references, and pass patch hygiene before failing at the dirty-working-tree rebase step.
 
-This is deliberate, not complete.
+That run is useful diagnostic evidence but is **not** release evidence for the new 2.15.18 candidate because the candidate tree is different.
 
-The cross-platform work added a new dev dependency (`msix`), so a real supported Flutter SDK must now perform dependency resolution again before release.
+### Current PR evidence
 
-Required release sequence:
+At the time this handoff was updated, PR #8 had live GitHub checks queued/pending for:
 
-1. clean checkout with supported Flutter SDK;
-2. `dart run tool/bootstrap_platforms.dart`;
-3. `flutter pub get`;
-4. review the resolved dependency graph;
-5. commit the generated application `pubspec.lock`;
-6. run `dart run tool/check_dependency_lock.dart` from that committed checkout.
+- CI;
+- Platform smoke;
+- Repository audit;
+- Dependency security review;
+- CodeQL workflow scan.
 
-Do not fabricate or hand-write `pubspec.lock`.
+Those queued states are not recorded as passing. Their final results must be observed on the latest candidate commit and failures must be fixed rather than ignored.
 
-The tagged release workflow already runs the dependency-lock audit before its own `flutter pub get`, preventing a release tag from silently resolving a fresh graph and treating it as reviewed source.
+### Not yet truthfully verified for 2.15.18
 
-## Verification status
+Until real successful results are observed on the exact candidate, do not claim the following are green:
 
-### Verified by repository/source inspection and completed GitHub writes
-
-- Countora source intentionally targets Android, iOS, Windows, macOS, Linux, and Web.
-- Native runner bootstrap targets all six platform families.
-- Notification capability logic distinguishes scheduled/runtime/unavailable modes.
-- Windows capability distinguishes portable vs package-identity builds.
-- Linux/Web/portable-Windows runtime fallback source is present.
-- Runtime deadline-race hardening is present.
-- Web notification permission is isolated behind a direct Settings user action.
-- Automatic native notification permission code deliberately excludes Web.
-- Six-platform notification presentation configuration is present.
-- Android manifest/Gradle/AGP hardening source is present.
-- iOS AppDelegate notification delegate patch source is present.
-- Windows MSIX packaging metadata and package-identity Dart define are present.
-- Version auditing protects MSIX version synchronization.
-- Platform smoke workflow source is present.
-- Tagged release workflow verifies Windows MSIX package creation without publishing it as a production-signed artifact.
-- Required-file contract protects the new critical cross-platform source/tests/workflow.
-- Cross-platform documentation is synchronized.
-
-### Not truthfully verified in this chat environment
-
-No local working Flutter/Dart toolchain run has been observed here, and no completed green GitHub Actions result has yet been used as release evidence for these direct-push changes.
-
-Therefore the following are **not claimed as passing** yet:
-
-- generated `pubspec.lock` resolution;
-- dependency-lock audit against a committed generated lock;
-- `dart format --output=none --set-exit-if-changed lib test integration_test tool`;
+- committed reviewed `pubspec.lock`;
+- dependency-lock audit from the committed candidate;
+- formatter check;
 - `flutter analyze`;
-- `flutter test`;
+- full `flutter test` suite;
 - Linux/Xvfb integration journey;
 - Web release build;
-- Android debug/release build after the latest native changes;
-- Linux debug/release build after the latest changes;
-- portable Windows build after the latest changes;
-- Windows MSIX creation after the latest changes;
-- macOS build after the latest changes;
-- unsigned iOS compilation after the latest changes;
-- real Android notification permission/background/exact-alarm behavior;
-- real iOS foreground/background notification behavior;
-- real macOS notification behavior;
-- real Linux runtime notification behavior;
-- real Web permission/runtime notification behavior in representative browsers;
-- real portable Windows runtime notification behavior;
-- real installed package-identity Windows scheduling/cancellation behavior;
+- Android smoke/release build;
+- Linux smoke/release build;
+- portable Windows smoke/release build;
+- Windows MSIX creation;
+- macOS smoke/release build;
+- unsigned iOS compilation;
+- Android real notification permission/background/exact-alarm behavior;
+- iOS foreground/background notification behavior;
+- macOS real notification behavior;
+- Linux runtime notification behavior;
+- Web browser permission/runtime notification behavior;
+- portable Windows runtime notification behavior;
+- installed package-identity Windows scheduling/cancellation behavior;
 - production MSIX signing/store distribution;
 - Apple signing/notarization/store distribution;
 - Android store signing;
 - manual accessibility review;
 - representative benchmark results;
-- real application screenshots.
+- real release screenshots.
 
-## Remaining release blockers
+## Remaining 2.15.18 release blockers
 
-1. Generate/review/commit `pubspec.lock` with the supported Flutter SDK.
-2. Run/observe all deterministic repository/version/dependency/localization/secret/link checks from a clean checkout.
-3. Run/observe formatter, analyzer, and Flutter tests.
-4. Observe successful main CI Web + Linux integration jobs.
-5. Observe successful `Platform smoke` Android/Linux/Windows portable/Windows MSIX/macOS/iOS jobs.
-6. Fix every concrete compiler/analyzer/test/workflow issue returned by those real executions.
-7. Verify Android notification permission, background completion, exact-alarm denial fallback, cue combinations, and reboot/app-update behavior on representative devices/emulators.
-8. Verify iOS foreground/background notification behavior in a signed/device-capable Apple environment.
-9. Verify macOS notification behavior on a representative release-like build.
-10. Verify portable Windows runtime fallback.
-11. Verify installed package-identity Windows scheduled delivery and cancellation.
-12. Choose and validate a trusted MSIX signing or Microsoft Store distribution strategy before publishing the MSIX path.
-13. Verify Linux runtime local notification delivery and persisted-state reconciliation.
-14. Verify Web **Browser notification permission → Allow** behavior, denial, runtime completion notification delivery, and page lifecycle behavior in representative browsers.
-15. Keep Linux/Web/portable-Windows documentation explicit that runtime-only delivery is not a guarantee after the process/page is gone.
+1. Observe the complete latest PR #8 CI result and fix every concrete failure.
+2. Observe all Android/Linux/Windows/MSIX/macOS/iOS Platform smoke jobs and fix every concrete failure.
+3. Observe repository audit, dependency security review, and CodeQL results.
+4. Generate, review, and commit the real `pubspec.lock` using the pinned Flutter 3.47.1 toolchain.
+5. Verify the dependency-lock audit against that committed candidate checkout.
+6. Run an additional configured local/release integration journey where available and record evidence.
+7. Run the state-codec benchmark on representative hardware and record its environment/results.
+8. Verify Android notification permission/completion, exact-alarm denial fallback, cue combinations, and relevant lifecycle behavior on a representative device/emulator.
+9. Verify iOS notification behavior in a signed/device-capable Apple environment.
+10. Verify macOS notification behavior on a representative release-like build.
+11. Verify portable Windows runtime fallback.
+12. Verify installed package-identity Windows scheduled delivery and cancellation.
+13. Choose and validate a trusted MSIX signing or Microsoft Store distribution strategy before publishing an MSIX.
+14. Verify Linux runtime local notifications and persisted-state reconciliation.
+15. Verify Web **Browser notification permission → Allow**, denial/grant, runtime completion delivery, reload, and page lifecycle behavior in representative browsers.
 16. Complete manual accessibility review with screen reader, keyboard-only navigation, scaled text, reduced motion, and themes.
-17. Run and record the deterministic benchmark on representative hardware.
-18. Capture only real screenshots from verified builds.
-19. Validate final signing/notarization/store distribution paths.
-20. Run the final clean-checkout release audit.
-21. Only after required evidence is green, finalize the dated 0.2.0 changelog entry and create the release tag.
+17. Capture only real screenshots from verified builds.
+18. Run the final clean-checkout release audit and record successful output.
+19. Convert `[2.15.18] - Unreleased release candidate` to the actual release date only after verification succeeds.
+20. Create `v2.15.18` only after the complete release gate is satisfied.
 
-## Recent cross-platform commits
+## 2.15.18 preparation commits created in this continuation
 
-### Web permission and final consistency
+The release branch intentionally uses many focused commits. Important new commits include:
 
-- `4ded3c8` feat: add user-initiated web notification permission boundary
-- `17163cd` fix: avoid automatic browser permission prompts
-- `02a2799` test: cover user-initiated web notification permission boundary
-- `0451f25` feat: add explicit browser notification permission action
-- `cdcecc8` feat: localize browser notification permission action
-- `060cfc0` test: cover browser notification permission copy
-- `386551d` chore: protect Web permission boundary regressions
-- `55325a6` docs: require direct Web notification permission action
-- `14ea7be` docs: cover browser permission boundary tests
-- `ca4777f` docs: record direct Web notification permission flow
-- `b30fdcb` docs: track direct browser permission boundary
+- `7d42250` build: pin Flutter 3.47.1 for release verification
+- `0efabb0` feat: guard root files during platform bootstrap
+- `ff54816` fix: preserve repository files during runner generation
+- `0ddf083` test: protect platform bootstrap arguments
+- `78debf8` test: cover root file preservation guard
+- `66f873e` chore: protect release bootstrap regression files
+- `052450d` build: prepare package version 2.15.18
+- `42977a3` chore: sync app metadata for 2.15.18
+- `d77f0e1` docs: add 2.15.18 release candidate changelog
+- `bc4e177` test: align version audit fixtures with 2.15.18
+- `c077364` docs: prepare README for 2.15.18
+- `ce138e4` ci: refresh dependency lock on release branches
+- `470f0a3` fix: support Flutter 3.47 iOS runner template
+- `37c5ee1` test: cover Flutter 3.47 iOS template patch
+- `0066eba` feat: add deterministic Flutter toolchain audit
+- `9bd6fb3` feat: expose Flutter toolchain audit command
+- `1877416` test: cover Flutter toolchain audit
+- `588d32f` chore: protect toolchain audit files
+- `79a1a4e` ci: verify release branches with pinned toolchain
+- `f750b60` ci: audit release branches with shared toolchain
+- `a70ca68` ci: gate dependency lock on toolchain policy
+- `1cf92ac` ci: run platform smoke on release branches
+- `a1c34a5` docs: add 2.15.18 release verification checklist
+- `4263c5e` docs: move roadmap to 2.15.18 release candidate
+- `a56514c` chore: protect 2.15.18 release checklist
+- `de2d53b` ci: enforce toolchain policy on tagged releases
+- `b1a0448` docs: align release process with 2.15.18
 
-### Android/iOS/Windows native/package hardening
-
-- `6a584b3` build: patch generated iOS notification delegate
-- `8ed1c27` build: configure generated iOS notifications
-- `6cbd6d9` test: cover generated iOS notification patch
-- `1d43f36` build: add Windows MSIX packaging support
-- `6fd95c2` fix: make Windows scheduling package-identity aware
-- `c3a5b68` test: cover packaged and portable Windows notification modes
-- `4c71d61` build: enable packaged Windows notification mode in MSIX
-- `04a8b50` build: keep MSIX version synchronized
-- `3db0d41` test: cover Windows MSIX version synchronization
-- `137c6fe` ci: verify Windows package identity build
-- `a4c4394` ci: verify Windows MSIX packaging on releases
-- `8d58e60` build: enforce notification-compatible Android AGP
-- `6948e35` build: patch generated Android AGP settings
-- `9f5fe05` test: cover Android AGP bootstrap hardening
-- `dd6f36c` ci: validate Windows package version before MSIX smoke
-
-### Initial six-platform notification architecture
-
-- `74bfa14` feat: model cross-platform notification delivery tiers
-- `084777e` test: cover cross-platform notification capability tiers
-- `a08abdc` feat: support local notifications across all Flutter targets
-- `7e8ad24` feat: add Linux and web runtime notification fallback
-- `628a813` feat: enable notification controls across supported platforms
-- `4a56ca4` test: enable Linux runtime notification settings
-- `026ee86` test: cover cross-platform notification presentation details
-- `f29dc7c` ci: add cross-platform build smoke matrix
-- `f9f010e` chore: protect cross-platform support regressions
-- `ba24b33` fix: preserve due runtime completion notifications
-- `c55ae43` testable: expose runtime notification deadline policy
-- `3abb4f2` test: protect runtime notification deadline race policy
-- `5bffc4d` chore: require runtime notification race regression
+Continue using focused commits for every reproducible fix or documentation/audit boundary.
 
 ## Next exact work
 
-On a clean checkout with Flutter `>=3.38.1` and compatible Dart:
-
-1. run `dart run tool/bootstrap_platforms.dart`;
-2. run `flutter pub get`;
-3. inspect dependency changes including the new `msix` development dependency;
-4. commit the reviewed `pubspec.lock`;
-5. run `dart run tool/check_required_files.dart`;
-6. run `dart run tool/check_version_sync.dart`;
-7. run `dart run tool/check_dependency_lock.dart`;
-8. run `dart run tool/check_secrets.dart`;
-9. run `dart run tool/check_localization_source.dart`;
-10. run `dart run tool/check_markdown_links.dart`;
-11. run `flutter gen-l10n`;
-12. run `dart format --output=none --set-exit-if-changed lib test integration_test tool`;
-13. run `flutter analyze`;
-14. run `flutter test`;
-15. run/observe Linux integration tests;
-16. observe each Platform smoke job;
-17. fix every real toolchain failure with a regression where practical;
-18. manually verify platform notification/device/browser behavior;
-19. update this file with actual evidence;
-20. complete signing/distribution/accessibility/screenshots/benchmark work;
-21. only then finalize and tag 0.2.0.
+1. inspect the newest PR #8 workflow results for the latest branch head;
+2. fetch logs for every failed job;
+3. fix each real compiler/analyzer/test/workflow issue with a focused commit and regression where practical;
+4. verify that the guarded dependency-lock workflow creates and commits only `pubspec.lock`;
+5. rerun/observe candidate checks after every branch update;
+6. update this handoff with real passing/failing evidence rather than assumptions;
+7. complete the remaining manual platform/accessibility/distribution checks outside CI;
+8. finalize the changelog date only when release evidence is complete;
+9. tag `v2.15.18` only after the release gate is satisfied.

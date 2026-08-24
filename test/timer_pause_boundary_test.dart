@@ -58,40 +58,46 @@ void main() {
 
   tearDown(() => controller.dispose());
 
-  test('pausing at the deadline completes instead of freezing at zero', () async {
-    await controller.addTimer(
-      name: 'Boundary',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Boundary', durationSeconds: 1),
-      ],
-    );
-    final id = controller.timers.single.id;
+  test(
+    'pausing at the deadline completes instead of freezing at zero',
+    () async {
+      await controller.addTimer(
+        name: 'Boundary',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Boundary', durationSeconds: 1),
+        ],
+      );
+      final id = controller.timers.single.id;
 
-    now = now.add(const Duration(seconds: 1));
-    await controller.pause(id);
+      now = now.add(const Duration(seconds: 1));
+      await controller.pause(id);
 
-    expect(controller.timers.single.status, CountdownStatus.completed);
-    expect(controller.timers.single.remainingWhenPausedSeconds, 0);
-    expect(controller.history, hasLength(1));
-    expect(notifications.cancelled, contains(id));
-  });
+      expect(controller.timers.single.status, CountdownStatus.completed);
+      expect(controller.timers.single.remainingWhenPausedSeconds, 0);
+      expect(controller.history, hasLength(1));
+      expect(notifications.cancelled, contains(id));
+    },
+  );
 
-  test('pausing preserves a positive fractional second by rounding up', () async {
-    await controller.addTimer(
-      name: 'Fractional',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Fractional', durationSeconds: 60),
-      ],
-    );
+  test(
+    'pausing preserves a positive fractional second by rounding up',
+    () async {
+      await controller.addTimer(
+        name: 'Fractional',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Fractional', durationSeconds: 60),
+        ],
+      );
 
-    now = now.add(const Duration(seconds: 10, milliseconds: 500));
-    await controller.pause(controller.timers.single.id);
+      now = now.add(const Duration(seconds: 10, milliseconds: 500));
+      await controller.pause(controller.timers.single.id);
 
-    expect(controller.timers.single.status, CountdownStatus.paused);
-    expect(controller.timers.single.remainingWhenPausedSeconds, 50);
-  });
+      expect(controller.timers.single.status, CountdownStatus.paused);
+      expect(controller.timers.single.remainingWhenPausedSeconds, 50);
+    },
+  );
 
   test('pause all completes expired timers and pauses active timers', () async {
     await controller.addTimer(

@@ -61,61 +61,67 @@ class _QuietNotifications implements NotificationService {
 }
 
 void main() {
-  test('save failure is surfaced without escaping the UI-facing operation', () async {
-    final store = _FailingStore(failSave: true);
-    final controller = TimerController(
-      store: store,
-      notifications: _QuietNotifications(),
-      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
+  test(
+    'save failure is surfaced without escaping the UI-facing operation',
+    () async {
+      final store = _FailingStore(failSave: true);
+      final controller = TimerController(
+        store: store,
+        notifications: _QuietNotifications(),
+        nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
 
-    await expectLater(
-      controller.addTimer(
-        name: 'Unsaved timer',
+      await expectLater(
+        controller.addTimer(
+          name: 'Unsaved timer',
+          group: '',
+          steps: const <IntervalStep>[
+            IntervalStep(label: 'Timer', durationSeconds: 60),
+          ],
+          startImmediately: false,
+        ),
+        completes,
+      );
+
+      expect(controller.timers, hasLength(1));
+      expect(controller.lastError, contains('could not save'));
+    },
+  );
+
+  test(
+    'failed persistence does not create a platform notification schedule',
+    () async {
+      final store = _FailingStore(failSave: true);
+      final notifications = _QuietNotifications();
+      final controller = TimerController(
+        store: store,
+        notifications: notifications,
+        nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+
+      await controller.updateSettings(
+        controller.settings.copyWith(notificationsEnabled: true),
+      );
+      expect(controller.lastError, contains('could not save'));
+
+      controller.clearError();
+      await controller.addTimer(
+        name: 'Unsaved running timer',
         group: '',
         steps: const <IntervalStep>[
           IntervalStep(label: 'Timer', durationSeconds: 60),
         ],
-        startImmediately: false,
-      ),
-      completes,
-    );
+      );
 
-    expect(controller.timers, hasLength(1));
-    expect(controller.lastError, contains('could not save'));
-  });
-
-  test('failed persistence does not create a platform notification schedule', () async {
-    final store = _FailingStore(failSave: true);
-    final notifications = _QuietNotifications();
-    final controller = TimerController(
-      store: store,
-      notifications: notifications,
-      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
-
-    await controller.updateSettings(
-      controller.settings.copyWith(notificationsEnabled: true),
-    );
-    expect(controller.lastError, contains('could not save'));
-
-    controller.clearError();
-    await controller.addTimer(
-      name: 'Unsaved running timer',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-    );
-
-    expect(controller.timers, hasLength(1));
-    expect(controller.lastError, contains('could not save'));
-    expect(notifications.scheduleCount, 0);
-  });
+      expect(controller.timers, hasLength(1));
+      expect(controller.lastError, contains('could not save'));
+      expect(notifications.scheduleCount, 0);
+    },
+  );
 
   test('failed pause persistence leaves platform schedule untouched', () async {
     final store = _FailingStore();
@@ -143,60 +149,66 @@ void main() {
     expect(notifications.cancelCount, 0);
   });
 
-  test('failed removal persistence leaves platform schedule untouched', () async {
-    final store = _FailingStore();
-    final notifications = _QuietNotifications();
-    final controller = TimerController(
-      store: store,
-      notifications: notifications,
-      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
-    await controller.addTimer(
-      name: 'Running timer',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-    );
-    final id = controller.timers.single.id;
+  test(
+    'failed removal persistence leaves platform schedule untouched',
+    () async {
+      final store = _FailingStore();
+      final notifications = _QuietNotifications();
+      final controller = TimerController(
+        store: store,
+        notifications: notifications,
+        nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      await controller.addTimer(
+        name: 'Running timer',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Timer', durationSeconds: 60),
+        ],
+      );
+      final id = controller.timers.single.id;
 
-    store.failSave = true;
-    await controller.removeTimer(id);
+      store.failSave = true;
+      await controller.removeTimer(id);
 
-    expect(controller.lastError, contains('could not save'));
-    expect(notifications.cancelCount, 0);
-  });
+      expect(controller.lastError, contains('could not save'));
+      expect(notifications.cancelCount, 0);
+    },
+  );
 
-  test('failed settings persistence leaves notification schedules untouched', () async {
-    final store = _FailingStore();
-    final notifications = _QuietNotifications();
-    final controller = TimerController(
-      store: store,
-      notifications: notifications,
-      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
-    await controller.addTimer(
-      name: 'Running timer',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-    );
-    expect(notifications.scheduleCount, 1);
+  test(
+    'failed settings persistence leaves notification schedules untouched',
+    () async {
+      final store = _FailingStore();
+      final notifications = _QuietNotifications();
+      final controller = TimerController(
+        store: store,
+        notifications: notifications,
+        nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      await controller.addTimer(
+        name: 'Running timer',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Timer', durationSeconds: 60),
+        ],
+      );
+      expect(notifications.scheduleCount, 1);
 
-    store.failSave = true;
-    await controller.updateSettings(
-      controller.settings.copyWith(notificationsEnabled: false),
-    );
+      store.failSave = true;
+      await controller.updateSettings(
+        controller.settings.copyWith(notificationsEnabled: false),
+      );
 
-    expect(controller.lastError, contains('could not save'));
-    expect(notifications.cancelCount, 0);
-    expect(notifications.scheduleCount, 1);
-  });
+      expect(controller.lastError, contains('could not save'));
+      expect(notifications.cancelCount, 0);
+      expect(notifications.scheduleCount, 1);
+    },
+  );
 
   test('failed reconciliation persistence does not cancel schedules', () async {
     final now = DateTime.utc(2026, 8, 19, 9);
@@ -294,28 +306,31 @@ void main() {
     expect(notifications.cancelCount, 0);
   });
 
-  test('clear failure keeps in-memory state and exposes safe error text', () async {
-    final store = _FailingStore();
-    final controller = TimerController(
-      store: store,
-      notifications: _QuietNotifications(),
-      nowUtc: () => DateTime.utc(2026, 8, 19, 9),
-    );
-    addTearDown(controller.dispose);
-    await controller.initialize();
-    await controller.addTimer(
-      name: 'Keep me',
-      group: '',
-      steps: const <IntervalStep>[
-        IntervalStep(label: 'Timer', durationSeconds: 60),
-      ],
-      startImmediately: false,
-    );
-    store.failClear = true;
+  test(
+    'clear failure keeps in-memory state and exposes safe error text',
+    () async {
+      final store = _FailingStore();
+      final controller = TimerController(
+        store: store,
+        notifications: _QuietNotifications(),
+        nowUtc: () => DateTime.utc(2026, 8, 19, 9),
+      );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      await controller.addTimer(
+        name: 'Keep me',
+        group: '',
+        steps: const <IntervalStep>[
+          IntervalStep(label: 'Timer', durationSeconds: 60),
+        ],
+        startImmediately: false,
+      );
+      store.failClear = true;
 
-    await controller.clearAllData();
+      await controller.clearAllData();
 
-    expect(controller.timers, hasLength(1));
-    expect(controller.lastError, contains('could not erase'));
-  });
+      expect(controller.timers, hasLength(1));
+      expect(controller.lastError, contains('could not erase'));
+    },
+  );
 }

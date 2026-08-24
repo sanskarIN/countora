@@ -16,6 +16,33 @@ The format follows the spirit of Keep a Changelog and the project uses semantic 
 - About/support/funding links and local-first privacy information.
 - Unit/controller tests, CI, dependency review, Dependabot, and project documentation.
 
+## [2.15.18] - Unreleased release candidate
+
+### Added
+
+- Fresh release-candidate branch created from the latest `main` instead of the stale Phase 6 verification branches.
+- Root-file preservation guard for generated Flutter platform runners.
+- Regression tests covering platform-bootstrap arguments and exact root-file restoration behavior.
+
+### Changed
+
+- Package metadata is synchronized to Countora `2.15.18+18`.
+- Runtime application metadata is synchronized to version `2.15.18`, build `18`.
+- Windows MSIX package metadata is synchronized to `2.15.18.18`.
+- Repository verification now uses Flutter `3.47.1`, the toolchain already proven able to resolve Countora's dependency graph in GitHub Actions.
+- Platform generation uses `flutter create --no-pub` so dependency resolution remains an explicit release-verification step.
+
+### Fixed
+
+- Prevented `flutter create` during platform bootstrap from silently rewriting protected repository-root files such as `analysis_options.yaml`, `pubspec.yaml`, `pubspec.lock`, `README.md`, and localization configuration.
+- Removed the root-file mutation that previously left unstaged changes and blocked the normalization workflow before its commit/push stage.
+
+### Known release requirements
+
+- Do not publish or tag `v2.15.18` until formatting, analysis, unit/widget tests, repository audits, Web build, Linux integration, and the native platform-smoke matrix have all been observed on this exact release-candidate tree.
+- Generate, review, and commit the real `pubspec.lock` with the pinned Flutter toolchain before the tagged release gate.
+- Complete the remaining representative-device/browser notification, accessibility, signing, packaging, benchmark, screenshot, and clean-checkout verification recorded in `ROADMAP.md`.
+
 ## [0.2.0] - Unreleased release candidate
 
 ### Added

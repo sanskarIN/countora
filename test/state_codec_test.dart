@@ -48,17 +48,11 @@ void main() {
     test('encoded state includes the current schema version', () {
       final encoded = jsonDecode(codec.encode(const CountoraState())) as Map;
 
-      expect(
-        encoded['schemaVersion'],
-        CountoraStateCodec.currentSchemaVersion,
-      );
+      expect(encoded['schemaVersion'], CountoraStateCodec.currentSchemaVersion);
     });
 
     test('domain state serialization does not own persistence schema', () {
-      expect(
-        const CountoraState().toJson(),
-        isNot(contains('schemaVersion')),
-      );
+      expect(const CountoraState().toJson(), isNot(contains('schemaVersion')));
       final encoded = jsonDecode(codec.encode(const CountoraState())) as Map;
       expect(encoded, contains('schemaVersion'));
     });

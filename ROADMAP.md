@@ -1,5 +1,7 @@
 # Roadmap
 
+Current release candidate: **2.15.18+18**.
+
 This roadmap distinguishes implemented source work from release verification. A checked implementation item does not imply that every native build, browser behavior, notification path, package format, signing path, or device behavior has already been observed as passing.
 
 ## 0.1 — Foundation
@@ -80,7 +82,7 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Web Settings exposes explicit browser notification permission action
 - [x] Android/iOS/macOS/Linux/Windows/Web notification presentation configuration
 
-### Automated quality
+### Automated quality source
 
 - [x] State codec tests
 - [x] Local persistence recovery tests
@@ -127,15 +129,39 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [x] Tagged Windows release job verifies MSIX package-identity creation without implying production signing
 - [x] Tagged-release SHA-256 artifact checksum generation
 
-### Still required before final 0.2 release
+## 2.15.18 — Release-candidate preparation
 
-- [ ] Observe a successful main CI run for localization audit, formatting, analyze, tests, docs links, Web release build, and Linux integration journey
+### Implemented for this candidate
+
+- [x] Create a fresh release candidate directly from current `main`
+- [x] Synchronize Flutter package version to `2.15.18+18`
+- [x] Synchronize `AppMetadata` to `2.15.18`, build `18`
+- [x] Synchronize Windows MSIX version to `2.15.18.18`
+- [x] Add `[2.15.18]` unreleased release-candidate changelog entry
+- [x] Pin repository verification to Flutter `3.47.1`
+- [x] Generate platform runners with `flutter create --no-pub`
+- [x] Snapshot and restore protected root files around platform generation
+- [x] Add root-file restoration and bootstrap-argument regression tests
+- [x] Support Flutter 3.47 UIScene/implicit-engine iOS AppDelegate templates
+- [x] Add legacy/current iOS template regression coverage
+- [x] Add deterministic shared Flutter toolchain audit and tests
+- [x] Run CI and repository audits on `release/**` branches
+- [x] Run the complete platform-smoke matrix on `release/**` branches
+- [x] Enable guarded dependency-lock generation on `release/**` branches
+- [x] Reject unexpected tracked bootstrap mutations before lockfile commit
+- [x] Add a dedicated `docs/release-2.15.18.md` verification checklist
+- [x] Open a release-candidate pull request against `main`
+
+### Still required before final 2.15.18 release
+
+- [ ] Observe a successful release-candidate CI run for localization audit, formatting, analyze, tests, docs links, Web release build, and Linux integration journey
 - [ ] Observe successful `Platform smoke` jobs for Android, Linux, portable Windows, Windows MSIX packaging, macOS, and unsigned iOS
+- [ ] Observe successful repository audit, dependency security review, and CodeQL checks on the candidate
 - [ ] Fix every concrete CI/compiler/test issue discovered by real Flutter toolchain runs
-- [ ] Run the integration journey on a configured local/release Flutter target and record the result
-- [ ] Run the state-codec benchmark on representative hardware and record environment/results
-- [ ] Generate dependencies with a real supported Flutter SDK, review the resolved versions, and commit the resulting application `pubspec.lock`
+- [ ] Generate dependencies with the pinned supported Flutter SDK, review the resolved versions, and commit the resulting application `pubspec.lock`
 - [ ] Verify `dart run tool/check_dependency_lock.dart` passes from the committed release-candidate checkout
+- [ ] Run the integration journey on an additional configured local/release Flutter target and record the result
+- [ ] Run the state-codec benchmark on representative hardware and record environment/results
 - [ ] Verify Android notification permission/completion behavior on a real device/emulator, including exact-alarm denial fallback
 - [ ] Verify iOS foreground/background notification behavior on a supported signed Apple environment
 - [ ] Verify macOS notification behavior on a representative release-like environment
@@ -144,12 +170,14 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [ ] Choose and validate a production MSIX signing or Microsoft Store distribution strategy before publishing packaged Windows artifacts
 - [ ] Verify Linux desktop notification delivery while Countora remains active and reconciliation after process suspension/restart
 - [ ] Verify the Web Settings **Allow** action, permission denial/grant, runtime completion notification delivery, and page suspension/reload in representative browsers
-- [ ] Record clearly that Linux/Web/portable-Windows runtime fallbacks cannot guarantee the same future delivery as scheduled targets after the runtime is gone
+- [ ] Preserve clear documentation that Linux/Web/portable-Windows runtime fallbacks cannot guarantee the same future delivery as scheduled targets after the runtime is gone
 - [ ] Complete manual accessibility review with a real screen reader, keyboard-only navigation, reduced motion, and large text
 - [ ] Capture real application screenshots from verified builds
 - [ ] Run the final clean-checkout documentation/repository/release audit and record its successful output
+- [ ] Finalize the `[2.15.18]` changelog heading with the actual release date only after verification succeeds
+- [ ] Create `v2.15.18` only after the release gate is fully satisfied
 
-## 1.0 — Stable release
+## Post-2.15.18 stable distribution hardening
 
 - [ ] Validate Android production signing and Play distribution path
 - [ ] Validate iOS signing/archive distribution path
@@ -158,15 +186,14 @@ This roadmap distinguishes implemented source work from release verification. A 
 - [ ] Validate portable Windows distribution expectations
 - [ ] Validate Linux packaging/distribution approach
 - [ ] Validate Web deployment/hosting headers and browser-permission behavior
-- [ ] Final dependency/security audit
+- [ ] Final dependency/security audit for production distribution
 - [ ] Final accessibility manual review with screen reader/keyboard/scaled text
-- [ ] Final clean-checkout release candidate
 - [ ] Final backup compatibility/migration review
 - [ ] Publish verified screenshots and release notes
 
 ## Later candidates
 
-These are deliberately not part of 0.2 unless they can be added without compromising reliability or simplicity:
+These are deliberately not part of 2.15.18 unless they can be added without compromising reliability or simplicity:
 
 - additional translated locales beyond English and Hindi
 - optional home-screen/platform widgets where native support is justified

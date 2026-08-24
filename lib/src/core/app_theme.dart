@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'design_tokens.dart';
@@ -13,10 +14,7 @@ abstract final class AppTheme {
     );
     final textTheme = Typography.material2021(
       platform: TargetPlatform.android,
-    ).black.apply(
-          bodyColor: scheme.onSurface,
-          displayColor: scheme.onSurface,
-        );
+    ).black.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
     return ThemeData(
       useMaterial3: true,
@@ -58,9 +56,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(CountoraTokens.radiusMedium),
         ),
       ),
-      navigationRailTheme: const NavigationRailThemeData(
-        minWidth: 76,
-      ),
+      navigationRailTheme: const NavigationRailThemeData(minWidth: 76),
       tooltipTheme: TooltipThemeData(
         waitDuration: const Duration(milliseconds: 400),
         decoration: BoxDecoration(

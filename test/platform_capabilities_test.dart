@@ -26,17 +26,11 @@ void main() {
 
   test('Linux uses runtime completion notification fallback', () {
     expect(
-      notificationDeliveryMode(
-        isWeb: false,
-        platform: TargetPlatform.linux,
-      ),
+      notificationDeliveryMode(isWeb: false, platform: TargetPlatform.linux),
       NotificationDeliveryMode.runtimeOnly,
     );
     expect(
-      supportsLocalNotifications(
-        isWeb: false,
-        platform: TargetPlatform.linux,
-      ),
+      supportsLocalNotifications(isWeb: false, platform: TargetPlatform.linux),
       isTrue,
     );
     expect(
@@ -74,32 +68,35 @@ void main() {
     }
   });
 
-  test('portable Windows uses safe runtime fallback without package identity', () {
-    expect(
-      notificationDeliveryMode(
-        isWeb: false,
-        platform: TargetPlatform.windows,
-        windowsPackaged: false,
-      ),
-      NotificationDeliveryMode.runtimeOnly,
-    );
-    expect(
-      supportsLocalNotifications(
-        isWeb: false,
-        platform: TargetPlatform.windows,
-        windowsPackaged: false,
-      ),
-      isTrue,
-    );
-    expect(
-      supportsScheduledNotifications(
-        isWeb: false,
-        platform: TargetPlatform.windows,
-        windowsPackaged: false,
-      ),
-      isFalse,
-    );
-  });
+  test(
+    'portable Windows uses safe runtime fallback without package identity',
+    () {
+      expect(
+        notificationDeliveryMode(
+          isWeb: false,
+          platform: TargetPlatform.windows,
+          windowsPackaged: false,
+        ),
+        NotificationDeliveryMode.runtimeOnly,
+      );
+      expect(
+        supportsLocalNotifications(
+          isWeb: false,
+          platform: TargetPlatform.windows,
+          windowsPackaged: false,
+        ),
+        isTrue,
+      );
+      expect(
+        supportsScheduledNotifications(
+          isWeb: false,
+          platform: TargetPlatform.windows,
+          windowsPackaged: false,
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('packaged Windows can use scheduled background delivery', () {
     expect(
@@ -130,10 +127,7 @@ void main() {
 
   test('unknown unsupported native targets fail closed', () {
     expect(
-      notificationDeliveryMode(
-        isWeb: false,
-        platform: TargetPlatform.fuchsia,
-      ),
+      notificationDeliveryMode(isWeb: false, platform: TargetPlatform.fuchsia),
       NotificationDeliveryMode.unavailable,
     );
     expect(

@@ -17,5 +17,7 @@ void main() {
     return;
   }
 
-  stdout.writeln('pubspec.lock is present and has the expected lockfile shape.');
+  stdout.writeln(
+    'pubspec.lock is present and has the expected lockfile shape.',
+  );
 }

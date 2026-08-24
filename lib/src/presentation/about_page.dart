@@ -24,10 +24,7 @@ class AboutPage extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 6),
-          Text(
-            strings.appTagline,
-            textAlign: TextAlign.center,
-          ),
+          Text(strings.appTagline, textAlign: TextAlign.center),
           const SizedBox(height: 12),
           Text(
             '${strings.version} ${AppMetadata.version}+${AppMetadata.buildNumber}',
@@ -79,7 +76,7 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ListTile(
-            leading: const Icon(Icons.license_outlined),
+            leading: const Icon(Icons.description_outlined),
             title: Text(strings.license),
             subtitle: Text(strings.mitLicense),
           ),
@@ -127,9 +124,9 @@ class _LinkTile extends StatelessWidget {
       onTap: () async {
         final launched = await openExternalUri(uri);
         if (!launched && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.openLinkFailed)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(context.l10n.openLinkFailed)));
         }
       },
     );

@@ -12,7 +12,7 @@
 
 **Countora** is a production-oriented Flutter countdown timer for running multiple timers at once, creating reusable presets, organizing named timer groups, building interval sequences, and recovering countdown state after suspension. It is account-free and local-first.
 
-Current development version: **0.2.0+2**.
+Current development version: **2.15.18+18** (release candidate).
 
 > **Made by the Sanskar**
 
@@ -43,6 +43,7 @@ Current development version: **0.2.0+2**.
 - Bounded, schema-aware JSON backup validation and migration
 - Resilient external-link and clipboard-export failure handling
 - Non-notification preference changes avoid unnecessary running-notification rescheduling
+- Protected Flutter runner bootstrap that restores repository-root files exactly after `flutter create`
 
 ### Accessibility, localization, and desktop usability
 
@@ -104,7 +105,8 @@ Native runner folders are generated from the installed Flutter SDK so stale fram
 
 Prerequisites:
 
-- a current stable Flutter SDK compatible with Dart `>=3.10.0 <4.0.0`
+- Flutter stable satisfying `pubspec.yaml` (`>=3.38.1`); repository CI currently pins Flutter `3.47.1`
+- Dart `>=3.10.0 <4.0.0` from a compatible Flutter SDK
 - platform toolchains for the host you intend to build
 
 ```bash
@@ -112,11 +114,12 @@ git clone https://github.com/sanskarIN/countora.git
 cd countora
 dart run tool/bootstrap_platforms.dart
 flutter pub get
+dart run tool/check_localization_source.dart
 flutter gen-l10n
 flutter run
 ```
 
-`tool/bootstrap_platforms.dart` runs `flutter create` for Android, iOS, Web, Windows, macOS, and Linux runners, then applies validated native notification requirements. Current transforms harden the Android manifest/Gradle/AGP setup and configure the generated iOS notification-center delegate. The transforms are idempotent and fail if expected Flutter template anchors disappear.
+`tool/bootstrap_platforms.dart` runs `flutter create --no-pub` for Android, iOS, Web, Windows, macOS, and Linux runners, restores protected repository-root files byte-for-byte, then applies validated native notification requirements. Current transforms harden the Android manifest/Gradle/AGP setup and configure the generated iOS notification-center delegate. The transforms are idempotent and fail if expected Flutter template anchors disappear.
 
 For complete setup instructions, see [`docs/setup.md`](docs/setup.md).
 
@@ -204,6 +207,7 @@ integration_test/           # end-to-end Flutter user journeys
 test/                       # domain, controller, persistence, UI, localization, tool tests
 tool/
   bootstrap_platforms.dart  # deterministic Flutter runner generation + native patches
+  src/root_file_guard.dart  # exact root-file preservation around Flutter generation
   src/platform_patches.dart # pure validated Android/iOS runner transforms
   ...                       # repository checks
 docs/                       # architecture, setup, testing, localization, release, ADRs
@@ -279,7 +283,7 @@ Read [`SECURITY.md`](SECURITY.md) and [`PRIVACY.md`](PRIVACY.md).
 
 The main CI workflow checks:
 
-- generated platform bootstrap
+- generated platform bootstrap with root-file preservation
 - deterministic localization source/catalog auditing
 - dependency resolution
 - localization generation
@@ -299,7 +303,7 @@ The cross-platform smoke workflow additionally compiles/verifies:
 
 A separate Linux CI job runs the primary `integration_test` journey under Xvfb. Tagged releases additionally run repository-integrity checks and build Android APK/AAB, Web, Linux, portable Windows, macOS, and an unsigned iOS application artifact. The Windows tagged job also verifies an MSIX package-identity build. Production-signed MSIX/store distribution remains an external release-credential step and is not implied by CI packaging verification.
 
-No release should be considered verified until the corresponding GitHub Actions runs are observed as successful.
+No release should be considered verified until the corresponding GitHub Actions runs are observed as successful. `v2.15.18` must not be created while the `[2.15.18]` changelog heading remains marked as an unreleased release candidate.
 
 ## Contributing
 

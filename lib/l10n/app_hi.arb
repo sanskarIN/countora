@@ -16,7 +16,7 @@
   "uses": "उपयोग",
   "steps": "चरण",
   "step": "चरण",
-  "of": "में से",
+  "ofLabel": "में से",
   "percent": "प्रतिशत",
   "remaining": "शेष",
   "version": "संस्करण",

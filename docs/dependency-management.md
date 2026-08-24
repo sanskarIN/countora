@@ -10,9 +10,9 @@ GitHub Actions installs the repository-approved Flutter version through:
 .github/actions/setup-flutter/action.yml
 ```
 
-The current approved toolchain is Flutter `3.44.7` on the stable channel.
+The current approved toolchain is Flutter `3.47.1` on the stable channel.
 
-All Countora validation, platform-smoke, repository-audit, dependency-lock, and tagged-release workflows should use this shared action instead of selecting a moving `stable` version independently. When the approved Flutter version changes, update the shared action in one reviewed commit and let the normal validation matrix prove compatibility.
+All Countora validation, platform-smoke, repository-audit, dependency-lock, release-normalization, and tagged-release workflows should use this shared action instead of selecting a moving `stable` version independently. When the approved Flutter version changes, update the shared action in one reviewed commit and let the normal validation matrix prove compatibility.
 
 The minimum Flutter constraint in `pubspec.yaml` remains a source-compatibility statement. The shared CI action is the reproducible build-toolchain selection.
 
@@ -43,29 +43,49 @@ flutter test
 
 Review the resulting `pubspec.lock` diff before committing it.
 
+## Release branch normalization
+
+`.github/workflows/release-normalize.yml` keeps trusted `release/**` branches reproducible with the pinned Flutter/Dart toolchain. It exists because a toolchain upgrade can legitimately change Dart formatting, dependency resolution, and Flutter-managed analyzer configuration even when application behavior is unchanged.
+
+For every trusted release-branch push, the workflow:
+
+1. checks out the exact release branch;
+2. installs the shared pinned Flutter toolchain;
+3. verifies the shared-toolchain policy;
+4. runs `flutter pub get` to resolve the application dependency graph and apply supported Flutter project migrations;
+5. verifies the generated `pubspec.lock`;
+6. verifies localization source/catalogs and regenerates localization output;
+7. formats `lib`, `test`, `integration_test`, and `tool` with the pinned Dart formatter;
+8. rejects tracked mutations outside `analysis_options.yaml`, `pubspec.lock`, and the approved Dart source/test/tool trees;
+9. checks patch whitespace hygiene;
+10. commits only the approved normalization outputs when they actually changed;
+11. uses `sanskarin@outlook.in` as the automated Git commit email.
+
+The second run after a normalization commit must be a no-op. This prevents an infinite rewrite loop and proves the committed tree is stable under the pinned toolchain.
+
 ## Guarded GitHub lock refresh
 
-`.github/workflows/dependency-lock.yml` provides a repository-hosted refresh path for environments where the approved Flutter toolchain is not available locally.
+`.github/workflows/dependency-lock.yml` provides a repository-hosted dependency verification/refresh path for `main` and trusted `release/**` branches when the approved Flutter toolchain is not available locally.
 
-The workflow runs when its dependency inputs change and can also be started manually. It:
+The workflow runs when dependency/toolchain inputs change and can also be started manually. It:
 
-1. checks out `main`;
-2. installs the shared pinned Flutter toolchain;
-3. validates localization references and every translated catalog;
-4. generates and patches all Flutter platform runners;
+1. checks out the triggering trusted branch;
+2. installs and audits the shared pinned Flutter toolchain;
+3. validates localization references and translated catalogs;
+4. safely generates and patches all Flutter platform runners;
 5. resolves dependencies;
 6. validates the generated lockfile shape;
 7. generates localization output;
-8. verifies formatting;
+8. verifies pinned-Dart formatting;
 9. runs `flutter analyze`;
 10. runs the Flutter unit/widget test suite;
 11. runs repository, version, secret, and documentation checks;
-12. verifies patch whitespace hygiene;
+12. verifies patch whitespace hygiene and rejects unexpected tracked bootstrap changes;
 13. uploads the verified lockfile as a 14-day workflow artifact;
 14. commits only `pubspec.lock` when it actually changed;
 15. uses `sanskarin@outlook.in` as the automated Git commit email.
 
-The artifact exists as a recovery path if repository branch rules prevent the workflow from pushing directly. An uploaded artifact is not automatically approved source; review it before committing it manually.
+The normalization workflow should make formatter/analyzer migrations explicit before this stricter lock-refresh gate runs. An uploaded artifact is not automatically approved source; review it before committing it manually if branch rules block automated push.
 
 ## Release enforcement
 
@@ -105,11 +125,12 @@ A Flutter upgrade is a toolchain change and must be treated separately from an o
 1. Verify the intended stable Flutter release from official Flutter release information.
 2. Update `.github/actions/setup-flutter/action.yml`.
 3. Regenerate native runners with `tool/bootstrap_platforms.dart`.
-4. Regenerate and review `pubspec.lock`.
-5. Run formatting, analysis, tests, Web build, Linux integration, and the full platform-smoke matrix.
-6. Review generated-runner patch tests for Flutter template drift.
-7. Update setup/release documentation when the supported baseline changes.
-8. Do not tag a release until the exact release-candidate commit has successful required checks.
+4. Run the release normalizer so pinned-Dart formatting and supported Flutter project migrations become explicit source changes.
+5. Regenerate and review `pubspec.lock`.
+6. Run formatting, analysis, tests, Web build, Linux integration, and the full platform-smoke matrix.
+7. Review generated-runner patch tests for Flutter template drift.
+8. Update setup/release/documentation references to the approved toolchain.
+9. Do not tag a release until the exact release-candidate commit has successful required checks.
 
 ## Dependency rollback
 

@@ -16,14 +16,8 @@ void main() {
     test('adds required notification permissions and receivers', () {
       final patched = patchAndroidManifest(source);
 
-      expect(
-        patched,
-        contains('android.permission.RECEIVE_BOOT_COMPLETED'),
-      );
-      expect(
-        patched,
-        contains('android.permission.SCHEDULE_EXACT_ALARM'),
-      );
+      expect(patched, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
+      expect(patched, contains('android.permission.SCHEDULE_EXACT_ALARM'));
       expect(patched, contains('ScheduledNotificationReceiver'));
       expect(patched, contains('ScheduledNotificationBootReceiver'));
       expect(patched, contains('android.intent.action.BOOT_COMPLETED'));
@@ -128,7 +122,7 @@ plugins {
   });
 
   group('patchIosAppDelegate', () {
-    const source = '''
+    const legacySource = '''
 import Flutter
 import UIKit
 
@@ -144,8 +138,27 @@ import UIKit
 }
 ''';
 
-    test('adds UserNotifications import and notification-center delegate', () {
-      final patched = patchIosAppDelegate(source);
+    const currentSource = '''
+import Flutter
+import UIKit
+
+@main
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  }
+}
+''';
+
+    test('adds notification delegate to the legacy iOS template', () {
+      final patched = patchIosAppDelegate(legacySource);
 
       expect(patched, contains('import UserNotifications'));
       expect(
@@ -155,13 +168,43 @@ import UIKit
           'UNUserNotificationCenterDelegate',
         ),
       );
+      expect(
+        patched.indexOf('UNUserNotificationCenter.current().delegate'),
+        lessThan(
+          patched.indexOf(
+            'return super.application(application, '
+            'didFinishLaunchingWithOptions: launchOptions)',
+          ),
+        ),
+      );
     });
 
-    test('is idempotent', () {
-      final once = patchIosAppDelegate(source);
-      final twice = patchIosAppDelegate(once);
+    test('adds notification delegate to the Flutter 3.47 UIScene template', () {
+      final patched = patchIosAppDelegate(currentSource);
 
-      expect(twice, once);
+      expect(patched, contains('import UserNotifications'));
+      expect(
+        patched,
+        contains(
+          'UNUserNotificationCenter.current().delegate = self as? '
+          'UNUserNotificationCenterDelegate',
+        ),
+      );
+      expect(
+        patched,
+        contains(
+          'GeneratedPluginRegistrant.register(with: '
+          'engineBridge.pluginRegistry)',
+        ),
+      );
+    });
+
+    test('is idempotent for legacy and current templates', () {
+      final legacyOnce = patchIosAppDelegate(legacySource);
+      final currentOnce = patchIosAppDelegate(currentSource);
+
+      expect(patchIosAppDelegate(legacyOnce), legacyOnce);
+      expect(patchIosAppDelegate(currentOnce), currentOnce);
     });
 
     test('rejects an unexpected generated iOS template', () {

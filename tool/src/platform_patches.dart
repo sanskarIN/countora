@@ -90,7 +90,8 @@ String patchAndroidGradle(String source) {
   }
 
   if (!text.contains('coreLibraryDesugaring(')) {
-    text = '${text.trimRight()}\n\n'
+    text =
+        '${text.trimRight()}\n\n'
         'dependencies {\n'
         '    coreLibraryDesugaring('
         '"com.android.tools:desugar_jdk_libs:2.1.5")\n'
@@ -104,7 +105,9 @@ String patchAndroidGradle(String source) {
   ];
   for (final snippet in requiredSnippets) {
     if (!text.contains(snippet)) {
-      throw FormatException('Failed to apply required Gradle snippet: $snippet');
+      throw FormatException(
+        'Failed to apply required Gradle snippet: $snippet',
+      );
     }
   }
 
@@ -144,6 +147,10 @@ String patchAndroidSettingsGradle(String source) {
 
 /// Applies the notification-center delegate required by
 /// flutter_local_notifications for foreground iOS presentation.
+///
+/// Newer Flutter UIScene templates register plugins in
+/// didInitializeImplicitFlutterEngine rather than in application startup, so
+/// this patch anchors to the stable didFinishLaunchingWithOptions return line.
 String patchIosAppDelegate(String source) {
   var text = source;
 
@@ -152,10 +159,13 @@ String patchIosAppDelegate(String source) {
       'ios/Runner/AppDelegate.swift does not contain the expected UIKit import.',
     );
   }
-  if (!text.contains('GeneratedPluginRegistrant.register(with: self)')) {
+
+  const launchReturn =
+      '    return super.application(application, didFinishLaunchingWithOptions: launchOptions)';
+  if (!text.contains(launchReturn)) {
     throw const FormatException(
-      'ios/Runner/AppDelegate.swift does not contain the expected plugin '
-      'registration marker.',
+      'ios/Runner/AppDelegate.swift does not contain the expected '
+      'didFinishLaunchingWithOptions return marker.',
     );
   }
 
@@ -170,11 +180,7 @@ String patchIosAppDelegate(String source) {
       'UNUserNotificationCenter.current().delegate = self as? '
       'UNUserNotificationCenterDelegate';
   if (!text.contains(delegateLine)) {
-    text = text.replaceFirst(
-      '    GeneratedPluginRegistrant.register(with: self)',
-      '    $delegateLine\n'
-      '    GeneratedPluginRegistrant.register(with: self)',
-    );
+    text = text.replaceFirst(launchReturn, '    $delegateLine\n$launchReturn');
   }
 
   if (!text.contains('import UserNotifications') ||

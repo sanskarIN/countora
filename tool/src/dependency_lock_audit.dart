@@ -18,9 +18,7 @@ DependencyLockAuditResult auditDependencyLock({
       'supported Flutter SDK, review it, and commit the lockfile before '
       'creating a release tag.',
     );
-    return DependencyLockAuditResult(
-      errors: List<String>.unmodifiable(errors),
-    );
+    return DependencyLockAuditResult(errors: List<String>.unmodifiable(errors));
   }
 
   final normalized = contents?.trim() ?? '';
@@ -35,7 +33,5 @@ DependencyLockAuditResult auditDependencyLock({
     }
   }
 
-  return DependencyLockAuditResult(
-    errors: List<String>.unmodifiable(errors),
-  );
+  return DependencyLockAuditResult(errors: List<String>.unmodifiable(errors));
 }
