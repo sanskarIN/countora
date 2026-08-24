@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
   pull_request:
     branches: [main]
 
@@ -24,6 +26,9 @@ jobs:
 
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
+
+      - name: Verify shared Flutter toolchain policy
+        run: dart run tool/check_toolchain.dart
 
       - name: Verify localization source references
         run: dart run tool/check_localization_source.dart
