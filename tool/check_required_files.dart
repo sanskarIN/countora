@@ -108,6 +108,7 @@ void main() {
     '.github/actions/setup-flutter/action.yml',
     '.github/workflows/ci.yml',
     '.github/workflows/dependency-lock.yml',
+    '.github/workflows/release-normalize.yml',
     '.github/workflows/platform-smoke.yml',
     '.github/workflows/security.yml',
     '.github/workflows/codeql.yml',
