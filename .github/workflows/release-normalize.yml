@@ -1,0 +1,82 @@
+name: Release branch normalization
+
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-normalize-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  normalize:
+    name: Normalize source and dependency lock
+    if: startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install repository Flutter toolchain
+        uses: ./.github/actions/setup-flutter
+
+      - name: Verify shared Flutter toolchain policy
+        run: dart run tool/check_toolchain.dart
+
+      - name: Resolve dependency graph and toolchain migrations
+        run: flutter pub get
+
+      - name: Verify generated dependency lock
+        run: dart run tool/check_dependency_lock.dart
+
+      - name: Verify localization source and catalogs
+        run: dart run tool/check_localization_source.dart
+
+      - name: Generate localization source
+        run: flutter gen-l10n
+
+      - name: Format tracked Dart source with pinned Dart
+        run: dart format lib test integration_test tool
+
+      - name: Reject unexpected tracked changes
+        shell: bash
+        run: |
+          unexpected="$(git diff --name-only -- . \
+            ':(exclude)analysis_options.yaml' \
+            ':(exclude)pubspec.lock' \
+            ':(exclude)lib/**' \
+            ':(exclude)test/**' \
+            ':(exclude)integration_test/**' \
+            ':(exclude)tool/**')"
+          if [ -n "$unexpected" ]; then
+            echo "Release normalization changed unexpected tracked files:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Verify patch hygiene
+        run: git diff --check
+
+      - name: Commit normalized release source when changed
+        shell: bash
+        run: |
+          git add analysis_options.yaml pubspec.lock lib test integration_test tool
+          if git diff --cached --quiet; then
+            echo "Release branch is already normalized."
+            exit 0
+          fi
+
+          git config user.name "Sanskar"
+          git config user.email "sanskarin@outlook.in"
+          git commit -m "style: normalize release source with pinned Dart"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
