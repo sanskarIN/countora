@@ -16,30 +16,31 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('settings exposes appearance, accessibility, updates, and privacy', (
-    tester,
-  ) async {
-    controller = await _buildController();
+  testWidgets(
+    'settings exposes appearance, accessibility, updates, and privacy',
+    (tester) async {
+      controller = await _buildController();
 
-    await tester.pumpWidget(CountoraApp(controller: controller));
-    await tester.pump();
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(CountoraApp(controller: controller));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Appearance'), findsOneWidget);
-    expect(find.text('Accessibility'), findsWidgets);
-    expect(find.text('Notifications & cues'), findsOneWidget);
-    expect(find.text('Privacy & data'), findsOneWidget);
+      expect(find.text('Appearance'), findsOneWidget);
+      expect(find.text('Accessibility'), findsWidgets);
+      expect(find.text('Notifications & cues'), findsOneWidget);
+      expect(find.text('Privacy & data'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Updates'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Updates'), findsOneWidget);
-    expect(find.text('Check for updates'), findsOneWidget);
-    expect(find.text('Report an issue'), findsOneWidget);
-  });
+      await tester.scrollUntilVisible(
+        find.text('Updates'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Updates'), findsOneWidget);
+      expect(find.text('Check for updates'), findsOneWidget);
+      expect(find.text('Report an issue'), findsOneWidget);
+    },
+  );
 
   testWidgets('language selector persists and applies Hindi immediately', (
     tester,
@@ -125,30 +126,33 @@ void main() {
     }
   });
 
-  testWidgets('unknown native target still fails notification controls closed', (
+  testWidgets(
+    'unknown native target still fails notification controls closed',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
+      controller = await _buildController();
+
+      await tester.pumpWidget(CountoraApp(controller: controller));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+
+      final completionTile = find.widgetWithText(
+        SwitchListTile,
+        'Completion notifications',
+      );
+      final completionSwitch = tester.widget<SwitchListTile>(completionTile);
+      expect(completionSwitch.value, isFalse);
+      expect(completionSwitch.onChanged, isNull);
+    },
+  );
+
+  testWidgets('backup export reports clipboard platform failures', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
     controller = await _buildController();
-
-    await tester.pumpWidget(CountoraApp(controller: controller));
-    await tester.pump();
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
-
-    final completionTile = find.widgetWithText(
-      SwitchListTile,
-      'Completion notifications',
-    );
-    final completionSwitch = tester.widget<SwitchListTile>(completionTile);
-    expect(completionSwitch.value, isFalse);
-    expect(completionSwitch.onChanged, isNull);
-  });
-
-  testWidgets('backup export reports clipboard platform failures', (tester) async {
-    controller = await _buildController();
-    final messenger = TestDefaultBinaryMessengerBinding
-        .instance.defaultBinaryMessenger;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == 'Clipboard.setData') {
         throw PlatformException(code: 'clipboard-unavailable');
@@ -173,7 +177,9 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Could not copy the backup. Your local Countora data was unchanged.'),
+      find.text(
+        'Could not copy the backup. Your local Countora data was unchanged.',
+      ),
       findsOneWidget,
     );
   });

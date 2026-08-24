@@ -15,10 +15,10 @@ class TimerController extends ChangeNotifier {
     required NotificationService notifications,
     DateTime Function()? nowUtc,
     CountoraStateCodec stateCodec = const CountoraStateCodec(),
-  })  : _store = store,
-        _notifications = notifications,
-        _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
-        _stateCodec = stateCodec;
+  }) : _store = store,
+       _notifications = notifications,
+       _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+       _stateCodec = stateCodec;
 
   static const _logger = AppLogger('timer_controller');
 
@@ -51,8 +51,9 @@ class TimerController extends ChangeNotifier {
       _timers.where((timer) => timer.status == CountdownStatus.running).length;
   int get pausedCount =>
       _timers.where((timer) => timer.status == CountdownStatus.paused).length;
-  int get completedCount =>
-      _timers.where((timer) => timer.status == CountdownStatus.completed).length;
+  int get completedCount => _timers
+      .where((timer) => timer.status == CountdownStatus.completed)
+      .length;
 
   List<String> get groups {
     final values = <String>{
@@ -67,17 +68,17 @@ class TimerController extends ChangeNotifier {
     final query = _searchQuery.trim().toLowerCase();
     return _timers.where((timer) {
       final groupMatches = _groupFilter.isEmpty || timer.group == _groupFilter;
-      final queryMatches = query.isEmpty ||
+      final queryMatches =
+          query.isEmpty ||
           timer.name.toLowerCase().contains(query) ||
           timer.group.toLowerCase().contains(query) ||
           timer.steps.any((step) => step.label.toLowerCase().contains(query));
       return groupMatches && queryMatches;
-    }).toList()
-      ..sort((a, b) {
-        final statusOrder = a.status.index.compareTo(b.status.index);
-        if (statusOrder != 0) return statusOrder;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
+    }).toList()..sort((a, b) {
+      final statusOrder = a.status.index.compareTo(b.status.index);
+      if (statusOrder != 0) return statusOrder;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
   }
 
   Future<void> initialize() async {
@@ -130,8 +131,9 @@ class TimerController extends ChangeNotifier {
       group: safeGroup,
       steps: safeSteps,
       currentStepIndex: 0,
-      status:
-          startImmediately ? CountdownStatus.running : CountdownStatus.paused,
+      status: startImmediately
+          ? CountdownStatus.running
+          : CountdownStatus.paused,
       remainingWhenPausedSeconds: first.durationSeconds,
       startedAtUtc: startImmediately ? now : null,
       endsAtUtc: startImmediately
@@ -197,11 +199,7 @@ class TimerController extends ChangeNotifier {
     if (!_ensureTimerCapacity()) return;
 
     final preset = _presets[index];
-    await addTimer(
-      name: preset.name,
-      group: preset.group,
-      steps: preset.steps,
-    );
+    await addTimer(name: preset.name, group: preset.group, steps: preset.steps);
     final updated = preset.copyWith(useCount: preset.useCount + 1);
     _presets = <TimerPreset>[..._presets]..[index] = updated;
     await _persist();
@@ -216,10 +214,7 @@ class TimerController extends ChangeNotifier {
       name: entry.name,
       group: entry.group,
       steps: <IntervalStep>[
-        IntervalStep(
-          label: entry.name,
-          durationSeconds: duration.toInt(),
-        ),
+        IntervalStep(label: entry.name, durationSeconds: duration.toInt()),
       ],
     );
   }
@@ -227,11 +222,7 @@ class TimerController extends ChangeNotifier {
   Future<void> saveTimerAsPreset(String timerId) async {
     final timer = _findTimer(timerId);
     if (timer == null) return;
-    await addPreset(
-      name: timer.name,
-      group: timer.group,
-      steps: timer.steps,
-    );
+    await addPreset(name: timer.name, group: timer.group, steps: timer.steps);
   }
 
   Future<void> pause(String timerId) async {
@@ -320,9 +311,7 @@ class TimerController extends ChangeNotifier {
     final updated = timer.copyWith(
       status: CountdownStatus.running,
       startedAtUtc: now,
-      endsAtUtc: now.add(
-        Duration(seconds: timer.remainingWhenPausedSeconds),
-      ),
+      endsAtUtc: now.add(Duration(seconds: timer.remainingWhenPausedSeconds)),
     );
     _replaceTimer(updated);
     await _persistAndSchedule(updated);
@@ -478,10 +467,7 @@ class TimerController extends ChangeNotifier {
       _groupFilter = '';
       _nextIdSequence = _timers.length + _presets.length;
 
-      await _reconcileTimers(
-        persistChanges: false,
-        syncNotifications: false,
-      );
+      await _reconcileTimers(persistChanges: false, syncNotifications: false);
 
       if (!await _persist()) {
         _timers = previousState.timers;
@@ -746,11 +732,11 @@ class TimerController extends ChangeNotifier {
   }
 
   CountoraState get _state => CountoraState(
-        timers: _timers,
-        presets: _presets,
-        history: _history,
-        settings: _settings,
-      );
+    timers: _timers,
+    presets: _presets,
+    history: _history,
+    settings: _settings,
+  );
 
   CountdownTimer? _findTimer(String id) {
     for (final timer in _timers) {
@@ -809,7 +795,8 @@ class TimerController extends ChangeNotifier {
   }
 
   List<IntervalStep> _validatedSteps(List<IntervalStep> value) {
-    if (value.isEmpty || value.length > CountoraStateCodec.maxIntervalsPerTimer) {
+    if (value.isEmpty ||
+        value.length > CountoraStateCodec.maxIntervalsPerTimer) {
       throw ArgumentError.value(
         value.length,
         'steps',

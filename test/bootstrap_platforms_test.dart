@@ -17,7 +17,9 @@ void main() {
   test('does not accidentally enable dependency resolution', () {
     expect(flutterCreateArguments, isNot(contains('--pub')));
     expect(
-      flutterCreateArguments.where((argument) => argument.startsWith('--platforms=')),
+      flutterCreateArguments.where(
+        (argument) => argument.startsWith('--platforms='),
+      ),
       hasLength(1),
     );
   });

@@ -7,25 +7,28 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const codec = CountoraStateCodec();
 
-  test('random malformed JSON shapes either decode safely or fail as FormatException', () {
-    final random = Random(20260819);
+  test(
+    'random malformed JSON shapes either decode safely or fail as FormatException',
+    () {
+      final random = Random(20260819);
 
-    for (var iteration = 0; iteration < 500; iteration += 1) {
-      final candidate = _randomJsonValue(random, depth: 0);
-      final raw = jsonEncode(candidate);
+      for (var iteration = 0; iteration < 500; iteration += 1) {
+        final candidate = _randomJsonValue(random, depth: 0);
+        final raw = jsonEncode(candidate);
 
-      try {
-        codec.decode(raw);
-      } on FormatException {
-        // Expected rejection type for untrusted backup data.
-      } on Object catch (error, stackTrace) {
-        fail(
-          'Iteration $iteration escaped with ${error.runtimeType}: $error\n'
-          'Input: $raw\n$stackTrace',
-        );
+        try {
+          codec.decode(raw);
+        } on FormatException {
+          // Expected rejection type for untrusted backup data.
+        } on Object catch (error, stackTrace) {
+          fail(
+            'Iteration $iteration escaped with ${error.runtimeType}: $error\n'
+            'Input: $raw\n$stackTrace',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 
   test('backup size limit rejects oversized payload before model parsing', () {
     final padding = List<String>.filled(
@@ -56,10 +59,7 @@ Object? _randomJsonValue(Random random, {required int depth}) {
     default:
       return <String, Object?>{
         for (var index = 0; index < random.nextInt(8); index += 1)
-          _randomKey(random, index): _randomJsonValue(
-            random,
-            depth: depth + 1,
-          ),
+          _randomKey(random, index): _randomJsonValue(random, depth: depth + 1),
       };
   }
 }

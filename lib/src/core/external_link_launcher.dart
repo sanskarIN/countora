@@ -7,10 +7,7 @@ typedef ExternalUriOpener = Future<bool> Function(Uri uri);
 ///
 /// The optional [opener] keeps failure behavior deterministic in unit tests and
 /// avoids requiring a real platform URL handler there.
-Future<bool> openExternalUri(
-  Uri uri, {
-  ExternalUriOpener? opener,
-}) async {
+Future<bool> openExternalUri(Uri uri, {ExternalUriOpener? opener}) async {
   try {
     return await (opener ?? launchUrl)(uri);
   } on Object {

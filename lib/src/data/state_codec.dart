@@ -28,12 +28,12 @@ class CountoraStateCodec {
       const JsonEncoder.withIndent('  ').convert(_encodedMap(state));
 
   Map<String, Object?> _encodedMap(CountoraState state) => <String, Object?>{
-        ...state.toJson(),
-        // The persistence codec owns schema evolution. Keep this last so a
-        // model-level serialization default can never override the current
-        // persisted schema during a future migration.
-        'schemaVersion': currentSchemaVersion,
-      };
+    ...state.toJson(),
+    // The persistence codec owns schema evolution. Keep this last so a
+    // model-level serialization default can never override the current
+    // persisted schema during a future migration.
+    'schemaVersion': currentSchemaVersion,
+  };
 
   CountoraState decode(String raw) {
     if (raw.trim().isEmpty) {
@@ -75,7 +75,9 @@ class CountoraStateCodec {
     }
     final result = value.toInt();
     if (result != value || result < 0) {
-      throw const FormatException('schemaVersion must be a non-negative integer.');
+      throw const FormatException(
+        'schemaVersion must be a non-negative integer.',
+      );
     }
     if (result > currentSchemaVersion) {
       throw FormatException(
@@ -86,10 +88,7 @@ class CountoraStateCodec {
     return result;
   }
 
-  Map<String, Object?> _migrate(
-    Map<String, Object?> root,
-    int schemaVersion,
-  ) {
+  Map<String, Object?> _migrate(Map<String, Object?> root, int schemaVersion) {
     var current = Map<String, Object?>.from(root);
     var version = schemaVersion;
 
@@ -190,8 +189,9 @@ class CountoraStateCodec {
       steps: steps,
       currentStepIndex: index,
       status: status,
-      remainingWhenPausedSeconds:
-          status == CountdownStatus.completed ? 0 : remaining,
+      remainingWhenPausedSeconds: status == CountdownStatus.completed
+          ? 0
+          : remaining,
       endsAtUtc: endsAtUtc,
       startedAtUtc: startedAtUtc,
       completedAtUtc: completedAtUtc,

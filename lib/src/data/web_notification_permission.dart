@@ -17,8 +17,10 @@ Future<bool> requestWebNotificationPermissionFromUserGesture({
   }
 
   final plugin = FlutterLocalNotificationsPlugin();
-  final web = plugin.resolvePlatformSpecificImplementation<
-      WebFlutterLocalNotificationsPlugin>();
+  final web = plugin
+      .resolvePlatformSpecificImplementation<
+        WebFlutterLocalNotificationsPlugin
+      >();
   if (web == null) return false;
   if (web.permissionStatus == WebNotificationPermission.granted) return true;
 

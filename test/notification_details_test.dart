@@ -25,20 +25,23 @@ void main() {
     expect(details.web!.isSilent, isFalse);
   });
 
-  test('quiet mode suppresses controllable notification audio and vibration', () {
-    final details = countoraNotificationDetails(
-      soundEnabled: true,
-      vibrationEnabled: true,
-      quietMode: true,
-    );
+  test(
+    'quiet mode suppresses controllable notification audio and vibration',
+    () {
+      final details = countoraNotificationDetails(
+        soundEnabled: true,
+        vibrationEnabled: true,
+        quietMode: true,
+      );
 
-    expect(details.android!.playSound, isFalse);
-    expect(details.android!.enableVibration, isFalse);
-    expect(details.iOS!.presentSound, isFalse);
-    expect(details.macOS!.presentSound, isFalse);
-    expect(details.linux!.suppressSound, isTrue);
-    expect(details.windows!.audio, isNotNull);
-    expect(details.windows!.audio!.isSilent, isTrue);
-    expect(details.web!.isSilent, isTrue);
-  });
+      expect(details.android!.playSound, isFalse);
+      expect(details.android!.enableVibration, isFalse);
+      expect(details.iOS!.presentSound, isFalse);
+      expect(details.macOS!.presentSound, isFalse);
+      expect(details.linux!.suppressSound, isTrue);
+      expect(details.windows!.audio, isNotNull);
+      expect(details.windows!.audio!.isSilent, isTrue);
+      expect(details.web!.isSilent, isTrue);
+    },
+  );
 }

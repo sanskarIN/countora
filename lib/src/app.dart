@@ -17,8 +17,7 @@ class CountoraApp extends StatefulWidget {
   State<CountoraApp> createState() => _CountoraAppState();
 }
 
-class _CountoraAppState extends State<CountoraApp>
-    with WidgetsBindingObserver {
+class _CountoraAppState extends State<CountoraApp> with WidgetsBindingObserver {
   TimerController get controller => widget.controller;
 
   @override
@@ -59,7 +58,8 @@ class _CountoraAppState extends State<CountoraApp>
             return MediaQuery(
               data: media.copyWith(
                 disableAnimations:
-                    controller.settings.reducedMotion || media.disableAnimations,
+                    controller.settings.reducedMotion ||
+                    media.disableAnimations,
               ),
               child: child ?? const SizedBox.shrink(),
             );

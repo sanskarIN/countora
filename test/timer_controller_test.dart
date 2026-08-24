@@ -76,49 +76,52 @@ void main() {
     controller.dispose();
   });
 
-  test('visual and language settings do not reschedule running timers', () async {
-    final now = DateTime.utc(2026, 8, 23, 8);
-    final store = MemoryStore()
-      ..state = CountoraState(
-        timers: <CountdownTimer>[
-          CountdownTimer(
-            id: 'running',
-            name: 'Focus',
-            group: 'Study',
-            steps: const <IntervalStep>[
-              IntervalStep(label: 'Focus', durationSeconds: 300),
-            ],
-            currentStepIndex: 0,
-            status: CountdownStatus.running,
-            remainingWhenPausedSeconds: 300,
-            endsAtUtc: now.add(const Duration(minutes: 5)),
-          ),
-        ],
+  test(
+    'visual and language settings do not reschedule running timers',
+    () async {
+      final now = DateTime.utc(2026, 8, 23, 8);
+      final store = MemoryStore()
+        ..state = CountoraState(
+          timers: <CountdownTimer>[
+            CountdownTimer(
+              id: 'running',
+              name: 'Focus',
+              group: 'Study',
+              steps: const <IntervalStep>[
+                IntervalStep(label: 'Focus', durationSeconds: 300),
+              ],
+              currentStepIndex: 0,
+              status: CountdownStatus.running,
+              remainingWhenPausedSeconds: 300,
+              endsAtUtc: now.add(const Duration(minutes: 5)),
+            ),
+          ],
+        );
+      final notifications = FakeNotifications();
+      final controller = TimerController(
+        store: store,
+        notifications: notifications,
+        nowUtc: () => now,
       );
-    final notifications = FakeNotifications();
-    final controller = TimerController(
-      store: store,
-      notifications: notifications,
-      nowUtc: () => now,
-    );
-    await controller.initialize();
-    notifications.scheduled.clear();
+      await controller.initialize();
+      notifications.scheduled.clear();
 
-    await controller.updateSettings(
-      controller.settings.copyWith(
-        themeMode: ThemeMode.dark,
-        language: CountoraLanguage.hindi,
-        compactCards: true,
-        reducedMotion: true,
-      ),
-    );
+      await controller.updateSettings(
+        controller.settings.copyWith(
+          themeMode: ThemeMode.dark,
+          language: CountoraLanguage.hindi,
+          compactCards: true,
+          reducedMotion: true,
+        ),
+      );
 
-    expect(notifications.scheduled, isEmpty);
-    expect(store.state.settings.language, CountoraLanguage.hindi);
-    expect(store.state.settings.themeMode, ThemeMode.dark);
+      expect(notifications.scheduled, isEmpty);
+      expect(store.state.settings.language, CountoraLanguage.hindi);
+      expect(store.state.settings.themeMode, ThemeMode.dark);
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   test('notification presentation changes reschedule running timers', () async {
     final now = DateTime.utc(2026, 8, 23, 8);

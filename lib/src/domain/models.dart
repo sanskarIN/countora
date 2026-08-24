@@ -12,10 +12,10 @@ extension CountoraLanguageCodec on CountoraLanguage {
       );
 
   Locale? get locale => switch (this) {
-        CountoraLanguage.system => null,
-        CountoraLanguage.english => const Locale('en'),
-        CountoraLanguage.hindi => const Locale('hi'),
-      };
+    CountoraLanguage.system => null,
+    CountoraLanguage.english => const Locale('en'),
+    CountoraLanguage.hindi => const Locale('hi'),
+  };
 }
 
 extension CountdownStatusCodec on CountdownStatus {
@@ -27,18 +27,15 @@ extension CountdownStatusCodec on CountdownStatus {
 }
 
 class IntervalStep {
-  const IntervalStep({
-    required this.label,
-    required this.durationSeconds,
-  });
+  const IntervalStep({required this.label, required this.durationSeconds});
 
   final String label;
   final int durationSeconds;
 
   Map<String, Object?> toJson() => {
-        'label': label,
-        'durationSeconds': durationSeconds,
-      };
+    'label': label,
+    'durationSeconds': durationSeconds,
+  };
 
   factory IntervalStep.fromJson(Map<String, Object?> json) {
     final rawLabel = json['label'] as String?;
@@ -119,25 +116,25 @@ class CountdownTimer {
       remainingWhenPausedSeconds:
           remainingWhenPausedSeconds ?? this.remainingWhenPausedSeconds,
       endsAtUtc: clearEndsAt ? null : (endsAtUtc ?? this.endsAtUtc),
-      startedAtUtc:
-          clearStartedAt ? null : (startedAtUtc ?? this.startedAtUtc),
-      completedAtUtc:
-          clearCompletedAt ? null : (completedAtUtc ?? this.completedAtUtc),
+      startedAtUtc: clearStartedAt ? null : (startedAtUtc ?? this.startedAtUtc),
+      completedAtUtc: clearCompletedAt
+          ? null
+          : (completedAtUtc ?? this.completedAtUtc),
     );
   }
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'name': name,
-        'group': group,
-        'steps': steps.map((step) => step.toJson()).toList(),
-        'currentStepIndex': currentStepIndex,
-        'status': status.name,
-        'remainingWhenPausedSeconds': remainingWhenPausedSeconds,
-        'endsAtUtc': endsAtUtc?.toIso8601String(),
-        'startedAtUtc': startedAtUtc?.toIso8601String(),
-        'completedAtUtc': completedAtUtc?.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'group': group,
+    'steps': steps.map((step) => step.toJson()).toList(),
+    'currentStepIndex': currentStepIndex,
+    'status': status.name,
+    'remainingWhenPausedSeconds': remainingWhenPausedSeconds,
+    'endsAtUtc': endsAtUtc?.toIso8601String(),
+    'startedAtUtc': startedAtUtc?.toIso8601String(),
+    'completedAtUtc': completedAtUtc?.toIso8601String(),
+  };
 
   factory CountdownTimer.fromJson(Map<String, Object?> json) {
     final rawSteps = (json['steps'] as List<Object?>? ?? const <Object?>[])
@@ -168,11 +165,10 @@ class CountdownTimer {
       group: json['group'] as String? ?? '',
       steps: safeSteps,
       currentStepIndex: index,
-      status:
-          CountdownStatusCodec.parse(json['status'] as String? ?? 'paused'),
+      status: CountdownStatusCodec.parse(json['status'] as String? ?? 'paused'),
       remainingWhenPausedSeconds:
           (json['remainingWhenPausedSeconds'] as num?)?.toInt() ??
-              safeSteps[index].durationSeconds,
+          safeSteps[index].durationSeconds,
       endsAtUtc: parseDate(json['endsAtUtc']),
       startedAtUtc: parseDate(json['startedAtUtc']),
       completedAtUtc: parseDate(json['completedAtUtc']),
@@ -196,20 +192,20 @@ class TimerPreset {
   final int useCount;
 
   TimerPreset copyWith({int? useCount}) => TimerPreset(
-        id: id,
-        name: name,
-        group: group,
-        steps: steps,
-        useCount: useCount ?? this.useCount,
-      );
+    id: id,
+    name: name,
+    group: group,
+    steps: steps,
+    useCount: useCount ?? this.useCount,
+  );
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'name': name,
-        'group': group,
-        'steps': steps.map((step) => step.toJson()).toList(),
-        'useCount': useCount,
-      };
+    'id': id,
+    'name': name,
+    'group': group,
+    'steps': steps.map((step) => step.toJson()).toList(),
+    'useCount': useCount,
+  };
 
   factory TimerPreset.fromJson(Map<String, Object?> json) {
     final steps = (json['steps'] as List<Object?>? ?? const <Object?>[])
@@ -252,12 +248,12 @@ class TimerHistoryEntry {
   final int totalDurationSeconds;
 
   Map<String, Object?> toJson() => {
-        'timerId': timerId,
-        'name': name,
-        'group': group,
-        'completedAtUtc': completedAtUtc.toIso8601String(),
-        'totalDurationSeconds': totalDurationSeconds,
-      };
+    'timerId': timerId,
+    'name': name,
+    'group': group,
+    'completedAtUtc': completedAtUtc.toIso8601String(),
+    'totalDurationSeconds': totalDurationSeconds,
+  };
 
   factory TimerHistoryEntry.fromJson(Map<String, Object?> json) {
     return TimerHistoryEntry(
@@ -266,7 +262,7 @@ class TimerHistoryEntry {
       group: json['group'] as String? ?? '',
       completedAtUtc:
           DateTime.tryParse(json['completedAtUtc'] as String? ?? '')?.toUtc() ??
-              DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       totalDurationSeconds:
           (json['totalDurationSeconds'] as num?)?.toInt() ?? 0,
     );
@@ -310,8 +306,7 @@ class CountoraSettings {
     return CountoraSettings(
       themeMode: themeMode ?? this.themeMode,
       language: language ?? this.language,
-      notificationsEnabled:
-          notificationsEnabled ?? this.notificationsEnabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
       quietMode: quietMode ?? this.quietMode,
@@ -322,16 +317,16 @@ class CountoraSettings {
   }
 
   Map<String, Object?> toJson() => {
-        'themeMode': themeMode.name,
-        'language': language.name,
-        'notificationsEnabled': notificationsEnabled,
-        'soundEnabled': soundEnabled,
-        'vibrationEnabled': vibrationEnabled,
-        'quietMode': quietMode,
-        'reducedMotion': reducedMotion,
-        'compactCards': compactCards,
-        'onboardingSeen': onboardingSeen,
-      };
+    'themeMode': themeMode.name,
+    'language': language.name,
+    'notificationsEnabled': notificationsEnabled,
+    'soundEnabled': soundEnabled,
+    'vibrationEnabled': vibrationEnabled,
+    'quietMode': quietMode,
+    'reducedMotion': reducedMotion,
+    'compactCards': compactCards,
+    'onboardingSeen': onboardingSeen,
+  };
 
   factory CountoraSettings.fromJson(Map<String, Object?> json) {
     final themeMode = ThemeMode.values.firstWhere(
@@ -368,20 +363,17 @@ class CountoraState {
   final CountoraSettings settings;
 
   Map<String, Object?> toJson() => {
-        'timers': timers.map((item) => item.toJson()).toList(),
-        'presets': presets.map((item) => item.toJson()).toList(),
-        'history': history.map((item) => item.toJson()).toList(),
-        'settings': settings.toJson(),
-      };
+    'timers': timers.map((item) => item.toJson()).toList(),
+    'presets': presets.map((item) => item.toJson()).toList(),
+    'history': history.map((item) => item.toJson()).toList(),
+    'settings': settings.toJson(),
+  };
 
   factory CountoraState.fromJson(Map<String, Object?> json) {
     List<Map<String, Object?>> maps(String key) =>
         (json[key] as List<Object?>? ?? const <Object?>[])
             .whereType<Map<Object?, Object?>>()
-            .map(
-              (entry) =>
-                  entry.map((key, value) => MapEntry('$key', value)),
-            )
+            .map((entry) => entry.map((key, value) => MapEntry('$key', value)))
             .toList();
 
     final settingsRaw = json['settings'];
@@ -396,10 +388,9 @@ class CountoraState {
           .map(CountdownTimer.fromJson)
           .where((item) => item.id.isNotEmpty)
           .toList(),
-      presets: maps('presets')
-          .map(TimerPreset.fromJson)
-          .where((item) => item.id.isNotEmpty)
-          .toList(),
+      presets: maps(
+        'presets',
+      ).map(TimerPreset.fromJson).where((item) => item.id.isNotEmpty).toList(),
       history: maps('history').map(TimerHistoryEntry.fromJson).toList(),
       settings: settings,
     );

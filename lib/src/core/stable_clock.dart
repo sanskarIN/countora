@@ -6,11 +6,9 @@
 /// Persisted deadlines still use UTC instants so timers can be restored after a
 /// process restart.
 class StableClock {
-  StableClock({
-    DateTime Function()? wallNowUtc,
-    Duration Function()? elapsed,
-  })  : _anchorUtc = (wallNowUtc ?? _systemNowUtc)().toUtc(),
-        _elapsed = elapsed ?? _startMonotonicReader();
+  StableClock({DateTime Function()? wallNowUtc, Duration Function()? elapsed})
+    : _anchorUtc = (wallNowUtc ?? _systemNowUtc)().toUtc(),
+      _elapsed = elapsed ?? _startMonotonicReader();
 
   final DateTime _anchorUtc;
   final Duration Function() _elapsed;

@@ -61,17 +61,11 @@ final action = context.l10n.openFocusMode;
       result.errors,
       contains('lib/l10n/app_en.arb must declare @@locale as "en".'),
     );
-    expect(
-      result.errors.any((error) => error.contains('"settings"')),
-      isTrue,
-    );
+    expect(result.errors.any((error) => error.contains('"settings"')), isTrue);
   });
 
   test('rejects keys that collide with generated AppLocalizations members', () {
-    final arb = <String, Object?>{
-      ...completeArb,
-      'of': 'of',
-    };
+    final arb = <String, Object?>{...completeArb, 'of': 'of'};
 
     final result = auditLocalizationSources(
       arb: arb,
@@ -89,10 +83,7 @@ final action = context.l10n.openFocusMode;
   });
 
   test('accepts a non-conflicting replacement for a reserved label', () {
-    final arb = <String, Object?>{
-      ...completeArb,
-      'ofLabel': 'of',
-    };
+    final arb = <String, Object?>{...completeArb, 'ofLabel': 'of'};
 
     final result = auditLocalizationSources(
       arb: arb,
@@ -160,46 +151,48 @@ final action = context.l10n.openFocusMode;
     );
     expect(
       result.errors.any(
-        (error) => error.contains(
-          'localization message "appName" must be non-empty',
+        (error) =>
+            error.contains('localization message "appName" must be non-empty'),
+      ),
+      isTrue,
+    );
+  });
+
+  test(
+    'reports filename locale mismatch and duplicate locale declarations',
+    () {
+      final result = auditLocaleCatalogs(
+        templateArb: const <String, Object?>{
+          '@@locale': 'en',
+          'appName': 'Countora',
+        },
+        localeArbs: const <String, Map<String, Object?>>{
+          'lib/l10n/app_hi.arb': <String, Object?>{
+            '@@locale': 'fr',
+            'appName': 'Countora',
+          },
+          'lib/l10n/app_fr.arb': <String, Object?>{
+            '@@locale': 'fr',
+            'appName': 'Countora',
+          },
+        },
+      );
+
+      expect(result.isValid, isFalse);
+      expect(
+        result.errors.any(
+          (error) => error.contains('app_hi.arb declares @@locale "fr"'),
         ),
-      ),
-      isTrue,
-    );
-  });
-
-  test('reports filename locale mismatch and duplicate locale declarations', () {
-    final result = auditLocaleCatalogs(
-      templateArb: const <String, Object?>{
-        '@@locale': 'en',
-        'appName': 'Countora',
-      },
-      localeArbs: const <String, Map<String, Object?>>{
-        'lib/l10n/app_hi.arb': <String, Object?>{
-          '@@locale': 'fr',
-          'appName': 'Countora',
-        },
-        'lib/l10n/app_fr.arb': <String, Object?>{
-          '@@locale': 'fr',
-          'appName': 'Countora',
-        },
-      },
-    );
-
-    expect(result.isValid, isFalse);
-    expect(
-      result.errors.any(
-        (error) => error.contains('app_hi.arb declares @@locale "fr"'),
-      ),
-      isTrue,
-    );
-    expect(
-      result.errors.any(
-        (error) => error.contains('both declare @@locale "fr"'),
-      ),
-      isTrue,
-    );
-  });
+        isTrue,
+      );
+      expect(
+        result.errors.any(
+          (error) => error.contains('both declare @@locale "fr"'),
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('extracts strings and context localization references', () {
     final keys = referencedLocalizationKeys('''

@@ -51,9 +51,9 @@ class _HomePageState extends State<HomePage> {
       1 => _PresetsView(controller: controller),
       2 => _HistoryView(controller: controller),
       _ => _TimersView(
-          controller: controller,
-          searchFocusNode: _searchFocusNode,
-        ),
+        controller: controller,
+        searchFocusNode: _searchFocusNode,
+      ),
     };
 
     final scaffold = Scaffold(
@@ -183,10 +183,10 @@ class _HomePageState extends State<HomePage> {
       autofocus: true,
       child: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
-          const SingleActivator(LogicalKeyboardKey.keyN, control: true):
-              () => unawaited(_create(preset: _destinationIndex == 1)),
-          const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
-              () => unawaited(_create(preset: _destinationIndex == 1)),
+          const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+              unawaited(_create(preset: _destinationIndex == 1)),
+          const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () =>
+              unawaited(_create(preset: _destinationIndex == 1)),
           const SingleActivator(LogicalKeyboardKey.keyF, control: true):
               _focusSearch,
           const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
@@ -281,10 +281,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _TimersView extends StatelessWidget {
-  const _TimersView({
-    required this.controller,
-    required this.searchFocusNode,
-  });
+  const _TimersView({required this.controller, required this.searchFocusNode});
 
   final TimerController controller;
   final FocusNode searchFocusNode;
@@ -293,7 +290,8 @@ class _TimersView extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = context.l10n;
     final timers = controller.visibleTimers;
-    final hasActiveFilter = controller.searchQuery.trim().isNotEmpty ||
+    final hasActiveFilter =
+        controller.searchQuery.trim().isNotEmpty ||
         controller.groupFilter.isNotEmpty;
 
     return CustomScrollView(
@@ -405,21 +403,20 @@ class _TimersView extends StatelessWidget {
                 final columns = constraints.crossAxisExtent >= 1100
                     ? 3
                     : constraints.crossAxisExtent >= 650
-                        ? 2
-                        : 1;
+                    ? 2
+                    : 1;
                 return SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    mainAxisExtent:
-                        controller.settings.compactCards ? 230 : 290,
+                    mainAxisExtent: controller.settings.compactCards
+                        ? 230
+                        : 290,
                   ),
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => TimerCard(
-                      timer: timers[index],
-                      controller: controller,
-                    ),
+                    (context, index) =>
+                        TimerCard(timer: timers[index], controller: controller),
                     childCount: timers.length,
                   ),
                 );
@@ -546,9 +543,7 @@ class _HistoryView extends StatelessWidget {
           subtitle: Text(
             [
               if (item.group.isNotEmpty) item.group,
-              humanizeDuration(
-                Duration(seconds: item.totalDurationSeconds),
-              ),
+              humanizeDuration(Duration(seconds: item.totalDurationSeconds)),
               item.completedAtUtc.toLocal().toString(),
             ].join(' • '),
           ),
@@ -576,10 +571,7 @@ class _CountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(icon, size: 18),
-      label: Text('$label $count'),
-    );
+    return Chip(avatar: Icon(icon, size: 18), label: Text('$label $count'));
   }
 }
 
@@ -615,10 +607,7 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(message, textAlign: TextAlign.center),
-              if (action != null) ...[
-                const SizedBox(height: 16),
-                action!,
-              ],
+              if (action != null) ...[const SizedBox(height: 16), action!],
             ],
           ),
         ),

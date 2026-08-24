@@ -16,9 +16,7 @@ String humanizeDuration(Duration duration) {
   final safe = duration.isNegative ? Duration.zero : duration;
   if (safe.inHours > 0) {
     final minutes = safe.inMinutes.remainder(60);
-    return minutes == 0
-        ? '${safe.inHours}h'
-        : '${safe.inHours}h ${minutes}m';
+    return minutes == 0 ? '${safe.inHours}h' : '${safe.inHours}h ${minutes}m';
   }
   if (safe.inMinutes > 0) {
     final seconds = safe.inSeconds.remainder(60);

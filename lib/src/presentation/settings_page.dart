@@ -157,51 +157,55 @@ class SettingsPage extends StatelessWidget {
                         ? strings.completionNotificationsHelp
                         : strings.completionNotificationsUnavailable,
                   ),
-                  value: localNotificationsSupported &&
+                  value:
+                      localNotificationsSupported &&
                       settings.notificationsEnabled,
                   onChanged: localNotificationsSupported
                       ? (value) => unawaited(
-                            controller.updateSettings(
-                              settings.copyWith(notificationsEnabled: value),
-                            ),
-                          )
+                          controller.updateSettings(
+                            settings.copyWith(notificationsEnabled: value),
+                          ),
+                        )
                       : null,
                 ),
                 SwitchListTile(
                   title: Text(strings.sound),
                   value: settings.soundEnabled,
-                  onChanged: localNotificationsSupported &&
+                  onChanged:
+                      localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
-                            controller.updateSettings(
-                              settings.copyWith(soundEnabled: value),
-                            ),
-                          )
+                          controller.updateSettings(
+                            settings.copyWith(soundEnabled: value),
+                          ),
+                        )
                       : null,
                 ),
                 SwitchListTile(
                   title: Text(strings.vibration),
                   value: settings.vibrationEnabled,
-                  onChanged: localNotificationsSupported &&
+                  onChanged:
+                      localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
-                            controller.updateSettings(
-                              settings.copyWith(vibrationEnabled: value),
-                            ),
-                          )
+                          controller.updateSettings(
+                            settings.copyWith(vibrationEnabled: value),
+                          ),
+                        )
                       : null,
                 ),
                 SwitchListTile(
                   title: Text(strings.quietMode),
                   subtitle: Text(strings.quietModeHelp),
                   value: settings.quietMode,
-                  onChanged: localNotificationsSupported &&
+                  onChanged:
+                      localNotificationsSupported &&
                           settings.notificationsEnabled
                       ? (value) => unawaited(
-                            controller.updateSettings(
-                              settings.copyWith(quietMode: value),
-                            ),
-                          )
+                          controller.updateSettings(
+                            settings.copyWith(quietMode: value),
+                          ),
+                        )
                       : null,
                 ),
                 const Divider(height: 32),
@@ -291,7 +295,9 @@ class SettingsPage extends StatelessWidget {
                   ),
                   title: Text(
                     strings.eraseAllData,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                   subtitle: Text(strings.eraseAllDataHelp),
                   onTap: () => unawaited(_confirmResetAll(context)),
@@ -332,30 +338,28 @@ class SettingsPage extends StatelessWidget {
   Future<void> _openExternal(BuildContext context, Uri uri) async {
     final launched = await openExternalUri(uri);
     if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.openLinkFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.openLinkFailed)));
     }
   }
 
   Future<void> _exportBackup(BuildContext context) async {
     final strings = context.l10n;
     try {
-      await Clipboard.setData(
-        ClipboardData(text: controller.exportJson()),
-      );
+      await Clipboard.setData(ClipboardData(text: controller.exportJson()));
     } on Object {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.backupExportFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.backupExportFailed)));
       return;
     }
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(strings.backupCopied)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(strings.backupCopied)));
   }
 
   Future<void> _importBackup(BuildContext context) async {
@@ -371,9 +375,7 @@ class SettingsPage extends StatelessWidget {
             controller: textController,
             minLines: 8,
             maxLines: 16,
-            decoration: InputDecoration(
-              hintText: strings.pasteBackupHint,
-            ),
+            decoration: InputDecoration(hintText: strings.pasteBackupHint),
           ),
         ),
         actions: [
@@ -428,9 +430,9 @@ class SettingsPage extends StatelessWidget {
 
       await controller.importJson(raw);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.backupImported)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.backupImported)));
     } on FormatException catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -438,9 +440,9 @@ class SettingsPage extends StatelessWidget {
       );
     } on Object {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.importFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.importFailed)));
     }
   }
 

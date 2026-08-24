@@ -19,11 +19,7 @@ const bool countoraWindowsPackaged = bool.fromEnvironment(
 /// its active runtime because the target API or current packaging does not offer
 /// the cancellation/scheduling guarantees Countora requires. [unavailable] is
 /// reserved for targets without a supported local-notification implementation.
-enum NotificationDeliveryMode {
-  scheduledBackground,
-  runtimeOnly,
-  unavailable,
-}
+enum NotificationDeliveryMode { scheduledBackground, runtimeOnly, unavailable }
 
 NotificationDeliveryMode notificationDeliveryMode({
   bool? isWeb,
@@ -37,8 +33,7 @@ NotificationDeliveryMode notificationDeliveryMode({
   return switch (target) {
     TargetPlatform.android ||
     TargetPlatform.iOS ||
-    TargetPlatform.macOS =>
-      NotificationDeliveryMode.scheduledBackground,
+    TargetPlatform.macOS => NotificationDeliveryMode.scheduledBackground,
     TargetPlatform.windows =>
       (windowsPackaged ?? countoraWindowsPackaged)
           ? NotificationDeliveryMode.scheduledBackground

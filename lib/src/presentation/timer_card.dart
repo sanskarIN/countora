@@ -9,11 +9,7 @@ import '../domain/models.dart';
 import 'timer_controller.dart';
 
 class TimerCard extends StatelessWidget {
-  const TimerCard({
-    required this.timer,
-    required this.controller,
-    super.key,
-  });
+  const TimerCard({required this.timer, required this.controller, super.key});
 
   final CountdownTimer timer;
   final TimerController controller;
@@ -134,10 +130,10 @@ class TimerCard extends StatelessWidget {
                   formatDuration(remaining),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        fontFeatures: const <FontFeature>[
-                          FontFeature.tabularFigures(),
-                        ],
-                      ),
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 10),
                 LinearProgressIndicator(
@@ -145,8 +141,7 @@ class TimerCard extends StatelessWidget {
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(999),
                   semanticsLabel: strings.timerProgress,
-                  semanticsValue:
-                      '${(progress.clamp(0.0, 1.0) * 100).round()}',
+                  semanticsValue: '${(progress.clamp(0.0, 1.0) * 100).round()}',
                 ),
                 SizedBox(height: compact ? 8 : 16),
                 Wrap(
@@ -156,15 +151,13 @@ class TimerCard extends StatelessWidget {
                   children: [
                     if (timer.status == CountdownStatus.running)
                       FilledButton.tonalIcon(
-                        onPressed: () =>
-                            unawaited(controller.pause(timer.id)),
+                        onPressed: () => unawaited(controller.pause(timer.id)),
                         icon: const Icon(Icons.pause),
                         label: Text(strings.pause),
                       )
                     else if (timer.status == CountdownStatus.paused)
                       FilledButton.tonalIcon(
-                        onPressed: () =>
-                            unawaited(controller.resume(timer.id)),
+                        onPressed: () => unawaited(controller.resume(timer.id)),
                         icon: const Icon(Icons.play_arrow),
                         label: Text(strings.resume),
                       )
@@ -179,11 +172,11 @@ class TimerCard extends StatelessWidget {
                       onPressed: timer.status == CountdownStatus.completed
                           ? null
                           : () => unawaited(
-                                controller.addTime(
-                                  timer.id,
-                                  const Duration(minutes: 1),
-                                ),
+                              controller.addTime(
+                                timer.id,
+                                const Duration(minutes: 1),
                               ),
+                            ),
                       child: Text(strings.addOneMinute),
                     ),
                   ],
@@ -243,9 +236,7 @@ class TimerCard extends StatelessWidget {
                 TextFormField(
                   controller: groupController,
                   maxLength: 40,
-                  decoration: InputDecoration(
-                    labelText: strings.groupOptional,
-                  ),
+                  decoration: InputDecoration(labelText: strings.groupOptional),
                 ),
               ],
             ),
@@ -353,8 +344,9 @@ class TimerCard extends StatelessWidget {
                               Text(
                                 active.name,
                                 textAlign: TextAlign.center,
-                                style:
-                                    Theme.of(context).textTheme.headlineMedium,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
                               ),
                               if (active.group.isNotEmpty) ...[
                                 const SizedBox(height: 8),
@@ -363,12 +355,14 @@ class TimerCard extends StatelessWidget {
                               const SizedBox(height: 28),
                               Semantics(
                                 liveRegion: true,
-                                label: '${formatDuration(remaining)} ${strings.timer.toLowerCase()}',
+                                label:
+                                    '${formatDuration(remaining)} ${strings.timer.toLowerCase()}',
                                 child: Text(
                                   formatDuration(remaining),
                                   textAlign: TextAlign.center,
-                                  style:
-                                      Theme.of(context).textTheme.displayLarge,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.displayLarge,
                                 ),
                               ),
                               const SizedBox(height: 20),
@@ -387,7 +381,9 @@ class TimerCard extends StatelessWidget {
                                   '${strings.ofLabel} ${active.steps.length}: '
                                   '${active.currentStep.label}',
                                   textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                               ],
                               const SizedBox(height: 28),
@@ -422,15 +418,16 @@ class TimerCard extends StatelessWidget {
                                       label: Text(strings.restart),
                                     ),
                                   OutlinedButton.icon(
-                                    onPressed: active.status ==
+                                    onPressed:
+                                        active.status ==
                                             CountdownStatus.completed
                                         ? null
                                         : () => unawaited(
-                                              controller.addTime(
-                                                active.id,
-                                                const Duration(minutes: 1),
-                                              ),
+                                            controller.addTime(
+                                              active.id,
+                                              const Duration(minutes: 1),
                                             ),
+                                          ),
                                     icon: const Icon(Icons.add),
                                     label: Text(strings.oneMinute),
                                   ),

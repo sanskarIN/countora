@@ -91,10 +91,7 @@ NotificationDetails countoraNotificationDetails({
       vibrationEnabled: vibrationEnabled,
       quietMode: quietMode,
     ),
-    iOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: playSound,
-    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: playSound),
     macOS: DarwinNotificationDetails(
       presentAlert: true,
       presentSound: playSound,
@@ -135,7 +132,8 @@ class LocalNotificationService implements NotificationService {
     tz_data.initializeTimeZones();
 
     try {
-      _ready = await _plugin.initialize(
+      _ready =
+          await _plugin.initialize(
             settings: countoraNotificationInitializationSettings(),
           ) ??
           false;
@@ -155,19 +153,23 @@ class LocalNotificationService implements NotificationService {
       // permission prompts to originate directly from user activation, so the
       // Web Settings action uses requestWebNotificationPermissionFromUserGesture
       // instead of this automatic scheduling/reconciliation path.
-      final android = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await android?.requestNotificationsPermission();
       await android?.requestExactAlarmsPermission();
 
       await _plugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, sound: true, badge: false);
 
       await _plugin
           .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin>()
+            MacOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, sound: true, badge: false);
     } on Object catch (error) {
       _logger.warning('permission_request_failed', error: error);
@@ -200,9 +202,11 @@ class LocalNotificationService implements NotificationService {
     var scheduledAt = timer.endsAtUtc;
     if (scheduledAt == null) return;
 
-    for (var index = timer.currentStepIndex;
-        index < timer.steps.length;
-        index += 1) {
+    for (
+      var index = timer.currentStepIndex;
+      index < timer.steps.length;
+      index += 1
+    ) {
       final step = timer.steps[index];
       final isCurrent = index == timer.currentStepIndex;
       if (!isCurrent) {
@@ -280,12 +284,12 @@ class LocalNotificationService implements NotificationService {
 
     final step = timer.currentStep;
     Future<void> deliver() => _showRuntimeNotification(
-          timer: timer,
-          step: step,
-          soundEnabled: soundEnabled,
-          vibrationEnabled: vibrationEnabled,
-          quietMode: quietMode,
-        );
+      timer: timer,
+      step: step,
+      soundEnabled: soundEnabled,
+      vibrationEnabled: vibrationEnabled,
+      quietMode: quietMode,
+    );
 
     final delay = scheduledAt.difference(DateTime.now().toUtc());
     if (delay <= Duration.zero) {
@@ -306,10 +310,7 @@ class LocalNotificationService implements NotificationService {
     _runtimeTimers[timer.id] = entry;
   }
 
-  void _cancelRuntimeTimer(
-    String timerId, {
-    required bool preserveIfDue,
-  }) {
+  void _cancelRuntimeTimer(String timerId, {required bool preserveIfDue}) {
     final entry = _runtimeTimers.remove(timerId);
     if (entry == null) return;
 
@@ -364,8 +365,7 @@ class LocalNotificationService implements NotificationService {
 
     await runBoundedNotificationCleanup(
       count: CountoraStateCodec.maxIntervalsPerTimer,
-      cancel: (index) =>
-          _plugin.cancel(id: _notificationId(timerId, index)),
+      cancel: (index) => _plugin.cancel(id: _notificationId(timerId, index)),
       onError: (index, error) {
         _logger.warning(
           'cancel_failed',

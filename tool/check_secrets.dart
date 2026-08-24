@@ -26,7 +26,9 @@ void main() {
 
     for (final entry in patterns.entries) {
       if (entry.value.hasMatch(content)) {
-        findings.add('${_relative(root.path, entity.path)}: ${entry.key} pattern');
+        findings.add(
+          '${_relative(root.path, entity.path)}: ${entry.key} pattern',
+        );
       }
     }
   }
