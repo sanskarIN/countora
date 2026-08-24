@@ -384,7 +384,7 @@ class TimerCard extends StatelessWidget {
                                 const SizedBox(height: 18),
                                 Text(
                                   '${strings.step} ${active.currentStepIndex + 1} '
-                                  '${strings.of} ${active.steps.length}: '
+                                  '${strings.ofLabel} ${active.steps.length}: '
                                   '${active.currentStep.label}',
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.titleMedium,
