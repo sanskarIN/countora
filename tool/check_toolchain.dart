@@ -7,6 +7,7 @@ void main() {
   const workflowPaths = <String>[
     '.github/workflows/ci.yml',
     '.github/workflows/dependency-lock.yml',
+    '.github/workflows/release-normalize.yml',
     '.github/workflows/platform-smoke.yml',
     '.github/workflows/release.yml',
     '.github/workflows/repository-audit.yml',
