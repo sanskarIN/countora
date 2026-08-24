@@ -3,9 +3,13 @@ name: Dependency lock refresh
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
     paths:
       - pubspec.yaml
+      - tool/bootstrap_platforms.dart
+      - tool/src/root_file_guard.dart
       - .github/actions/setup-flutter/action.yml
       - .github/workflows/dependency-lock.yml
 
@@ -19,15 +23,17 @@ concurrency:
 jobs:
   refresh-lock:
     name: Refresh reviewed application lockfile
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository branch
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.ref_name }}
 
       - name: Install repository Flutter toolchain
         uses: ./.github/actions/setup-flutter
@@ -35,7 +41,7 @@ jobs:
       - name: Verify localization source and catalogs
         run: dart run tool/check_localization_source.dart
 
-      - name: Generate platform runners
+      - name: Generate platform runners safely
         run: dart run tool/bootstrap_platforms.dart
 
       - name: Resolve dependencies
@@ -73,6 +79,15 @@ jobs:
       - name: Verify patch hygiene
         run: git diff --check
 
+      - name: Reject unexpected tracked bootstrap changes
+        shell: bash
+        run: |
+          if ! git diff --quiet -- . ':(exclude)pubspec.lock'; then
+            echo "Platform/bootstrap verification changed tracked files unexpectedly."
+            git diff -- . ':(exclude)pubspec.lock'
+            exit 1
+          fi
+
       - name: Retain verified lockfile artifact
         uses: actions/upload-artifact@v7
         with:
@@ -93,5 +108,5 @@ jobs:
           git config user.name "Sanskar"
           git config user.email "sanskarin@outlook.in"
           git commit -m "build: refresh dependency lock"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
